@@ -73,10 +73,11 @@ export function FleetPage() {
 
 export function ImportPage() {
   const [msg, setMsg] = useState('')
+  const [fname, setFname] = useState('')
   const send = async (dry: boolean) => {
     const el = document.getElementById('xlsx') as HTMLInputElement
     const f = el.files?.[0]
-    if (!f) return
+    if (!f) { setMsg('Pilih file .xlsx dulu (klik Choose File).'); return }
     setMsg('memproses...')
     try {
       const r = await uploadExcel(f, dry)
@@ -86,10 +87,11 @@ export function ImportPage() {
   return (
     <div className="flex flex-col gap-4 rounded-2xl border bg-white p-5">
       <h2 className="font-semibold">Import Excel</h2>
-      <input type="file" accept=".xlsx" id="xlsx" />
+      <input type="file" accept=".xlsx" id="xlsx" onChange={(e) => setFname(e.target.files?.[0]?.name ?? '')} />
+      {fname ? <p className="text-theme-sm text-gray-600">File: {fname}</p> : <p className="text-theme-sm text-red-600">Belum ada file dipilih.</p>}
       <div className="flex gap-2">
-        <button className="rounded-lg border px-4 py-2" onClick={() => send(true)}>Dry-run</button>
-        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => send(false)}>Commit</button>
+        <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={!fname} onClick={() => send(true)}>Dry-run</button>
+        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={!fname} onClick={() => send(false)}>Commit</button>
       </div>
       <p>{msg}</p>
     </div>
