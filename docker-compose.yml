@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
+    container_name: mte-fs-db
     restart: unless-stopped
     env_file: .env
     environment:
@@ -14,6 +15,7 @@ services:
       - "127.0.0.1:5432:5432"
   api:
     build: ./apps/api
+    container_name: mte-fs-api
     restart: unless-stopped
     env_file: .env
     environment:
@@ -24,6 +26,7 @@ services:
       - db
   web:
     build: ./apps/web
+    container_name: mte-fs-web
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:80"
