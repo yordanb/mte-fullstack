@@ -63,4 +63,44 @@ def parse_lab_no(v):
 
 
 def norm_vessel(v):
-    return str(v).strip().upper() if v else None
+    return str(v).strip().upper() if v not in (None, "") else None
+
+
+INT_COLS = {"oil_capacity", "unit_time", "unit_time_oils", "pqindex",
+            "empat_um", "enam_um", "limabelas_um", "seq_i_code"}
+DATE_COLS = {"sample_date", "date_taken"}
+GRADE_COLS = {c for c in HEADER_MAP.values() if c.startswith("grade_")}
+
+# semua n_* / *_max / unsur aktual / colorcode adalah numerik
+NUM_COLS = ({c for c in HEADER_MAP.values()
+             if c.startswith("n_") or c.endswith("_max")}
+            | {"al", "cr", "cu", "fe", "pb", "sn", "si", "k", "na",
+               "water", "visc", "oxi", "gly", "fuel", "tbn",
+               "nitr", "soot", "tan", "mg", "ag", "zn", "colorcode"}
+            - {"lab_no"})
+
+
+def coerce(col: str, v):
+    """Bersihkan 1 sel Excel ke tipe Postgres. None = NULL."""
+    if v is None or (isinstance(v, str) and v.strip() == ""):
+        return None
+    if col == "lab_no":
+        return parse_lab_no(v)
+    if col == "vesselid":
+        return norm_vessel(v)
+    if col in INT_COLS:
+        return int(float(str(v).strip()) if isinstance(v, str) else float(v))
+    if col in NUM_COLS:
+        return float(v) if not isinstance(v, str) else float(v.strip())
+    if col in DATE_COLS:
+        return v  # openpyxl sudah datetime; asyncpg menerimanya
+    if col in GRADE_COLS or col == "condition":
+        s = str(v).strip().upper()
+        if col == "condition" and s not in ("NORMAL", "CRITICAL", "WARNING"):
+            raise ValueError(f"Condition tak dikenal: {v}")
+        if col in GRADE_COLS and s not in ("N", "A", "C"):
+            raise ValueError(f"Grade tak dikenal {col}: {v}")
+        return s
+    if col == "oil_change" and str(v).strip() not in ("Yes", "No"):
+        raise ValueError(f"Oil Change harus Yes/No: {v}")
+    return str(v).strip() if isinstance(v, str) else v
