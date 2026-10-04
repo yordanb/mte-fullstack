@@ -11,11 +11,18 @@ export default function Layout({ page, setPage, onLogout, children }: {
   page: string; setPage: (p: string) => void; onLogout: () => void; children: ReactNode
 }) {
   const [open, setOpen] = useState(true)
+  // Logo: taruh file logo.png di apps/web/public/ untuk mengganti (tanpa edit kode).
+  // Urutan: logo.png (kustom) -> logo.svg (bawaan) -> teks saja.
+  const [logoSrc, setLogoSrc] = useState('/logo.png')
   return (
     <div className="flex h-screen bg-gray-50 font-outfit dark:bg-gray-900">
       {open && (
         <aside className="flex w-72 flex-col border-r border-gray-200 bg-white px-5 dark:border-gray-800 dark:bg-black">
           <div className="flex items-center gap-2 pt-8 pb-7">
+            {logoSrc && (
+              <img src={logoSrc} alt="Logo" className="h-9 w-9 rounded-lg object-contain"
+                onError={() => setLogoSrc((s) => (s === '/logo.png' ? '/logo.svg' : ''))} />
+            )}
             <span className="text-xl font-bold text-brand-600">MTE Data Center</span>
           </div>
           <nav className="flex flex-col gap-1">
