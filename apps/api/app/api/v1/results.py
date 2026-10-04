@@ -39,6 +39,27 @@ async def list_results(
     """)
     return {"data": list((await db.execute(q, params)).mappings().all())}
 
+@router.get("/latest-per-unit", dependencies=[Depends(require_role("viewer", "operator", "admin"))])
+async def latest_per_unit(
+    limit: int = Query(50, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    """Default dashboard: 1 baris terbaru per (vesselid, unit_id), format report penuh."""
+    q = text("""
+        SELECT * FROM (
+          SELECT DISTINCT ON (vesselid, unit_id)
+                 lab_no, vesselid, unit_id, model, sample_date, date_taken,
+                 ROUND(EXTRACT(EPOCH FROM (date_taken - sample_date)) / 86400, 1) AS lead_time,
+                 oil_weight, unit_time, unit_time_oils,
+                 visc, fuel, soot, oxi, nitr, water, tbn,
+                 si, fe, cu, al, cr, pb, na,
+                 "condition", english_description
+          FROM oil_lab_result
+          ORDER BY vesselid, unit_id, sample_date DESC, lab_no DESC
+        ) t ORDER BY sample_date DESC LIMIT :lim
+    """)
+    return {"data": list((await db.execute(q, {"lim": limit})).mappings().all())}
+
 @router.get("/{lab_no}", dependencies=[Depends(require_role("viewer", "operator", "admin"))])
 async def detail(lab_no: int, db: AsyncSession = Depends(get_db)):
     """Detail 1 baris full-column untuk grafik tren / drill-down."""

@@ -32,6 +32,11 @@ export async function fetchResults(vesselid: string, unit_id?: string): Promise<
   return r.data.data
 }
 
+export async function fetchLatestPerUnit(limit = 50): Promise<LabRow[]> {
+  const r = await api.get('/v1/results/latest-per-unit', { params: { limit } })
+  return r.data.data
+}
+
 export async function fetchFleetAlerts(prefix: string) {
   const r = await api.get('/v1/fleet/alerts', { params: { prefix, limit: 50 } })
   return r.data.data as LabRow[]

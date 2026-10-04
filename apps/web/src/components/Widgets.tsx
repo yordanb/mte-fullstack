@@ -27,14 +27,15 @@ export function MetricCards({ total, critical, normal }: { total: number; critic
   )
 }
 
-export function VesselTable({ rows }: { rows: LabRow[] }) {
+export function VesselTable({ rows, title }: { rows: LabRow[]; title?: string }) {
   const td = 'border px-2 py-2 whitespace-nowrap'
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="border-b px-5 py-4 font-semibold">20 Data Terbaru — Report Analisa Oli</div>
+      <div className="border-b px-5 py-4 font-semibold">{title ?? 'Report Analisa Oli'}</div>
       <table className="w-full border-collapse text-center text-theme-sm">
         <thead className="bg-[#d6e4c9] font-semibold text-black">
           <tr>
+            <th className={td} rowSpan={2}>Vessel Id</th><th className={td} rowSpan={2}>Unit Id</th>
             <th className={td}>Lab No.</th><th className={td}>Sampl Date</th><th className={td}>Oil Type</th>
             <th className={td}>HM</th>
             <th className={td} rowSpan={2}>VISC</th><th className={td} rowSpan={2}>FUEL</th>
@@ -52,6 +53,7 @@ export function VesselTable({ rows }: { rows: LabRow[] }) {
         <tbody>
           {rows.map((r) => (
             <tr key={r.lab_no} className={`border-t ${r.condition !== 'NORMAL' ? 'bg-red-50' : ''}`}>
+              <td className={td}>{r.vesselid}</td><td className={td}>{r.unit_id}</td>
               <td className={td}>{r.lab_no}<br />{r.lead_time ?? ''}</td>
               <td className={td}>{fmtDate(r.sample_date)}<br />{fmtDate(r.date_taken)}</td>
               <td className={td}>{r.oil_weight ?? ''}</td>
