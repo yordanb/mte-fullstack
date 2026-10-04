@@ -12,7 +12,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./infra/db:/docker-entrypoint-initdb.d
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5446:5432"
   api:
     build: ./apps/api
     container_name: mte-fs-api
@@ -21,7 +21,7 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://mte:mte@db:5432/mte}
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8802:8000"
     depends_on:
       - db
   web:
@@ -29,7 +29,7 @@ services:
     container_name: mte-fs-web
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:80"
+      - "127.0.0.1:8803:80"
     depends_on:
       - api
 volumes:
