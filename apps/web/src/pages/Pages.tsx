@@ -42,7 +42,7 @@ export function Dashboard() {
         {(['' , 'TL', 'GS', 'WP'] as const).map((p) => (
           <label key={p || 'none'} className="flex cursor-pointer items-center gap-1 rounded-lg border bg-white px-3 py-2">
             <input type="radio" name="crit-prefix" checked={critPrefix === p} onChange={() => loadCrit(p)} />
-            {p === '' ? 'None' : `${p} Critical`}
+            {p === '' ? 'None' : p}
           </label>
         ))}
       </div>
