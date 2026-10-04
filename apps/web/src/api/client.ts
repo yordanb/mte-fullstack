@@ -10,9 +10,14 @@ api.interceptors.request.use((c) => {
 
 export type LabRow = {
   lab_no: number; vesselid: string; unit_id: string; model: string
-  sample_date: string; date_taken?: string; condition: string
-  fe: number | null; al: number | null; cu?: number | null
-  si?: number | null; visc?: number | null; english_description?: string
+  sample_date: string; date_taken?: string; lead_time?: number | null
+  oil_weight?: string | null; unit_time?: number | null; unit_time_oils?: number | null
+  condition: string
+  visc?: number | null; fuel?: number | null; soot?: number | null
+  oxi?: number | null; nitr?: number | null; water?: number | null; tbn?: number | null
+  si?: number | null; fe: number | null; cu?: number | null; al: number | null
+  cr?: number | null; pb?: number | null; na?: number | null
+  english_description?: string
 }
 
 export async function login(username: string, password: string) {

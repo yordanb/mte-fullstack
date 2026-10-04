@@ -29,7 +29,11 @@ async def list_results(
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
     q = text(f"""
         SELECT lab_no, vesselid, unit_id, model, sample_date, date_taken,
-               fe, al, cu, si, visc, "condition", english_description
+               ROUND(EXTRACT(EPOCH FROM (date_taken - sample_date)) / 86400, 1) AS lead_time,
+               oil_weight, unit_time, unit_time_oils,
+               visc, fuel, soot, oxi, nitr, water, tbn,
+               si, fe, cu, al, cr, pb, na,
+               "condition", english_description
         FROM oil_lab_result {where}
         ORDER BY sample_date DESC, lab_no DESC LIMIT :lim
     """)
