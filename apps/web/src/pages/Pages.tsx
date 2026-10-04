@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchResults, fetchFleetAlerts, uploadExcel, type LabRow } from '../api/client'
-import { MetricCards, Trend, VesselTable } from '../components/Widgets'
+import { Trend, VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
   const [vessel, setVessel] = useState('TL986')
@@ -9,14 +9,18 @@ export function Dashboard() {
   const load = async () => setRows(await fetchResults(vessel, unit || undefined))
   useEffect(() => { load() }, [])
   const crit = rows.filter((r) => r.condition !== 'NORMAL').length
+  const stat = 'flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm whitespace-nowrap'
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex gap-2">
-        <input className="rounded-lg border px-3 py-2" value={vessel} onChange={(e) => setVessel(e.target.value.toUpperCase())} placeholder="TL986" />
-        <input className="rounded-lg border px-3 py-2" value={unit} onChange={(e) => setUnit(e.target.value.toUpperCase())} placeholder="ENGINE" />
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <input className="w-28 rounded-lg border px-3 py-2" value={vessel} onChange={(e) => setVessel(e.target.value.toUpperCase())} placeholder="TL986" />
+        <input className="w-32 rounded-lg border px-3 py-2" value={unit} onChange={(e) => setUnit(e.target.value.toUpperCase())} placeholder="ENGINE" />
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={load}>Cari</button>
+        <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
+        <span className={stat}><span className="text-gray-500">Total</span><b>{rows.length}</b></span>
+        <span className={stat}><span className="text-gray-500">CRITICAL</span><b className={crit ? 'text-red-600' : ''}>{crit}</b></span>
+        <span className={stat}><span className="text-gray-500">NORMAL</span><b className="text-green-700">{rows.length - crit}</b></span>
       </div>
-      <MetricCards total={rows.length} critical={crit} normal={rows.length - crit} />
       <Trend rows={rows} />
       <VesselTable rows={rows} />
     </div>
