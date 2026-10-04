@@ -16,7 +16,7 @@ export default function Layout({ page, setPage, onLogout, children }: {
       {open && (
         <aside className="flex w-72 flex-col border-r border-gray-200 bg-white px-5 dark:border-gray-800 dark:bg-black">
           <div className="flex items-center gap-2 pt-8 pb-7">
-            <span className="text-xl font-bold text-brand-600">MTE Oil Lab</span>
+            <span className="text-xl font-bold text-brand-600">MTE Data Center</span>
           </div>
           <nav className="flex flex-col gap-1">
             <p className="mb-4 text-xs uppercase text-gray-400">Menu</p>
