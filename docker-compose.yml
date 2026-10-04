@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mte
+      POSTGRES_PASSWORD: mte
+      POSTGRES_DB: mte
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/db:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+  api:
+    build: ./apps/api
+    env_file: ./apps/api/.env.example
+    environment:
+      DATABASE_URL: postgresql+asyncpg://mte:mte@db:5432/mte
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+volumes:
+  pgdata:
