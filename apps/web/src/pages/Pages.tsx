@@ -7,8 +7,15 @@ export function Dashboard() {
   const [unit, setUnit] = useState('')
   const [rows, setRows] = useState<LabRow[]>([])
   const [mode, setMode] = useState<'latest' | 'search'>('latest')
-  const loadLatest = async () => { setMode('latest'); setRows(await fetchLatestPerUnit(50)) }
-  const load = async () => { setMode('search'); setRows(await fetchResults(vessel, unit || undefined)) }
+  const [err, setErr] = useState('')
+  const loadLatest = async () => {
+    try { setErr(''); setMode('latest'); setRows(await fetchLatestPerUnit(50)) }
+    catch (e) { setErr(`Gagal muat default (perlu pull+rebuild api di VPS?): ${String(e)}`) }
+  }
+  const load = async () => {
+    try { setErr(''); setMode('search'); setRows(await fetchResults(vessel, unit || undefined)) }
+    catch (e) { setErr(`Gagal cari: ${String(e)}`) }
+  }
   useEffect(() => { loadLatest() }, [])
   const crit = rows.filter((r) => r.condition !== 'NORMAL').length
   const stat = 'flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm whitespace-nowrap'
@@ -25,6 +32,7 @@ export function Dashboard() {
         <span className={stat}><span className="text-gray-500">NORMAL</span><b className="text-green-700">{rows.length - crit}</b></span>
       </div>
       <Trend rows={rows} />
+      {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-theme-sm text-red-700">{err}</p>}
       <VesselTable rows={rows} title={mode === 'latest' ? 'Data Terbaru per Vessel + Unit — Report Analisa Oli' : '20 Data Terbaru — Report Analisa Oli'} />
     </div>
   )
