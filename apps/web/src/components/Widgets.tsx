@@ -56,7 +56,7 @@ export function VesselTable({ rows, title }: { rows: LabRow[]; title?: string })
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.lab_no} className={`border-t ${r.condition !== 'NORMAL' ? 'bg-red-50' : ''}`}>
+            <tr key={r.lab_no} className="border-t">
               <td className={td}>{r.vesselid}</td><td className={td}>{r.unit_id}</td>
               <td className={td}>{r.lab_no}<br />{r.lead_time ?? ''}</td>
               <td className={td}>{fmtDate(r.sample_date)}<br />{fmtDate(r.date_taken)}</td>
