@@ -32,7 +32,7 @@ export function Dashboard() {
         <input className="w-28 rounded-lg border px-3 py-2" value={vessel} onChange={(e) => setVessel(e.target.value.toUpperCase())} placeholder="Vessel (kosong=semua)" />
         <input className="w-32 rounded-lg border px-3 py-2" value={unit} onChange={(e) => setUnit(e.target.value.toUpperCase())} placeholder="Unit (opsional)" />
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={load}>Cari 20 terbaru</button>
-        <button className="rounded-lg border px-4 py-2" onClick={loadLatest}>Reset (per vessel terbaru)</button>
+        <button className="rounded-lg border px-4 py-2" onClick={loadLatest}>Reset</button>
         <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
         <span className={stat}><span className="text-gray-500">Total</span><b>{rows.length}</b></span>
         <span className={stat}><span className="text-gray-500">CRITICAL</span><b className={crit ? 'text-red-600' : ''}>{crit}</b></span>
