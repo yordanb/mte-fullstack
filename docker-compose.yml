@@ -19,5 +19,11 @@ services:
       - "8000:8000"
     depends_on:
       - db
+  web:
+    build: ./apps/web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
 volumes:
   pgdata:
