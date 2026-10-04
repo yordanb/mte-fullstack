@@ -17,6 +17,11 @@ export type LabRow = {
   oxi?: number | null; nitr?: number | null; water?: number | null; tbn?: number | null
   si?: number | null; fe: number | null; cu?: number | null; al: number | null
   cr?: number | null; pb?: number | null; na?: number | null
+  grade_visc?: string | null; grade_fuel?: string | null; grade_soot?: string | null
+  grade_oxi?: string | null; grade_nitr?: string | null; grade_water?: string | null
+  grade_tbn?: string | null; grade_si?: string | null; grade_fe?: string | null
+  grade_cu?: string | null; grade_al?: string | null; grade_cr?: string | null
+  grade_pb?: string | null; grade_na?: string | null
   english_description?: string
 }
 

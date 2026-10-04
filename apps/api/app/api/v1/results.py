@@ -33,6 +33,9 @@ async def list_results(
                oil_weight, unit_time, unit_time_oils,
                visc, fuel, soot, oxi, nitr, water, tbn,
                si, fe, cu, al, cr, pb, na,
+               grade_visc, grade_fuel, grade_soot, grade_oxi, grade_nitr,
+               grade_water, grade_tbn, grade_si, grade_fe, grade_cu,
+               grade_al, grade_cr, grade_pb, grade_na,
                "condition", english_description
         FROM oil_lab_result {where}
         ORDER BY sample_date DESC, lab_no DESC LIMIT :lim
@@ -65,6 +68,9 @@ async def latest_per_unit(
                  oil_weight, unit_time, unit_time_oils,
                  visc, fuel, soot, oxi, nitr, water, tbn,
                  si, fe, cu, al, cr, pb, na,
+                 grade_visc, grade_fuel, grade_soot, grade_oxi, grade_nitr,
+                 grade_water, grade_tbn, grade_si, grade_fe, grade_cu,
+                 grade_al, grade_cr, grade_pb, grade_na,
                  "condition", english_description
           FROM oil_lab_result {inner}
           ORDER BY vesselid, unit_id, sample_date DESC, lab_no DESC

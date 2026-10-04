@@ -29,6 +29,10 @@ export function MetricCards({ total, critical, normal }: { total: number; critic
 
 export function VesselTable({ rows, title }: { rows: LabRow[]; title?: string }) {
   const td = 'border px-2 py-2 whitespace-nowrap'
+  // sel merah jika grade parameter bukan N (A/C), sama seperti penanda Condition
+  const bad = (g?: string | null) => g != null && g !== '' && g !== 'N'
+  const cell = (v: unknown, g?: string | null) => `${td}${bad(g) ? ' bg-red-100 font-semibold text-red-700' : ''}`
+  const show = (v: unknown) => (v ?? '') as string
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
       <div className="border-b px-5 py-4 font-semibold">{title ?? 'Report Analisa Oli'}</div>
@@ -58,13 +62,13 @@ export function VesselTable({ rows, title }: { rows: LabRow[]; title?: string })
               <td className={td}>{fmtDate(r.sample_date)}<br />{fmtDate(r.date_taken)}</td>
               <td className={td}>{r.oil_weight ?? ''}</td>
               <td className={td}>{r.unit_time ?? ''}<br />{r.unit_time_oils ?? ''}</td>
-              <td className={td}>{r.visc ?? ''}</td><td className={td}>{r.fuel ?? ''}</td>
-              <td className={td}>{r.soot ?? ''}</td><td className={td}>{r.oxi ?? ''}</td>
-              <td className={td}>{r.nitr ?? ''}</td><td className={td}>{r.water ?? ''}</td>
-              <td className={td}>{r.tbn ?? ''}</td><td className={td}>{r.si ?? ''}</td>
-              <td className={td}>{r.fe ?? ''}</td><td className={td}>{r.cu ?? ''}</td>
-              <td className={td}>{r.al ?? ''}</td><td className={td}>{r.cr ?? ''}</td>
-              <td className={td}>{r.pb ?? ''}</td><td className={td}>{r.na ?? ''}</td>
+              <td className={cell(r.visc, r.grade_visc)}>{show(r.visc)}</td><td className={cell(r.fuel, r.grade_fuel)}>{show(r.fuel)}</td>
+              <td className={cell(r.soot, r.grade_soot)}>{show(r.soot)}</td><td className={cell(r.oxi, r.grade_oxi)}>{show(r.oxi)}</td>
+              <td className={cell(r.nitr, r.grade_nitr)}>{show(r.nitr)}</td><td className={cell(r.water, r.grade_water)}>{show(r.water)}</td>
+              <td className={cell(r.tbn, r.grade_tbn)}>{show(r.tbn)}</td><td className={cell(r.si, r.grade_si)}>{show(r.si)}</td>
+              <td className={cell(r.fe, r.grade_fe)}>{show(r.fe)}</td><td className={cell(r.cu, r.grade_cu)}>{show(r.cu)}</td>
+              <td className={cell(r.al, r.grade_al)}>{show(r.al)}</td><td className={cell(r.cr, r.grade_cr)}>{show(r.cr)}</td>
+              <td className={cell(r.pb, r.grade_pb)}>{show(r.pb)}</td><td className={cell(r.na, r.grade_na)}>{show(r.na)}</td>
               <td className={td}><span className={`rounded-full px-2 py-1 text-theme-xs ${r.condition === 'NORMAL' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.condition}</span></td>
             </tr>
           ))}
