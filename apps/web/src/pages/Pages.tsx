@@ -37,11 +37,10 @@ export function Dashboard() {
         <span className={stat}><span className="text-gray-500">Total</span><b>{rows.length}</b></span>
         <span className={stat}><span className="text-gray-500">CRITICAL</span><b className={crit ? 'text-red-600' : ''}>{crit}</b></span>
         <span className={stat}><span className="text-gray-500">NORMAL</span><b className="text-green-700">{rows.length - crit}</b></span>
-      </div>
-      <div className="flex flex-wrap items-center gap-3 text-theme-sm">
+        <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
         <span className="text-gray-500">Critical per prefix:</span>
         {(['' , 'TL', 'GS', 'WP'] as const).map((p) => (
-          <label key={p || 'none'} className="flex cursor-pointer items-center gap-1 rounded-lg border px-3 py-1">
+          <label key={p || 'none'} className="flex cursor-pointer items-center gap-1 rounded-lg border bg-white px-3 py-2">
             <input type="radio" name="crit-prefix" checked={critPrefix === p} onChange={() => loadCrit(p)} />
             {p === '' ? 'None' : `${p} Critical`}
           </label>
