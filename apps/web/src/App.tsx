@@ -1,35 +1,17 @@
 import { useState } from 'react'
-import { FleetAlerts, ImportBox, VesselSearch } from './pages/Monitoring'
-import { login } from './api/client'
+import Layout from './components/Layout'
+import LoginPage from './pages/Login'
+import { Dashboard, FleetPage, ImportPage } from './pages/Pages'
 
 export default function App() {
-  const [u, setU] = useState('admin')
-  const [p, setP] = useState('')
   const [authed, setAuthed] = useState(!!localStorage.getItem('mte_token'))
-  const doLogin = async () => {
-    await login(u, p)
-    setAuthed(true)
-  }
-  if (!authed) {
-    return (
-      <div>
-        <h1>MTE Login</h1>
-        <input value={u} onChange={(e) => setU(e.target.value)} placeholder="username" />
-        <input type="password" value={p} onChange={(e) => setP(e.target.value)} placeholder="password" />
-        <button onClick={doLogin}>Login</button>
-      </div>
-    )
-  }
+  const [page, setPage] = useState('dashboard')
+  if (!authed) return <LoginPage onOk={() => setAuthed(true)} />
   return (
-    <div>
-      <header><h1>MTE Oil Lab Monitoring</h1>
-        <button onClick={() => { localStorage.clear(); setAuthed(false) }}>Logout</button>
-      </header>
-      <main>
-        <ImportBox />
-        <VesselSearch />
-        <FleetAlerts />
-      </main>
-    </div>
+    <Layout page={page} setPage={setPage} onLogout={() => { localStorage.clear(); setAuthed(false) }}>
+      {(page === 'dashboard' || page === 'vessel') && <Dashboard />}
+      {page === 'fleet' && <FleetPage />}
+      {page === 'import' && <ImportPage />}
+    </Layout>
   )
 }
