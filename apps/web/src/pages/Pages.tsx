@@ -9,22 +9,30 @@ export function Dashboard() {
   const [mode, setMode] = useState<'latest' | 'search'>('latest')
   const [critPrefix, setCritPrefix] = useState<'' | 'TL' | 'GS' | 'WP'>('')
   const [err, setErr] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const got = (r: LabRow[]) => { setRows(r); setPage(1) }
   const loadLatest = async () => {
-    try { setErr(''); setMode('latest'); setCritPrefix(''); setRows(await fetchLatestPerUnit(50)) }
+    try { setErr(''); setMode('latest'); setCritPrefix(''); got(await fetchLatestPerUnit(200)) }
     catch (e) { setErr(`Gagal muat default (perlu pull+rebuild api di VPS?): ${String(e)}`) }
   }
   const loadCrit = async (p: '' | 'TL' | 'GS' | 'WP') => {
     try {
       setErr(''); setMode('latest'); setCritPrefix(p)
-      setRows(p ? await fetchLatestPerUnit(50, p, 'CRITICAL') : await fetchLatestPerUnit(50))
+      got(p ? await fetchLatestPerUnit(200, p, 'CRITICAL') : await fetchLatestPerUnit(200))
     } catch (e) { setErr(`Gagal filter: ${String(e)}`) }
   }
   const load = async () => {
-    try { setErr(''); setMode('search'); setRows(await fetchResults(vessel, unit || undefined)) }
+    try { setErr(''); setMode('search'); setCritPrefix(''); got(await fetchResults(vessel, unit || undefined)) }
     catch (e) { setErr(`Gagal cari: ${String(e)}`) }
   }
   useEffect(() => { loadLatest() }, [])
   const crit = rows.filter((r) => r.condition !== 'NORMAL').length
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize))
+  const cur = Math.min(page, totalPages)
+  const slice = rows.slice((cur - 1) * pageSize, cur * pageSize)
+  const from = rows.length ? (cur - 1) * pageSize + 1 : 0
+  const to = Math.min(cur * pageSize, rows.length)
   const stat = 'flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm whitespace-nowrap'
   return (
     <div className="flex flex-col gap-4">
@@ -47,7 +55,19 @@ export function Dashboard() {
         ))}
       </div>
       {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-theme-sm text-red-700">{err}</p>}
-      <VesselTable rows={rows} title={mode === 'latest' ? (critPrefix ? `Data Terbaru ${critPrefix} Critical per Vessel + Unit` : 'Data Terbaru per Vessel + Unit — Report Analisa Oli') : '20 Data Terbaru — Report Analisa Oli'} />
+      <VesselTable rows={slice} title={mode === 'latest' ? (critPrefix ? `Data Terbaru ${critPrefix} Critical per Vessel + Unit` : 'Data Terbaru per Vessel + Unit — Report Analisa Oli') : '20 Data Terbaru — Report Analisa Oli'} />
+      <div className="flex flex-wrap items-center gap-2 text-theme-sm">
+        <span className="text-gray-500">Menampilkan {from}–{to} dari {rows.length}</span>
+        <span className="mx-1 hidden h-5 w-px bg-gray-200 sm:block" />
+        <label className="flex items-center gap-1">Per halaman:
+          <select className="rounded-lg border px-2 py-1" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}>
+            {[10, 20, 50].map((n) => (<option key={n} value={n}>{n}</option>))}
+          </select>
+        </label>
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={cur <= 1} onClick={() => setPage(cur - 1)}>‹ Prev</button>
+        <span>Halaman {cur} dari {totalPages}</span>
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={cur >= totalPages} onClick={() => setPage(cur + 1)}>Next ›</button>
+      </div>
     </div>
   )
 }
