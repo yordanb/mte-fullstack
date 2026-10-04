@@ -36,21 +36,17 @@ export function VesselTable({ rows }: { rows: LabRow[] }) {
         <thead className="bg-[#d6e4c9] font-semibold text-black">
           <tr>
             <th className={td}>Lab No.</th><th className={td}>Sampl Date</th><th className={td}>Oil Type</th>
-            <th className={td}>HM</th><th className={td}>VISC</th><th className={td}>FUEL</th>
-            <th className={td}>SOOT</th><th className={td}>OXI</th><th className={td}>NITR</th>
-            <th className={td}>WTR</th><th className={td}>TBN</th><th className={td}>Si</th>
-            <th className={td}>Fe</th><th className={td}>Cu</th><th className={td}>Al</th>
-            <th className={td}>Cr</th><th className={td}>Pb</th><th className={td}>Na</th>
-            <th className={td}>Condition</th>
+            <th className={td}>HM</th>
+            <th className={td} rowSpan={2}>VISC</th><th className={td} rowSpan={2}>FUEL</th>
+            <th className={td} rowSpan={2}>SOOT</th><th className={td} rowSpan={2}>OXI</th><th className={td} rowSpan={2}>NITR</th>
+            <th className={td} rowSpan={2}>WTR</th><th className={td} rowSpan={2}>TBN</th><th className={td} rowSpan={2}>Si</th>
+            <th className={td} rowSpan={2}>Fe</th><th className={td} rowSpan={2}>Cu</th><th className={td} rowSpan={2}>Al</th>
+            <th className={td} rowSpan={2}>Cr</th><th className={td} rowSpan={2}>Pb</th><th className={td} rowSpan={2}>Na</th>
+            <th className={td} rowSpan={2}>Condition</th>
           </tr>
           <tr>
             <th className={td}>Lead Time</th><th className={td}>Analisys</th><th className={td}>SAE</th>
-            <th className={td}>HM Oil</th><th className={td}>VISC</th><th className={td}>FUEL</th>
-            <th className={td}>SOOT</th><th className={td}>OXI</th><th className={td}>NITR</th>
-            <th className={td}>WTR</th><th className={td}>TBN</th><th className={td}>Si</th>
-            <th className={td}>Fe</th><th className={td}>Cu</th><th className={td}>Al</th>
-            <th className={td}>Cr</th><th className={td}>Pb</th><th className={td}>Na</th>
-            <th className={td}>Condition</th>
+            <th className={td}>HM Oil</th>
           </tr>
         </thead>
         <tbody>
