@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, type LabRow } from '../api/client'
-import { Trend, VesselTable } from '../components/Widgets'
+import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
   const [vessel, setVessel] = useState('')
@@ -31,7 +31,6 @@ export function Dashboard() {
         <span className={stat}><span className="text-gray-500">CRITICAL</span><b className={crit ? 'text-red-600' : ''}>{crit}</b></span>
         <span className={stat}><span className="text-gray-500">NORMAL</span><b className="text-green-700">{rows.length - crit}</b></span>
       </div>
-      <Trend rows={rows} />
       {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-theme-sm text-red-700">{err}</p>}
       <VesselTable rows={rows} title={mode === 'latest' ? 'Data Terbaru per Vessel + Unit — Report Analisa Oli' : '20 Data Terbaru — Report Analisa Oli'} />
     </div>
