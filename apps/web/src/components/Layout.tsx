@@ -11,8 +11,8 @@ export default function Layout({ page, setPage, onLogout, children }: {
   page: string; setPage: (p: string) => void; onLogout: () => void; children: ReactNode
 }) {
   const [open, setOpen] = useState(true)
-  // Logo kustom: apps/web/public/logo_mte.svg (prioritas) -> logo.png -> logo.svg bawaan.
-  const LOGOS = ['/logo_mte.svg', '/logo.png', '/logo.svg']
+  // Logo kustom: apps/web/public/logo.png (prioritas) -> logo_mte.svg -> logo.svg bawaan.
+  const LOGOS = ['/logo.png', '/logo_mte.svg', '/logo.svg']
   const [logoIdx, setLogoIdx] = useState(0)
   const logoSrc = logoIdx < LOGOS.length ? LOGOS[logoIdx] : ''
   return (
