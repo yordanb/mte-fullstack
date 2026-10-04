@@ -21,7 +21,7 @@ export default function Layout({ page, setPage, onLogout, children }: {
         <aside className="flex w-72 flex-col border-r border-gray-200 bg-white px-5 dark:border-gray-800 dark:bg-black">
           <div className="flex flex-col items-start gap-2 pt-8 pb-7">
             {logoSrc && (
-              <img src={logoSrc} alt="Logo MTE" className="h-12 w-auto max-w-full object-contain"
+              <img src={logoSrc} alt="Logo MTE" className="h-20 w-auto max-w-full object-contain"
                 onError={() => setLogoIdx((i) => i + 1)} />
             )}
             <span className="text-xl font-bold text-brand-600">MTE Data Center</span>
