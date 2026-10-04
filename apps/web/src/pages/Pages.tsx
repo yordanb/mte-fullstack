@@ -7,10 +7,17 @@ export function Dashboard() {
   const [unit, setUnit] = useState('')
   const [rows, setRows] = useState<LabRow[]>([])
   const [mode, setMode] = useState<'latest' | 'search'>('latest')
+  const [critPrefix, setCritPrefix] = useState<'' | 'TL' | 'GS' | 'WP'>('')
   const [err, setErr] = useState('')
   const loadLatest = async () => {
-    try { setErr(''); setMode('latest'); setRows(await fetchLatestPerUnit(50)) }
+    try { setErr(''); setMode('latest'); setCritPrefix(''); setRows(await fetchLatestPerUnit(50)) }
     catch (e) { setErr(`Gagal muat default (perlu pull+rebuild api di VPS?): ${String(e)}`) }
+  }
+  const loadCrit = async (p: '' | 'TL' | 'GS' | 'WP') => {
+    try {
+      setErr(''); setMode('latest'); setCritPrefix(p)
+      setRows(p ? await fetchLatestPerUnit(50, p, 'CRITICAL') : await fetchLatestPerUnit(50))
+    } catch (e) { setErr(`Gagal filter: ${String(e)}`) }
   }
   const load = async () => {
     try { setErr(''); setMode('search'); setRows(await fetchResults(vessel, unit || undefined)) }
@@ -31,8 +38,17 @@ export function Dashboard() {
         <span className={stat}><span className="text-gray-500">CRITICAL</span><b className={crit ? 'text-red-600' : ''}>{crit}</b></span>
         <span className={stat}><span className="text-gray-500">NORMAL</span><b className="text-green-700">{rows.length - crit}</b></span>
       </div>
+      <div className="flex flex-wrap items-center gap-3 text-theme-sm">
+        <span className="text-gray-500">Critical per prefix:</span>
+        {(['' , 'TL', 'GS', 'WP'] as const).map((p) => (
+          <label key={p || 'none'} className="flex cursor-pointer items-center gap-1 rounded-lg border px-3 py-1">
+            <input type="radio" name="crit-prefix" checked={critPrefix === p} onChange={() => loadCrit(p)} />
+            {p === '' ? 'None' : `${p} Critical`}
+          </label>
+        ))}
+      </div>
       {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-theme-sm text-red-700">{err}</p>}
-      <VesselTable rows={rows} title={mode === 'latest' ? 'Data Terbaru per Vessel + Unit — Report Analisa Oli' : '20 Data Terbaru — Report Analisa Oli'} />
+      <VesselTable rows={rows} title={mode === 'latest' ? (critPrefix ? `Data Terbaru ${critPrefix} Critical per Vessel + Unit` : 'Data Terbaru per Vessel + Unit — Report Analisa Oli') : '20 Data Terbaru — Report Analisa Oli'} />
     </div>
   )
 }

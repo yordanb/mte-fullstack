@@ -32,8 +32,8 @@ export async function fetchResults(vesselid: string, unit_id?: string): Promise<
   return r.data.data
 }
 
-export async function fetchLatestPerUnit(limit = 50): Promise<LabRow[]> {
-  const r = await api.get('/v1/results/latest-per-unit', { params: { limit } })
+export async function fetchLatestPerUnit(limit = 50, prefix?: string, condition?: string): Promise<LabRow[]> {
+  const r = await api.get('/v1/results/latest-per-unit', { params: { limit, prefix, condition } })
   return r.data.data
 }
 
