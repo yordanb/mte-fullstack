@@ -1,5 +1,14 @@
 import type { LabRow } from '../api/client'
 
+function fmtDate(v?: string | null) {
+  if (!v) return ''
+  const d = new Date(v)
+  if (isNaN(d.getTime())) return String(v)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  return `${dd}/${mm}/${d.getFullYear()}`
+}
+
 export function MetricCards({ total, critical, normal }: { total: number; critical: number; normal: number }) {
   const cards = [
     { label: 'Total sampel (20 terbaru)', value: total },
@@ -48,7 +57,7 @@ export function VesselTable({ rows }: { rows: LabRow[] }) {
           {rows.map((r) => (
             <tr key={r.lab_no} className={`border-t ${r.condition !== 'NORMAL' ? 'bg-red-50' : ''}`}>
               <td className={td}>{r.lab_no}<br />{r.lead_time ?? ''}</td>
-              <td className={td}>{r.sample_date}<br />{r.date_taken ?? ''}</td>
+              <td className={td}>{fmtDate(r.sample_date)}<br />{fmtDate(r.date_taken)}</td>
               <td className={td}>{r.oil_weight ?? ''}</td>
               <td className={td}>{r.unit_time ?? ''}<br />{r.unit_time_oils ?? ''}</td>
               <td className={td}>{r.visc ?? ''}</td><td className={td}>{r.fuel ?? ''}</td>
