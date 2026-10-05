@@ -143,10 +143,11 @@ async def upload_excel(
 @router.get("/latest")
 async def latest_import(db: AsyncSession = Depends(get_db),
                         user=Depends(get_current_user)):
-    """Upload terakhir (untuk label Last update di dashboard)."""
+    """Upload report oli terakhir (DBR dikecualikan via sheet)."""
     row = (await db.execute(text(
         "SELECT id, filename, status, total_rows, ok_rows, fail_rows, "
         "processed_rows, uploaded_by, created_at FROM imports "
+        "WHERE sheet != 'DBR' "
         "ORDER BY created_at DESC LIMIT 1"))).mappings().first()
     return dict(row) if row else {}
 
