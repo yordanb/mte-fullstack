@@ -187,6 +187,10 @@ export function DbrPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [msg, setMsg] = useState('')
+  const setRange = (days: number) => {
+    setDt(new Date().toISOString().slice(0, 10))
+    setDf(new Date(Date.now() - days * 864e5).toISOString().slice(0, 10))
+  }
   const fmtD = (v?: string | null) => {
     if (!v) return ''
     const d = new Date(v)
@@ -229,9 +233,12 @@ export function DbrPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <input type="date" className="rounded-lg border px-3 py-2" value={df} onChange={(e) => setDf(e.target.value)} />
+        <input type="date" className="rounded-lg border px-3 py-2" value={df} max={dt} onChange={(e) => setDf(e.target.value)} />
         <span>–</span>
-        <input type="date" className="rounded-lg border px-3 py-2" value={dt} onChange={(e) => setDt(e.target.value)} />
+        <input type="date" className="rounded-lg border px-3 py-2" value={dt} min={df} onChange={(e) => setDt(e.target.value)} />
+        {[7, 30, 90].map((n) => (
+          <button key={n} className="rounded-lg border px-3 py-2" onClick={() => setRange(n)}>{n} hari</button>
+        ))}
         <input className="w-28 rounded-lg border px-3 py-2" value={cn} onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="C/N cth TL960" />
         <select className="rounded-lg border px-3 py-2" value={code} onChange={(e) => setCode(e.target.value)}>
           <option value="">Code: semua</option>
