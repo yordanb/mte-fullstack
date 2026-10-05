@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 const MENU = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'dbr', label: 'DBR Breakdown' },
+  { key: 'performance', label: 'Performance' },
   { key: 'equipment', label: 'Equipment' },
   { key: 'vessel', label: 'Data Vessel' },
   { key: 'import', label: 'Update Data' },

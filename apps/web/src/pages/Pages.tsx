@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, type ImportStatus, type LabRow, type DbrRow, type Equipment } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchDbrStats, fetchEquipment, createEquipment, patchEquipment, type ImportStatus, type LabRow, type DbrRow, type DbrStats, type Equipment } from '../api/client'
+import { Bar, BarChart, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -527,6 +528,139 @@ function EqDetail({ row, onClose }: { row: Equipment; onClose: () => void }) {
             </dl>
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+const PERF_COLORS = ['#465fff', '#9cb878', '#e6a23c', '#e26d5c', '#7b7fd4', '#4fb0c6', '#8a8a8a']
+const PERF_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
+
+export function PerformancePage() {
+  const d1 = new Date().toISOString().slice(0, 10)
+  const d0 = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10)
+  const [df, setDf] = useState(d0)
+  const [dt, setDt] = useState(d1)
+  const [gran, setGran] = useState('week')
+  const [prefix, setPrefix] = useState('')
+  const [code, setCode] = useState('')
+  const [codes, setCodes] = useState<string[]>([])
+  const [st, setSt] = useState<DbrStats | null>(null)
+  const [msg, setMsg] = useState('')
+  const fmtP = (v?: string | null) => {
+    if (!v) return ''
+    const d = new Date(v)
+    if (isNaN(d.getTime())) return String(v)
+    if (gran === 'month') return `${PERF_MONTH[d.getMonth()]} ${d.getFullYear() % 100}`
+    return `${d.getDate()} ${PERF_MONTH[d.getMonth()]} ${d.getFullYear() % 100}`
+  }
+  const load = async () => {
+    try {
+      setMsg('')
+      const r = await fetchDbrStats({
+        date_from: df || undefined, date_to: dt || undefined, granularity: gran,
+        prefix: prefix.toUpperCase() || undefined, code: code || undefined,
+      })
+      setSt(r)
+    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  useEffect(() => { load(); fetchDbrCodes().then(setCodes).catch(() => null) }, [])
+  // pivot series -> [{period, total, TL: n, ...}], top 6 prefix + Lainnya
+  const pfxTotals: Record<string, number> = {}
+  st?.series.forEach((s) => { pfxTotals[s.prefix] = (pfxTotals[s.prefix] ?? 0) + s.n })
+  const topPfx = Object.entries(pfxTotals).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k]) => k)
+  const periods: string[] = []
+  st?.series.forEach((s) => { if (!periods.includes(s.period)) periods.push(s.period) })
+  periods.sort()
+  const chart = periods.map((p) => {
+    const row: Record<string, string | number> = { period: fmtP(p), total: 0 }
+    let other = 0
+    st?.series.forEach((s) => {
+      if (s.period !== p) return
+      row.total = Number(row.total) + s.n
+      if (topPfx.includes(s.prefix)) row[s.prefix] = s.n
+      else other += s.n
+    })
+    if (other) row['Lainnya'] = other
+    return row
+  })
+  const bars = [...topPfx, ...(chart.some((r) => r['Lainnya'] != null) ? ['Lainnya'] : [])]
+  const s = st?.summary
+  const avg = s && s.days ? (s.total / s.days).toFixed(1) : '-'
+  const cards = [
+    { label: 'Total breakdown', value: s?.total.toLocaleString('id-ID') ?? '-' },
+    { label: 'Unit terdampak', value: s?.units.toLocaleString('id-ID') ?? '-' },
+    { label: 'Hari aktif', value: s?.days.toLocaleString('id-ID') ?? '-' },
+    { label: 'Rata-rata / hari', value: avg },
+  ]
+  const pareto = (title: string, data?: { k: string; v: number }[]) => (
+    <div className="rounded-2xl border bg-white p-5">
+      <h3 className="font-semibold">{title}</h3>
+      <div style={{ height: Math.max(200, (data?.length ?? 0) * 32) }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data ?? []} layout="vertical" margin={{ left: 8, right: 16 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis type="number" />
+            <YAxis type="category" dataKey="k" width={170} tick={{ fontSize: 12 }}
+              tickFormatter={(v: string) => (v.length > 24 ? `${v.slice(0, 24)}…` : v)} />
+            <Tooltip />
+            <Bar dataKey="v" name="Kejadian" fill="#465fff" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  )
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <input type="date" className="rounded-lg border px-3 py-2" value={df} max={dt} onChange={(e) => setDf(e.target.value)} />
+        <span>–</span>
+        <input type="date" className="rounded-lg border px-3 py-2" value={dt} min={df} onChange={(e) => setDt(e.target.value)} />
+        <select className="rounded-lg border px-3 py-2" value={gran} onChange={(e) => setGran(e.target.value)}>
+          <option value="day">Harian</option>
+          <option value="week">Mingguan</option>
+          <option value="month">Bulanan</option>
+        </select>
+        <input className="w-24 rounded-lg border px-3 py-2" value={prefix}
+          onChange={(e) => setPrefix(e.target.value.toUpperCase().slice(0, 2))} placeholder="Prefix" />
+        <select className="rounded-lg border px-3 py-2" value={code} onChange={(e) => setCode(e.target.value)}>
+          <option value="">Code: semua</option>
+          <option value="__EMPTY__">Code: (kosong)</option>
+          {codes.map((c) => (<option key={c} value={c}>{c}</option>))}
+        </select>
+        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={load}>Tampilkan</button>
+      </div>
+      {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        {cards.map((c) => (
+          <div key={c.label} className="rounded-2xl border bg-white p-5">
+            <p className="text-theme-sm text-gray-500">{c.label}</p>
+            <p className="mt-1 text-title-sm font-bold">{c.value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl border bg-white p-5">
+        <h3 className="font-semibold">Frekuensi breakdown per {gran === 'day' ? 'hari' : gran === 'week' ? 'minggu' : 'bulan'}</h3>
+        <div style={{ height: 340 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={chart} margin={{ right: 16 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="period" tick={{ fontSize: 12 }} />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              {bars.map((b, i) => (
+                <Bar key={b} dataKey={b} stackId="a" fill={PERF_COLORS[i % PERF_COLORS.length]} />
+              ))}
+              <Line type="monotone" dataKey="total" name="Total" stroke="#111827" strokeWidth={2} dot={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        {pareto('Top 10 Trouble', st?.top_trouble)}
+        {pareto('Top 10 Section', st?.top_section)}
+        {pareto('Top 10 Code', st?.top_code)}
       </div>
     </div>
   )

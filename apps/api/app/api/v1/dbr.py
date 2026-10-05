@@ -129,3 +129,57 @@ async def records(
         f"SELECT * FROM dbr_records {where} ORDER BY date DESC, cn LIMIT :lim OFFSET :off"),
         p)).mappings().all()
     return {"total": total, "page": page, "page_size": page_size, "data": [dict(r) for r in rows]}
+
+@router.get("/stats")
+async def stats(
+    date_from: datetime.date | None = None,
+    date_to: datetime.date | None = None,
+    granularity: str = Query("week", pattern="^(day|week|month)$"),
+    prefix: str | None = Query(None, min_length=2, max_length=2),
+    code: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Agregat frekuensi breakdown per periode + Pareto trouble/section/code."""
+    if date_from is None and date_to is None:
+        date_to = datetime.date.today()
+        date_from = date_to - datetime.timedelta(days=90)
+    conds, p = [], {}
+    if date_from:
+        conds.append("date >= :df"); p["df"] = date_from
+    if date_to:
+        conds.append("date <= :dt"); p["dt"] = date_to
+    if prefix:
+        conds.append("cn_prefix = UPPER(:pfx)"); p["pfx"] = prefix
+    if code == "__EMPTY__":
+        conds.append("code IS NULL")
+    elif code:
+        conds.append("code = UPPER(:code)"); p["code"] = code
+    where = f"WHERE {' AND '.join(conds)}" if conds else ""
+    trunc = {"day": "day", "week": "week", "month": "month"}[granularity]
+    series = (await db.execute(text(
+        f"SELECT date_trunc('{trunc}', date)::date AS period, cn_prefix AS prefix, count(*) AS n "
+        f"FROM dbr_records {where} GROUP BY 1, 2 ORDER BY 1, 2"), p)
+    ).mappings().all()
+
+    async def top(col: str, exclude_null: bool):
+        w = f"{where} AND {col} IS NOT NULL AND TRIM({col}) <> ''" if where else \
+            f"WHERE {col} IS NOT NULL AND TRIM({col}) <> ''"
+        if not exclude_null:
+            w = where
+        q = (f"SELECT {col} AS k, count(*) AS v FROM dbr_records {w} "
+             f"GROUP BY 1 ORDER BY 2 DESC LIMIT 10")
+        return [dict(r) for r in (await db.execute(text(q), p)).mappings().all()]
+
+    summ = (await db.execute(text(
+        f"SELECT count(*) AS total, count(DISTINCT cn) AS units, "
+        f"count(DISTINCT date) AS days, "
+        f"count(*) FILTER (WHERE code IS NULL) AS empty_code "
+        f"FROM dbr_records {where}"), p)).mappings().first()
+    return {"granularity": granularity,
+            "series": [dict(r) for r in series],
+            "top_trouble": await top("trouble", True),
+            "top_section": await top("section", True),
+            "top_code": await top("code", True),
+            "summary": dict(summ) if summ else {}}
+

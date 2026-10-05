@@ -101,6 +101,20 @@ export async function fetchDbrCodes(): Promise<string[]> {
   return r.data.data
 }
 
+export type DbrStats = {
+  granularity: string
+  series: { period: string; prefix: string; n: number }[]
+  top_trouble: { k: string; v: number }[]
+  top_section: { k: string; v: number }[]
+  top_code: { k: string; v: number }[]
+  summary: { total: number; units: number; days: number; empty_code: number }
+}
+
+export async function fetchDbrStats(params: Record<string, string | undefined>) {
+  const r = await api.get('/v1/dbr/stats', { params })
+  return r.data as DbrStats
+}
+
 export async function uploadDbr(file: File) {
   const fd = new FormData()
   fd.append('file', file)
