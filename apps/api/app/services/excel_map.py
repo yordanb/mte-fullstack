@@ -105,7 +105,8 @@ def coerce(col: str, v):
     if col == "vesselid":
         return norm_vessel(v)
     if col in INT_COLS:
-        return int(_num(v))
+        v = _num(v)
+        return None if v is None else int(v)
     if col in NUM_COLS:
         return _num(v)
     if col in DATE_COLS:
