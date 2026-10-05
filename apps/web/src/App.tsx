@@ -14,9 +14,10 @@ const IDLE_MS = 30 * 60 * 1000
 
 export default function App() {
   const [authed, setAuthed] = useState(!!localStorage.getItem('mte_token'))
-  const [me, setMe] = useState<{ username: string; role: string } | null>(null)
+  const [me, setMe] = useState<{ username: string; role: string; avatar_url?: string | null } | null>(null)
   const [page, setPage] = useState('dashboard')
   const logout = () => { localStorage.clear(); setAuthed(false); setMe(null) }
+  const reloadMe = () => { fetchMe().then((m) => setMe(m)).catch(() => logout()) }
   useEffect(() => {
     if (!authed) { setMe(null); return }
     // Muat profil + matriks izin dulu agar menu/tombol langsung benar.
@@ -36,7 +37,7 @@ export default function App() {
   if (!authed) return <LoginPage onOk={() => setAuthed(true)} />
   if (!me) return <p className="p-6 text-theme-sm text-gray-500">Memuat hak akses...</p>
   return (
-    <Layout page={page} setPage={setPage} onLogout={logout}>
+    <Layout page={page} setPage={setPage} onLogout={logout} user={me} refreshUser={reloadMe}>
       {page === 'dashboard' && <Dashboard />}
       {page === 'dbr' && <DbrPage />}
       {page === 'performance' && (

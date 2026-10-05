@@ -8,6 +8,12 @@ const PERF_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep
 export default function PerformancePage() {
   const d1 = new Date().toISOString().slice(0, 10)
   const d0 = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10)
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
+  useEffect(() => {
+    const f = () => setDark(document.documentElement.classList.contains('dark'))
+    window.addEventListener('mte:theme', f)
+    return () => window.removeEventListener('mte:theme', f)
+  }, [])
   const [df, setDf] = useState(d0)
   const [dt, setDt] = useState(d1)
   const [gran, setGran] = useState('week')
@@ -63,6 +69,7 @@ export default function PerformancePage() {
   ]
   const mainOpts = {
     chart: { fontFamily: 'Outfit, sans-serif', stacked: true, toolbar: { show: false } },
+    theme: { mode: (dark ? 'dark' : 'light') as 'dark' | 'light' },
     colors: apexColors,
     plotOptions: { bar: { horizontal: false, columnWidth: '39%', borderRadius: 5, borderRadiusApplication: 'end' as const } },
     dataLabels: { enabled: false },
@@ -86,11 +93,13 @@ export default function PerformancePage() {
     <div className="rounded-2xl border bg-white p-5">
       <h3 className="font-semibold">{title}</h3>
       <ReactApexChart
+        key={dark ? 'dark-p' : 'light-p'}
         type="bar"
         height={Math.max(220, (data?.length ?? 0) * 34)}
         series={[{ name: 'Kejadian', data: (data ?? []).map((d) => d.v) }]}
         options={{
           chart: { fontFamily: 'Outfit, sans-serif', toolbar: { show: false } },
+          theme: { mode: (dark ? 'dark' : 'light') as 'dark' | 'light' },
           colors: ['#465fff'],
           plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '60%' } },
           dataLabels: { enabled: false },
@@ -142,7 +151,7 @@ export default function PerformancePage() {
       </div>
       <div className="rounded-2xl border bg-white p-5">
         <h3 className="font-semibold">Frekuensi breakdown per {gran === 'day' ? 'hari' : gran === 'week' ? 'minggu' : 'bulan'}</h3>
-        <ReactApexChart type="line" height={340} series={mainSeries} options={mainOpts} />
+        <ReactApexChart key={dark ? 'dark' : 'light'} type="line" height={340} series={mainSeries} options={mainOpts} />
       </div>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {pareto('Top 10 Trouble', st?.top_trouble)}

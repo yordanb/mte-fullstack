@@ -60,7 +60,33 @@ export async function fetchMe() {
   const r = await api.get('/v1/users/me')
   localStorage.setItem('mte_role', r.data.role)
   localStorage.setItem('mte_perm', JSON.stringify(r.data.permissions))
-  return r.data as { username: string; role: string; permissions: Perms }
+  return r.data as { username: string; role: string; avatar_url?: string | null; permissions: Perms }
+}
+
+export async function changePassword(body: { old_password: string; new_password: string }) {
+  const r = await api.patch('/v1/users/password', body)
+  return r.data
+}
+
+export async function uploadAvatar(file: File) {
+  const fd = new FormData()
+  fd.append('file', file)
+  const r = await api.post('/v1/users/avatar', fd)
+  return r.data as { avatar_url: string }
+}
+
+export function avatarUrl(username: string) {
+  return `/api/v1/users/avatar/${username}?token=${localStorage.getItem('mte_token') ?? ''}`
+}
+
+export type Notif = {
+  imports: { id: string; filename: string; sheet?: string | null; status: string; ok_rows: number; fail_rows: number; total_rows: number; uploaded_by?: string | null; created_at?: string }[]
+  activities: { id: string; date: string; title: string; category?: string | null; cn?: string | null; created_by?: string | null; created_at?: string; photos?: number }[]
+}
+
+export async function fetchNotifications() {
+  const r = await api.get('/v1/users/notifications')
+  return r.data as Notif
 }
 
 export async function fetchUsers() {

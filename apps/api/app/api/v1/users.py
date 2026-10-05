@@ -1,5 +1,7 @@
 import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,8 +30,113 @@ async def _perms(db: AsyncSession, role: str) -> dict:
 
 @router.get("/me")
 async def me(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    row = (await db.execute(text("SELECT avatar FROM users WHERE id=:i"),
+                            {"i": user["id"]})).mappings().first()
+    avatar = None
+    if row and row["avatar"]:
+        avatar = f"/v1/users/avatar/{user['username']}"
     return {"username": user["username"], "role": user["role"],
+            "avatar_url": avatar,
             "permissions": await _perms(db, user["role"])}
+
+
+class PasswordIn(BaseModel):
+    old_password: str
+    new_password: str
+
+
+@router.patch("/password")
+async def change_password(body: PasswordIn, db: AsyncSession = Depends(get_db),
+                          user=Depends(get_current_user)):
+    from app.core.security import verify_pw
+    if len(body.new_password) < 4:
+        raise HTTPException(400, "password baru min 4 karakter")
+    row = (await db.execute(text("SELECT password_hash FROM users WHERE id=:i"),
+                            {"i": user["id"]})).mappings().first()
+    if not row or not verify_pw(body.old_password, row["password_hash"]):
+        raise HTTPException(400, "password lama salah")
+    await db.execute(text("UPDATE users SET password_hash=:p WHERE id=:i"),
+                     {"p": hash_pw(body.new_password), "i": user["id"]})
+    await db.commit()
+    return {"ok": True}
+
+
+def _avatar_dir() -> Path:
+    from app.core.config import settings
+    p = Path(settings.upload_dir) / "avatars"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+@router.post("/avatar", status_code=201)
+async def upload_avatar(file: UploadFile = File(...),
+                        db: AsyncSession = Depends(get_db),
+                        user=Depends(get_current_user)):
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(400, "file harus gambar")
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(413, "foto maks 5MB")
+    ext = {"image/jpeg": ".jpg", "image/png": ".png",
+           "image/webp": ".webp", "image/gif": ".gif"}.get(
+        file.content_type, Path(file.filename or "").suffix[:5] or ".jpg")
+    stored = f"{user['id']}{ext}"
+    for old in _avatar_dir().glob(f"{user['id']}.*"):
+        try:
+            old.unlink()
+        except OSError:
+            pass
+    (_avatar_dir() / stored).write_bytes(content)
+    await db.execute(text("UPDATE users SET avatar=:a WHERE id=:i"),
+                     {"a": stored, "i": user["id"]})
+    await db.commit()
+    return {"avatar_url": f"/v1/users/avatar/{user['username']}"}
+
+
+@router.get("/avatar/{username}")
+async def avatar(username: str, token: str | None = None,
+                 request: Request = None,
+                 db: AsyncSession = Depends(get_db)):
+    # <img> tak bisa kirim header Authorization: terima ?token= juga.
+    from app.core.security import decode_token
+    tok = token
+    if not tok and request is not None:
+        auth = request.headers.get("authorization", "")
+        if auth.lower().startswith("bearer "):
+            tok = auth[7:]
+    if not tok:
+        raise HTTPException(401, "Butuh login")
+    try:
+        payload = decode_token(tok)
+    except Exception:
+        raise HTTPException(401, "Token tidak valid")
+    row = (await db.execute(text("SELECT avatar FROM users WHERE username=:u"),
+                            {"u": username})).mappings().first()
+    if not row or not row["avatar"]:
+        raise HTTPException(404, "belum ada foto")
+    path = _avatar_dir() / row["avatar"]
+    if not path.is_file():
+        raise HTTPException(404, "file hilang di server")
+    return FileResponse(path)
+
+
+@router.get("/notifications")
+async def notifications(db: AsyncSession = Depends(get_db),
+                        user=Depends(get_current_user)):
+    """Kombinasi: 5 import terakhir + 5 aktivitas terbaru."""
+    p = {} if user["role"] == "admin" else {"u": user["username"]}
+    w = "" if user["role"] == "admin" else "WHERE uploaded_by=:u"
+    imps = (await db.execute(text(
+        f"SELECT id::text AS id, filename, sheet, status, ok_rows, fail_rows, "
+        f"total_rows, uploaded_by, created_at FROM imports {w} "
+        f"ORDER BY created_at DESC LIMIT 5"), p)).mappings().all()
+    acts = (await db.execute(text(
+        "SELECT a.id::text AS id, a.date::text AS date, a.title, a.category, "
+        "a.cn, a.created_by, a.created_at, "
+        "(SELECT count(*) FROM activity_photos x WHERE x.activity_id=a.id) AS photos "
+        "FROM activities a ORDER BY a.created_at DESC LIMIT 5"))).mappings().all()
+    return {"imports": [dict(r) for r in imps],
+            "activities": [dict(r) for r in acts]}
 
 
 class UserIn(BaseModel):

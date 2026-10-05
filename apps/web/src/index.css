@@ -524,6 +524,82 @@ layer(base);
   stroke: #1f2937 !important;
 }
 
+/* Dark mode terpusat: utility terang umum dipetakan ke permukaan/gelap.
+   Aturanpolos (unlayered) di sini menang atas utilities Tailwind. */
+.dark {
+  color-scheme: dark;
+}
+.dark body {
+  background-color: var(--color-gray-900);
+  color: var(--color-gray-100);
+}
+.dark .bg-white {
+  background-color: var(--color-gray-900);
+}
+.dark .bg-gray-50 {
+  background-color: rgb(255 255 255 / 0.03);
+}
+.dark .bg-gray-100 {
+  background-color: rgb(255 255 255 / 0.06);
+}
+.dark .bg-brand-50 {
+  background-color: rgb(70 95 255 / 0.12);
+}
+.dark thead[class] {
+  background-color: var(--color-gray-800);
+}
+.dark table th,
+.dark table td,
+.dark .border {
+  border-color: var(--color-gray-800);
+}
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: var(--color-gray-900);
+  border-color: var(--color-gray-700);
+  color: var(--color-gray-100);
+}
+.dark input:disabled,
+.dark select:disabled {
+  opacity: 0.6;
+}
+.dark .hover\:bg-gray-100:hover {
+  background-color: rgb(255 255 255 / 0.06);
+}
+.dark .hover\:bg-gray-50:hover {
+  background-color: rgb(255 255 255 / 0.04);
+}
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-black {
+  color: var(--color-gray-100);
+}
+.dark .text-gray-700 {
+  color: var(--color-gray-300);
+}
+.dark .text-gray-600 {
+  color: var(--color-gray-400);
+}
+.dark .text-brand-600 {
+  color: var(--color-brand-400);
+}
+.dark .text-red-600 {
+  color: var(--color-red-400);
+}
+.dark .text-red-700 {
+  color: var(--color-red-300);
+}
+.dark .text-green-700 {
+  color: var(--color-green-400);
+}
+.dark .bg-red-100 {
+  background-color: rgb(240 68 56 / 0.15);
+}
+.dark .bg-green-100 {
+  background-color: rgb(18 183 106 / 0.15);
+}
+
 /* Customer map markers: solid filled circles with white ring */
 #mapCustomerPinPoint .jvm-marker.jvm-element {
   fill: #465fff !important;
