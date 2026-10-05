@@ -9,6 +9,15 @@ function fmtDate(v?: string | null) {
   return `${dd}/${mm}/${d.getFullYear()}`
 }
 
+// Singkatan Unit Id khusus tampilan dashboard (data DB tidak diubah).
+function shortUnit(v?: string | null) {
+  const u = (v ?? '').trim().toUpperCase()
+  if (u === 'FINAL DRIVE LEFT') return 'FD LH'
+  if (u === 'FINAL DRIVE RIGHT') return 'FD RH'
+  if (u === 'TRANSMISSION') return 'TM'
+  return v ?? ''
+}
+
 export function MetricCards({ total, critical, normal }: { total: number; critical: number; normal: number }) {
   const cards = [
     { label: 'Total sampel (20 terbaru)', value: total },
@@ -57,7 +66,7 @@ export function VesselTable({ rows, title }: { rows: LabRow[]; title?: string })
         <tbody>
           {rows.map((r) => (
             <tr key={r.lab_no} className="border-t">
-              <td className={td}>{r.vesselid}</td><td className={td}>{r.unit_id}</td>
+              <td className={td}>{r.vesselid}</td><td className={td}>{shortUnit(r.unit_id)}</td>
               <td className={td}>{r.lab_no}<br />{r.lead_time ?? ''}</td>
               <td className={td}>{fmtDate(r.sample_date)}<br />{fmtDate(r.date_taken)}</td>
               <td className={td}>{r.oil_weight ?? ''}</td>
