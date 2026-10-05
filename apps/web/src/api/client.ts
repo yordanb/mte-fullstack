@@ -103,6 +103,7 @@ export async function fetchDbrCodes(): Promise<string[]> {
 
 export type DbrStats = {
   granularity: string
+  exclude_continue?: boolean; excluded_continue?: number
   series: { period: string; prefix: string; n: number }[]
   top_trouble: { k: string; v: number }[]
   top_section: { k: string; v: number }[]
@@ -110,7 +111,7 @@ export type DbrStats = {
   summary: { total: number; units: number; days: number; empty_code: number }
 }
 
-export async function fetchDbrStats(params: Record<string, string | undefined>) {
+export async function fetchDbrStats(params: Record<string, string | boolean | undefined>) {
   const r = await api.get('/v1/dbr/stats', { params })
   return r.data as DbrStats
 }

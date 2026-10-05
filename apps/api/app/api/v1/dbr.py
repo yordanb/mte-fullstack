@@ -137,10 +137,15 @@ async def stats(
     granularity: str = Query("week", pattern="^(day|week|month)$"),
     prefix: str | None = Query(None, min_length=2, max_length=2),
     code: str | None = None,
+    exclude_continue: bool = True,
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    """Agregat frekuensi breakdown per periode + Pareto trouble/section/code."""
+    """Agregat frekuensi breakdown per periode + Pareto trouble/section/code.
+
+    exclude_continue=True (default): baris ACTION=CONTINUE (carry-over
+    perbaikan multi-hari) tidak dihitung sebagai kejadian baru.
+    """
     if date_from is None and date_to is None:
         date_to = datetime.date.today()
         date_from = date_to - datetime.timedelta(days=90)
@@ -155,6 +160,8 @@ async def stats(
         conds.append("code IS NULL")
     elif code:
         conds.append("code = UPPER(:code)"); p["code"] = code
+    if exclude_continue:
+        conds.append("(action IS NULL OR UPPER(action) != 'CONTINUE')")
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
     trunc = {"day": "day", "week": "week", "month": "month"}[granularity]
     series = (await db.execute(text(
@@ -176,7 +183,14 @@ async def stats(
         f"count(DISTINCT date) AS days, "
         f"count(*) FILTER (WHERE code IS NULL) AS empty_code "
         f"FROM dbr_records {where}"), p)).mappings().first()
-    return {"granularity": granularity,
+    excluded = 0
+    if exclude_continue:
+        w2 = f"{where} AND UPPER(action) = 'CONTINUE'" if where else \
+            "WHERE UPPER(action) = 'CONTINUE'"
+        excluded = (await db.execute(
+            text(f"SELECT count(*) FROM dbr_records {w2}"), p)).scalar() or 0
+    return {"granularity": granularity, "exclude_continue": exclude_continue,
+            "excluded_continue": excluded,
             "series": [dict(r) for r in series],
             "top_trouble": await top("trouble", True),
             "top_section": await top("section", True),

@@ -544,6 +544,7 @@ export function PerformancePage() {
   const [gran, setGran] = useState('week')
   const [prefix, setPrefix] = useState('')
   const [code, setCode] = useState('')
+  const [noCont, setNoCont] = useState(true)
   const [codes, setCodes] = useState<string[]>([])
   const [st, setSt] = useState<DbrStats | null>(null)
   const [msg, setMsg] = useState('')
@@ -560,6 +561,7 @@ export function PerformancePage() {
       const r = await fetchDbrStats({
         date_from: df || undefined, date_to: dt || undefined, granularity: gran,
         prefix: prefix.toUpperCase() || undefined, code: code || undefined,
+        exclude_continue: noCont,
       })
       setSt(r)
     } catch (e) { setMsg(`gagal: ${String(e)}`) }
@@ -629,7 +631,16 @@ export function PerformancePage() {
           {codes.map((c) => (<option key={c} value={c}>{c}</option>))}
         </select>
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={load}>Tampilkan</button>
+        <label className="flex cursor-pointer items-center gap-1 rounded-lg border bg-white px-3 py-2">
+          <input type="checkbox" checked={noCont} onChange={(e) => setNoCont(e.target.checked)} />
+          Kecualikan CONTINUE
+        </label>
       </div>
+      {st?.exclude_continue && (st?.excluded_continue ?? 0) > 0 && (
+        <p className="text-theme-sm text-gray-500">
+          {st.excluded_continue.toLocaleString('id-ID')} baris CONTINUE dikecualikan — grafik menghitung kejadian breakdown, bukan hari downtime.
+        </p>
+      )}
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {cards.map((c) => (
