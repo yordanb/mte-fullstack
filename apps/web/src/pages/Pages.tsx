@@ -224,8 +224,8 @@ export function DbrPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [msg, setMsg] = useState('')
-  const [hideAction, setHideAction] = useState(false)
-  const visibleCols = hideAction ? DBR_COLS.filter((c) => c.key !== 'action') : DBR_COLS
+  const [hideContinue, setHideContinue] = useState(false)
+  const shown = hideContinue ? rows.filter((r) => (r.action ?? '').toUpperCase() !== 'CONTINUE') : rows
   const fmtD = (v?: string | null) => {
     if (!v) return ''
     const d = new Date(v)
@@ -258,20 +258,20 @@ export function DbrPage() {
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => load(1)}>Tampilkan</button>
         <span className="text-theme-sm text-gray-500">Total {total.toLocaleString('id-ID')}</span>
         <label className="flex cursor-pointer items-center gap-1 rounded-lg border bg-white px-3 py-2">
-          <input type="checkbox" checked={hideAction} onChange={(e) => setHideAction(e.target.checked)} />
-          Sembunyikan Action
+          <input type="checkbox" checked={hideContinue} onChange={(e) => setHideContinue(e.target.checked)} />
+          Sembunyikan CONTINUE
         </label>
       </div>
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
       <div className="overflow-x-auto rounded-2xl border bg-white">
         <table className="w-full border-collapse text-center text-theme-sm">
           <thead className="bg-[#d6e4c9] font-semibold">
-            <tr>{visibleCols.map((c) => (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>))}</tr>
+            <tr>{DBR_COLS.map((c) => (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>))}</tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {shown.map((r) => (
               <tr key={r.id} className="border-t">
-                {visibleCols.map((c) => (
+                {DBR_COLS.map((c) => (
                   <td key={c.key} className="border px-2 py-2 whitespace-nowrap">
                     {c.key === 'date' ? fmtD(r.date) : (r[c.key] ?? '')}
                   </td>
