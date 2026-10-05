@@ -20,6 +20,8 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://mte:mte@db:5432/mte}
+    volumes:
+      - uploads:/data/uploads
     ports:
       - "8802:8000"
     depends_on:
@@ -34,3 +36,4 @@ services:
       - api
 volumes:
   pgdata:
+  uploads:

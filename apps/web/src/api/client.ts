@@ -150,3 +150,49 @@ export async function patchEquipment(cn: string, body: Partial<Equipment>) {
   const r = await api.patch(`/v1/equipment/${cn}`, body)
   return r.data
 }
+
+export type Activity = {
+  id: string; date: string; title: string; description?: string | null
+  category?: string | null; cn?: string | null; created_by?: string | null
+  created_at?: string; photos?: { id: string; orig_name?: string | null }[]
+  photos_count?: number; cover_id?: string | null
+}
+
+export async function fetchActivityMonth(year: number, month: number) {
+  const r = await api.get('/v1/activities/month', { params: { year, month } })
+  return r.data.counts as Record<string, number>
+}
+
+export async function fetchActivitiesByDate(date: string) {
+  const r = await api.get('/v1/activities', { params: { date } })
+  return r.data.data as Activity[]
+}
+
+export async function fetchActivity(id: string) {
+  const r = await api.get(`/v1/activities/${id}`)
+  return r.data as Activity
+}
+
+export async function createActivity(fd: FormData) {
+  const r = await api.post('/v1/activities', fd)
+  return r.data
+}
+
+export async function patchActivity(id: string, body: Record<string, string | null>) {
+  const r = await api.patch(`/v1/activities/${id}`, body)
+  return r.data
+}
+
+export async function deleteActivity(id: string) {
+  const r = await api.delete(`/v1/activities/${id}`)
+  return r.data
+}
+
+export async function deleteActivityPhoto(aid: string, pid: string) {
+  const r = await api.delete(`/v1/activities/${aid}/photos/${pid}`)
+  return r.data
+}
+
+export function activityPhotoUrl(aid: string, pid: string) {
+  return `/api/v1/activities/${aid}/photos/${pid}?token=${localStorage.getItem('mte_token') ?? ''}`
+}

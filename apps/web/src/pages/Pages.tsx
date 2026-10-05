@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, type ImportStatus, type LabRow, type DbrRow, type Equipment } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, fetchActivityMonth, fetchActivitiesByDate, fetchActivity, createActivity, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -527,6 +527,224 @@ function EqDetail({ row, onClose }: { row: Equipment; onClose: () => void }) {
             </dl>
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+const ACT_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+const iso = (y: number, m: number, d: number) =>
+  `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+
+export function ActivityPage() {
+  const now = new Date()
+  const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() + 1 })
+  const [counts, setCounts] = useState<Record<string, number>>({})
+  const [sel, setSel] = useState(now.toISOString().slice(0, 10))
+  const [items, setItems] = useState<Activity[]>([])
+  const [detail, setDetail] = useState<Activity | null>(null)
+  const [form, setForm] = useState<{ initial: Activity | null } | null>(null)
+  const [msg, setMsg] = useState('')
+  const shift = (n: number) => {
+    const d = new Date(ym.y, ym.m - 1 + n, 1)
+    setYm({ y: d.getFullYear(), m: d.getMonth() + 1 })
+  }
+  const loadMonth = async (y: number, m: number) => {
+    try { setCounts(await fetchActivityMonth(y, m)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  const loadDay = async (d: string) => {
+    try { setItems(await fetchActivitiesByDate(d)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  useEffect(() => { loadMonth(ym.y, ym.m) }, [ym])
+  useEffect(() => { loadDay(sel) }, [sel])
+  const pick = (d: string, inMonth: boolean, oy: number, om: number) => {
+    if (!inMonth) setYm({ y: oy, m: om })
+    setSel(d)
+  }
+  // grid kalender, minggu mulai Senin
+  const first = new Date(ym.y, ym.m - 1, 1)
+  const lead = (first.getDay() + 6) % 7
+  const daysIn = new Date(ym.y, ym.m, 0).getDate()
+  const daysPrev = new Date(ym.y, ym.m - 1, 0).getDate()
+  const cells: { d: string; n: number; inMonth: boolean; y: number; m: number }[] = []
+  for (let i = lead - 1; i >= 0; i--) {
+    const pd = new Date(ym.y, ym.m - 2, daysPrev - i)
+    cells.push({ d: iso(pd.getFullYear(), pd.getMonth() + 1, pd.getDate()), n: pd.getDate(), inMonth: false, y: pd.getFullYear(), m: pd.getMonth() + 1 })
+  }
+  for (let d = 1; d <= daysIn; d++) cells.push({ d: iso(ym.y, ym.m, d), n: d, inMonth: true, y: ym.y, m: ym.m })
+  while (cells.length % 7) {
+    const k = cells.length - (lead + daysIn) + 1
+    const nd = new Date(ym.y, ym.m, k)
+    cells.push({ d: iso(nd.getFullYear(), nd.getMonth() + 1, nd.getDate()), n: nd.getDate(), inMonth: false, y: nd.getFullYear(), m: nd.getMonth() + 1 })
+  }
+  const today = new Date().toISOString().slice(0, 10)
+  const openDetail = async (id: string) => {
+    try { setDetail(await fetchActivity(id)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  const afterSave = () => { setForm(null); loadMonth(ym.y, ym.m); loadDay(sel) }
+  return (
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
+      <div className="rounded-2xl border bg-white p-5">
+        <div className="flex items-center justify-between">
+          <button className="rounded-lg border px-3 py-1" onClick={() => shift(-1)}>‹</button>
+          <h3 className="font-semibold">{ACT_MONTHS[ym.m - 1]} {ym.y}</h3>
+          <button className="rounded-lg border px-3 py-1" onClick={() => shift(1)}>›</button>
+        </div>
+        <div className="mt-3 grid grid-cols-7 text-center text-theme-sm font-semibold text-gray-500">
+          {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((d) => (<div key={d} className="py-1">{d}</div>))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {cells.map((c) => {
+            const n = counts[c.d] ?? 0
+            return (
+              <button key={c.d} onClick={() => pick(c.d, c.inMonth, c.y, c.m)}
+                className={`flex min-h-14 flex-col items-center justify-start rounded-lg border px-1 py-1 text-theme-sm sm:min-h-16 ${c.inMonth ? '' : 'opacity-40'} ${sel === c.d ? 'border-brand-500 bg-brand-50' : 'hover:bg-gray-50'} ${c.d === today ? 'font-bold text-brand-600' : ''}`}>
+                <span>{c.n}</span>
+                {n > 0 && (
+                  <span className="mt-1 rounded-full bg-brand-500 px-2 text-theme-xs text-white">{n}</span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div className="flex flex-col gap-3 rounded-2xl border bg-white p-5">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold">{sel.split('-').reverse().join('/')}</h3>
+          <button className="rounded-lg bg-brand-500 px-3 py-1 text-white" onClick={() => setForm({ initial: null })}>+ Tambah</button>
+        </div>
+        {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
+        {items.length === 0 && <p className="text-theme-sm text-gray-500">Belum ada aktivitas.</p>}
+        {items.map((a) => (
+          <button key={a.id} onClick={() => openDetail(a.id)}
+            className="flex items-center gap-3 rounded-xl border p-2 text-left hover:bg-gray-50">
+            {a.cover_id
+              ? <img src={activityPhotoUrl(a.id, a.cover_id)} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+              : <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-400">—</span>}
+            <span className="min-w-0">
+              <span className="block truncate font-medium">{a.title}</span>
+              <span className="block truncate text-theme-sm text-gray-500">
+                {[a.category, a.cn].filter(Boolean).join(' • ')}{a.photos_count ? ` • ${a.photos_count} foto` : ''}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+      {detail && (
+        <ActDetail
+          row={detail}
+          onClose={() => setDetail(null)}
+          onEdit={() => { setForm({ initial: detail }); setDetail(null) }}
+          onDeleted={() => { setDetail(null); loadMonth(ym.y, ym.m); loadDay(sel) }}
+          onPhotoDeleted={() => openDetail(detail.id)}
+        />
+      )}
+      {form && (
+        <ActForm
+          key={form.initial?.id ?? `new-${sel}`}
+          date={sel} initial={form.initial}
+          onClose={() => setForm(null)} onSaved={afterSave}
+        />
+      )}
+    </div>
+  )
+}
+
+function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
+  row: Activity; onClose: () => void; onEdit: () => void; onDeleted: () => void; onPhotoDeleted: () => void
+}) {
+  const [msg, setMsg] = useState('')
+  const del = async () => {
+    if (!confirm(`Hapus aktivitas "${row.title}" beserta fotonya?`)) return
+    try { await deleteActivity(row.id); onDeleted() } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  const delPhoto = async (pid: string) => {
+    if (!confirm('Hapus foto ini?')) return
+    try { await deleteActivityPhoto(row.id, pid); onPhotoDeleted() } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold">{row.title}</h3>
+          <button className="rounded-lg border px-3 py-1" onClick={onClose}>Tutup</button>
+        </div>
+        <p className="mt-1 text-theme-sm text-gray-500">
+          {[row.date.split('-').reverse().join('/'), row.category, row.cn, row.created_by ? `oleh ${row.created_by}` : ''].filter(Boolean).join(' • ')}
+        </p>
+        {row.description && <p className="mt-3 whitespace-pre-wrap text-theme-sm">{row.description}</p>}
+        {(row.photos ?? []).length > 0 && (
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {(row.photos ?? []).map((p) => (
+              <div key={p.id} className="group relative">
+                <a href={activityPhotoUrl(row.id, p.id)} target="_blank" rel="noreferrer">
+                  <img src={activityPhotoUrl(row.id, p.id)} alt={p.orig_name ?? ''} className="h-32 w-full rounded-lg object-cover" loading="lazy" />
+                </a>
+                <button onClick={() => delPhoto(p.id)} title="Hapus foto"
+                  className="absolute top-1 right-1 rounded-lg bg-black/60 px-2 py-0.5 text-white opacity-0 group-hover:opacity-100">×</button>
+              </div>
+            ))}
+          </div>
+        )}
+        {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button className="rounded-lg border border-red-300 px-4 py-2 text-red-600" onClick={del}>Hapus</button>
+          <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={onEdit}>Ubah</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ActForm({ date, initial, onClose, onSaved }: {
+  date: string; initial: Activity | null; onClose: () => void; onSaved: () => void
+}) {
+  const [d, setD] = useState(initial?.date ?? date)
+  const [title, setTitle] = useState(initial?.title ?? '')
+  const [category, setCategory] = useState(initial?.category ?? '')
+  const [cn, setCn] = useState(initial?.cn ?? '')
+  const [desc, setDesc] = useState(initial?.description ?? '')
+  const [msg, setMsg] = useState('')
+  const inp = 'w-full rounded-lg border px-3 py-2'
+  const save = async () => {
+    try {
+      setMsg('')
+      if (initial) {
+        await patchActivity(initial.id, { date: d, title, category: category || null, cn: cn || null, description: desc || null })
+      } else {
+        const el = document.getElementById('act-files') as HTMLInputElement
+        const fd = new FormData()
+        fd.append('date', d); fd.append('title', title)
+        if (category) fd.append('category', category)
+        if (cn) fd.append('cn', cn.toUpperCase())
+        if (desc) fd.append('description', desc)
+        Array.from(el.files ?? []).forEach((f) => fd.append('files', f))
+        await createActivity(fd)
+      }
+      onSaved()
+    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5">
+        <h3 className="font-semibold">{initial ? 'Ubah aktivitas' : 'Tambah aktivitas'}</h3>
+        <div className="mt-3 flex flex-col gap-2">
+          <label className="text-theme-sm">Tanggal<input type="date" className={inp} value={d} onChange={(e) => setD(e.target.value)} /></label>
+          <label className="text-theme-sm">Judul<input className={inp} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="cth Perbaikan pompa WP855" /></label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="text-theme-sm">Kategori<input className={inp} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="cth Perbaikan" /></label>
+            <label className="text-theme-sm">Unit / CN<input className={inp} value={cn} onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="cth WP855" /></label>
+          </div>
+          <label className="text-theme-sm">Keterangan<textarea className={inp} rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} /></label>
+          {!initial && (
+            <label className="text-theme-sm">Foto (boleh banyak)<input type="file" id="act-files" accept="image/*" multiple className={inp} /></label>
+          )}
+        </div>
+        {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
+          <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={save}>Simpan</button>
+        </div>
       </div>
     </div>
   )

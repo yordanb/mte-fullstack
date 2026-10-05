@@ -4,6 +4,7 @@ const MENU = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'dbr', label: 'DBR Breakdown' },
   { key: 'performance', label: 'Performance' },
+  { key: 'activity', label: 'Activity' },
   { key: 'equipment', label: 'Equipment' },
   { key: 'vessel', label: 'Data Vessel' },
   { key: 'import', label: 'Update Data' },
@@ -19,6 +20,9 @@ const ICONS: Record<string, ReactNode> = {
   ),
   performance: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="M7 15v3M12 10v8M17 6v12" /></svg>
+  ),
+  activity: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
   ),
   equipment: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.3 7 12 12l8.7-5M12 22V12" /></svg>

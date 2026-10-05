@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     jwt_refresh_days: int = 7
     admin_username: str = "admin"
     admin_password: str = "ganti-sekarang"
+    upload_dir: str = "/data/uploads"
 
     @field_validator("database_url", mode="before")
     @classmethod
