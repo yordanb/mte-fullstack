@@ -124,11 +124,11 @@ export function ImportPage() {
     const el = document.getElementById('xlsx') as HTMLInputElement
     const f = el.files?.[0]
     if (!f) { setMsg('Pilih file .xlsx dulu (klik Choose File).'); return }
-    setMsg('memproses...'); setProg(null)
+    setMsg('mengunggah...'); setProg(null)
     try {
       const r = await uploadExcel(f, dry)
       if (dry) { setMsg(`Dry-run: ok=${r.ok} fail=${r.fail}`); return }
-      setMsg(`Commit diterima, memproses di background...`)
+      setMsg(`Commit diterima, mulai membaca file...`)
       poll(r.import_id)
     } catch (e) { setMsg(`gagal: ${String(e)}`) }
   }
@@ -143,12 +143,21 @@ export function ImportPage() {
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={!fname} onClick={() => send(false)}>Commit</button>
       </div>
       {prog && (
-        <div>
-          <div className="h-3 w-full rounded-full bg-gray-200">
-            <div className="h-3 rounded-full bg-brand-500" style={{ width: `${pct}%` }} />
+        prog.total === 0 ? (
+          <div>
+            <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200">
+              <div className="h-3 w-1/3 animate-pulse rounded-full bg-brand-500" />
+            </div>
+            <p className="mt-1 text-theme-sm text-gray-600">Membaca &amp; validasi file... {prog.done.toLocaleString('id-ID')} baris terbaca</p>
           </div>
-          <p className="mt-1 text-theme-sm text-gray-600">{prog.done.toLocaleString('id-ID')}/{prog.total.toLocaleString('id-ID')} ({pct}%)</p>
-        </div>
+        ) : (
+          <div>
+            <div className="h-3 w-full rounded-full bg-gray-200">
+              <div className="h-3 rounded-full bg-brand-500" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="mt-1 text-theme-sm text-gray-600">Menyimpan {prog.done.toLocaleString('id-ID')}/{prog.total.toLocaleString('id-ID')} ({pct}%)</p>
+          </div>
+        )
       )}
       <p>{msg}</p>
     </div>

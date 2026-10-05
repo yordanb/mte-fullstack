@@ -55,10 +55,38 @@ def _upsert_sql() -> str:
                   f"ON CONFLICT (lab_no) DO UPDATE SET {sets}")
     return UPSERT_SQL
 
-async def _run_commit(import_id: str, rows: list, n_fail: int):
-    """Background job: upsert batch 2000 + update progres per batch."""
+async def _run_commit(import_id: str, content: bytes):
+    """Background job penuh: parse (progres per 5000 baris) + upsert batch 2000."""
     async with SessionLocal() as db:
         try:
+            wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+            ws = wb[SHEET]
+            header = list(next(ws.iter_rows(min_row=HEADER_ROW, max_row=HEADER_ROW, values_only=True)))
+            idx = {h: i for i, h in enumerate(header) if h}
+            rows, errors, n = [], [], 0
+            for rno, r in enumerate(ws.iter_rows(min_row=DATA_START_ROW, values_only=True), start=DATA_START_ROW):
+                if all(v is None for v in r):
+                    continue
+                n += 1
+                try:
+                    clean = {col: coerce(col, r[idx[h]]) for h, col in HEADER_MAP.items()}
+                    if clean["lab_no"] is None:
+                        raise ValueError("Lab No kosong")
+                    rows.append(clean)
+                except Exception as e:
+                    errors.append({"row": rno, "error": str(e)})
+                if n % 5000 == 0:
+                    await db.execute(text(
+                        "UPDATE imports SET total_rows=:t, processed_rows=:p WHERE id=:i"),
+                        {"t": n, "p": n, "i": import_id})
+                    await db.commit()
+            import json as _json
+            await db.execute(text(
+                "UPDATE imports SET total_rows=:t, ok_rows=:o, fail_rows=:f, "
+                "processed_rows=0, errors=:e WHERE id=:i"),
+                {"t": len(rows) + len(errors), "o": len(rows),
+                 "f": len(errors), "e": _json.dumps(errors[:50]), "i": import_id})
+            await db.commit()
             sql = _upsert_sql()
             done = 0
             for n in range(0, len(rows), BATCH):
@@ -70,9 +98,8 @@ async def _run_commit(import_id: str, rows: list, n_fail: int):
                     {"p": done, "i": import_id})
                 await db.commit()
             await db.execute(text(
-                "UPDATE imports SET status='COMMITTED', ok_rows=:o, fail_rows=:f, "
-                "processed_rows=:p WHERE id=:i"),
-                {"o": len(rows), "f": n_fail, "p": done, "i": import_id})
+                "UPDATE imports SET status='COMMITTED', processed_rows=:p WHERE id=:i"),
+                {"p": done, "i": import_id})
             await db.commit()
             try:
                 await db.execute(text("REFRESH MATERIALIZED VIEW CONCURRENTLY mv_latest_status"))
@@ -80,12 +107,12 @@ async def _run_commit(import_id: str, rows: list, n_fail: int):
                 await db.rollback()
                 await db.execute(text("REFRESH MATERIALIZED VIEW mv_latest_status"))
             await db.commit()
-        except Exception as e:
+        except Exception:
             await db.rollback()
             await db.execute(text(
                 "UPDATE imports SET status='FAILED' WHERE id=:i"), {"i": import_id})
             await db.commit()
-            raise e
+            raise
 
 @router.post("", dependencies=[Depends(require_role("operator", "admin"))], status_code=202)
 async def upload_excel(
@@ -98,22 +125,20 @@ async def upload_excel(
     content = await file.read()
     if len(content) > settings.max_upload_mb * 1024 * 1024:
         raise HTTPException(413, "File terlalu besar")
-    rows, errors = _read_full(content)
     if dry_run:
+        rows, errors = _read_full(content)
         return {"total": len(rows) + len(errors), "ok": len(rows), "fail": len(errors),
                 "errors": errors[:50],
                 "preview": [{k: rows[0][k] for k in ("lab_no", "vesselid", "unit_id", "sample_date", "condition")} ] if rows else []}
+    # commit: langsung 202, parse + upsert semua di background agar progres terpantau
     res = await db.execute(text(
         "INSERT INTO imports(filename,status,total_rows,ok_rows,fail_rows,processed_rows,uploaded_by) "
-        "VALUES (:fn,'PROCESSING',:t,0,:f,0,:u) RETURNING id"),
-        {"fn": file.filename, "t": len(rows) + len(errors),
-         "f": len(errors), "u": user["username"]})
+        "VALUES (:fn,'PROCESSING',0,0,0,0,:u) RETURNING id"),
+        {"fn": file.filename, "u": user["username"]})
     import_id = str(res.scalar_one())
     await db.commit()
-    # validasi + parse 1x di request; upsert batch jalan di background agar ada progres
-    bg.add_task(_run_commit, import_id, rows, len(errors))
-    return {"import_id": import_id, "status": "PROCESSING",
-            "ok": len(rows), "fail": len(errors), "errors": errors[:50]}
+    bg.add_task(_run_commit, import_id, content)
+    return {"import_id": import_id, "status": "PROCESSING"}
 
 @router.get("/latest")
 async def latest_import(db: AsyncSession = Depends(get_db),
