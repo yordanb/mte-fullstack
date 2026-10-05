@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import Layout from './components/Layout'
 import LoginPage from './pages/Login'
-import { Dashboard, ImportPage, DbrPage } from './pages/Pages'
+import { Dashboard, ImportPage, DbrPage, EquipmentPage } from './pages/Pages'
 
 // Batas diam (tanpa klik/gerak mouse/sentuh/ketik): 30 menit -> auto logout.
 const IDLE_MS = 30 * 60 * 1000
@@ -29,6 +29,7 @@ export default function App() {
     <Layout page={page} setPage={setPage} onLogout={logout}>
       {(page === 'dashboard' || page === 'vessel') && <Dashboard />}
       {page === 'dbr' && <DbrPage />}
+      {page === 'equipment' && <EquipmentPage />}
       {page === 'import' && <ImportPage />}
     </Layout>
   )

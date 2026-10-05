@@ -5,6 +5,7 @@ from app.api.v1.fleet import router as fleet_router
 from app.api.v1.imports import router as imports_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.dbr import router as dbr_router
+from app.api.v1.equipment import router as equipment_router
 from app.core.config import settings
 from app.core.security import hash_pw
 from app.db.session import engine
@@ -28,3 +29,4 @@ app.include_router(results_router)
 app.include_router(fleet_router)
 app.include_router(imports_router)
 app.include_router(dbr_router)
+app.include_router(equipment_router)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, type ImportStatus, type LabRow, type DbrRow } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, type ImportStatus, type LabRow, type DbrRow, type Equipment } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -285,6 +285,158 @@ export function DbrPage() {
         <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => load(page - 1)}>‹ Prev</button>
         <span>Halaman {page} dari {pages}</span>
         <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= pages} onClick={() => load(page + 1)}>Next ›</button>
+      </div>
+    </div>
+  )
+}
+
+const EQ_CATS = ['BIGWHEEL', 'LIGHTING', 'MOBILE', 'PUMPING']
+const EQ_COLS: { key: keyof Equipment; label: string }[] = [
+  { key: 'cn', label: 'Code Number' }, { key: 'unit_type', label: 'Unit Type' },
+  { key: 'unit_product', label: 'Product' }, { key: 'operasional', label: 'Operasional' },
+  { key: 'category', label: 'Kategori' }, { key: 'unit_model', label: 'Model' },
+  { key: 'lokasi', label: 'Lokasi' }, { key: 'status', label: 'Status' },
+]
+const EQ_EDIT_FIELDS: { key: keyof Equipment; label: string }[] = [
+  { key: 'unit_model', label: 'Model' }, { key: 'unit_type', label: 'Unit Type' },
+  { key: 'unit_product', label: 'Product' }, { key: 'cn_serial_no', label: 'Serial No' },
+  { key: 'cn_lokasi', label: 'CN Lokasi' }, { key: 'status', label: 'Status' },
+  { key: 'operasional', label: 'Operasional' }, { key: 'pump_group', label: 'Pump Group' },
+  { key: 'lokasi', label: 'Lokasi' }, { key: 'remark', label: 'Remark' },
+  { key: 'offhire', label: 'Offhire' },
+]
+
+export function EquipmentPage() {
+  const [q, setQ] = useState('')
+  const [cat, setCat] = useState('')
+  const [aktif, setAktif] = useState('')
+  const [rows, setRows] = useState<Equipment[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [msg, setMsg] = useState('')
+  const [edit, setEdit] = useState<Equipment | null>(null)
+  const [adding, setAdding] = useState(false)
+  const load = async (p = 1) => {
+    try {
+      setMsg('')
+      const r = await fetchEquipment({
+        search: q || undefined, category: cat || undefined,
+        aktif: aktif === '' ? undefined : aktif === '1',
+        page: p, page_size: 20,
+      })
+      setRows(r.data); setTotal(r.total); setPage(r.page)
+    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  useEffect(() => { load(1) }, [])
+  const pages = Math.max(1, Math.ceil(total / 20))
+  const save = async (cn: string | null, body: Partial<Equipment>) => {
+    try {
+      setMsg('')
+      if (cn) await patchEquipment(cn, body)
+      else await createEquipment(body)
+      setEdit(null); setAdding(false); load(page)
+    } catch (e) { setMsg(`gagal simpan: ${String(e)}`) }
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <input className="w-40 rounded-lg border px-3 py-2" value={q}
+          onChange={(e) => setQ(e.target.value.toUpperCase())} placeholder="Cari CN / type..." />
+        <select className="rounded-lg border px-3 py-2" value={cat} onChange={(e) => setCat(e.target.value)}>
+          <option value="">Kategori: semua</option>
+          {EQ_CATS.map((c) => (<option key={c} value={c}>{c}</option>))}
+        </select>
+        <select className="rounded-lg border px-3 py-2" value={aktif} onChange={(e) => setAktif(e.target.value)}>
+          <option value="">Status: semua</option>
+          <option value="1">Aktif</option>
+          <option value="0">Nonaktif</option>
+        </select>
+        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => load(1)}>Tampilkan</button>
+        <button className="rounded-lg border px-4 py-2" onClick={() => setAdding(true)}>+ Tambah Unit</button>
+        <span className="text-theme-sm text-gray-500">Total {total.toLocaleString('id-ID')}</span>
+      </div>
+      {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
+      <div className="overflow-x-auto rounded-2xl border bg-white">
+        <table className="w-full border-collapse text-center text-theme-sm">
+          <thead className="bg-[#d6e4c9] font-semibold">
+            <tr>
+              {EQ_COLS.map((c) => (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>))}
+              <th className="border px-2 py-2">Aktif</th>
+              <th className="border px-2 py-2">Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.cn} className={`border-t ${r.aktif ? '' : 'bg-gray-100 text-gray-400'}`}>
+                {EQ_COLS.map((c) => (
+                  <td key={c.key} className="border px-2 py-2 whitespace-nowrap">{String(r[c.key] ?? '')}</td>
+                ))}
+                <td className="border px-2 py-2">{r.aktif ? 'Ya' : 'Tidak'}</td>
+                <td className="border px-2 py-2"><button className="underline" onClick={() => setEdit(r)}>Ubah</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center gap-2 text-theme-sm">
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => load(page - 1)}>‹ Prev</button>
+        <span>Halaman {page} dari {pages}</span>
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= pages} onClick={() => load(page + 1)}>Next ›</button>
+      </div>
+      {(edit || adding) && (
+        <EqForm
+          key={edit?.cn ?? 'new'}
+          initial={edit}
+          onClose={() => { setEdit(null); setAdding(false) }}
+          onSave={(b) => save(edit?.cn ?? null, b)}
+        />
+      )}
+    </div>
+  )
+}
+
+function EqForm({ initial, onClose, onSave }: {
+  initial: Equipment | null; onClose: () => void; onSave: (b: Partial<Equipment>) => void
+}) {
+  const [f, setF] = useState<Partial<Equipment>>(() => ({
+    cn: initial?.cn ?? '', category: initial?.category ?? 'LIGHTING',
+    unit_model: initial?.unit_model ?? '', unit_type: initial?.unit_type ?? '',
+    unit_product: initial?.unit_product ?? '', cn_serial_no: initial?.cn_serial_no ?? '',
+    cn_lokasi: initial?.cn_lokasi ?? '', status: initial?.status ?? '',
+    operasional: initial?.operasional ?? '', pump_group: initial?.pump_group ?? '',
+    lokasi: initial?.lokasi ?? '', remark: initial?.remark ?? '',
+    offhire: initial?.offhire ?? '', aktif: initial?.aktif ?? true,
+  }))
+  const set = (k: keyof Equipment, v: string | boolean) => setF((p) => ({ ...p, [k]: v }))
+  const inp = 'w-full rounded-lg border px-3 py-2'
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5">
+        <h3 className="font-semibold">{initial ? `Ubah ${initial.cn}` : 'Tambah Unit'}</h3>
+        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {!initial && (
+            <>
+              <label className="text-theme-sm">CN<input className={inp} value={String(f.cn ?? '')} onChange={(e) => set('cn', e.target.value.toUpperCase())} placeholder="cth TL960" /></label>
+              <label className="text-theme-sm">Kategori
+                <select className={inp} value={String(f.category ?? '')} onChange={(e) => set('category', e.target.value)}>
+                  {EQ_CATS.map((c) => (<option key={c} value={c}>{c}</option>))}
+                </select>
+              </label>
+            </>
+          )}
+          {EQ_EDIT_FIELDS.map((c) => (
+            <label key={c.key} className="text-theme-sm">{c.label}
+              <input className={inp} value={String(f[c.key] ?? '')} onChange={(e) => set(c.key, e.target.value)} />
+            </label>
+          ))}
+          <label className="flex items-center gap-2 text-theme-sm">
+            <input type="checkbox" checked={!!f.aktif} onChange={(e) => set('aktif', e.target.checked)} /> Aktif
+          </label>
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
+          <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => onSave(f)}>Simpan</button>
+        </div>
       </div>
     </div>
   )

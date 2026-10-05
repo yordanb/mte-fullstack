@@ -107,3 +107,30 @@ export async function uploadDbr(file: File) {
   const r = await api.post('/v1/dbr/imports', fd)
   return r.data
 }
+
+export type Equipment = {
+  cn: string; cn_prefix?: string; category: string
+  unit_model?: string | null; unit_type?: string | null; unit_product?: string | null
+  cn_serial_no?: string | null; cn_year?: number | null; cn_lokasi?: string | null
+  status?: string | null; operasional?: string | null; pump_group?: string | null
+  engine_model?: string | null; engine_merk?: string | null; engine_serial_no?: string | null
+  arrived_date?: string | null; arrived_year?: number | null; arrived_month?: number | null
+  arrived_hm?: number | null; lokasi?: string | null
+  remark?: string | null; offhire?: string | null; aktif?: boolean
+  specs?: Record<string, string | number | null>
+}
+
+export async function fetchEquipment(params: Record<string, string | number | boolean | undefined>) {
+  const r = await api.get('/v1/equipment', { params })
+  return r.data as { total: number; page: number; page_size: number; data: Equipment[] }
+}
+
+export async function createEquipment(body: Partial<Equipment>) {
+  const r = await api.post('/v1/equipment', body)
+  return r.data
+}
+
+export async function patchEquipment(cn: string, body: Partial<Equipment>) {
+  const r = await api.patch(`/v1/equipment/${cn}`, body)
+  return r.data
+}
