@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+import datetime
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -157,3 +158,33 @@ async def set_perm(body: PermIn, db: AsyncSession = Depends(get_db),
         {"r": body.role, "m": body.menu, "v": v, "a": a, "e": e, "d": d})
     await db.commit()
     return {"ok": True}
+
+
+@admin_router.get("/audit", dependencies=[Depends(require_role("admin"))])
+async def audit_logs(date_from: datetime.date | None = None,
+                     date_to: datetime.date | None = None,
+                     username: str | None = None,
+                     path: str | None = None,
+                     page: int = Query(1, ge=1),
+                     page_size: int = Query(20, ge=1, le=100),
+                     db: AsyncSession = Depends(get_db),
+                     user=Depends(get_current_user)):
+    """Log aktivitas: siapa, akses ke mana, dari mana. Terbaru dulu."""
+    import datetime as _dt
+    conds, p = [], {"lim": page_size, "off": (page - 1) * page_size}
+    if date_from:
+        conds.append("created_at >= :df"); p["df"] = _dt.datetime.combine(date_from, _dt.time.min)
+    if date_to:
+        conds.append("created_at <= :dt"); p["dt"] = _dt.datetime.combine(date_to, _dt.time.max)
+    if username:
+        conds.append("username ILIKE :un"); p["un"] = f"%{username}%"
+    if path:
+        conds.append("path ILIKE :pa"); p["pa"] = f"%{path}%"
+    where = f"WHERE {' AND '.join(conds)}" if conds else ""
+    total = (await db.execute(text(f"SELECT count(*) FROM audit_logs {where}"), p)).scalar()
+    rows = (await db.execute(text(
+        f"SELECT id, created_at, username, role, method, path, status, ip, user_agent "
+        f"FROM audit_logs {where} ORDER BY id DESC LIMIT :lim OFFSET :off"), p)
+    ).mappings().all()
+    return {"total": total, "page": page, "page_size": page_size,
+            "data": [dict(r) for r in rows]}

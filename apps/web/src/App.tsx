@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import LoginPage from './pages/Login'
 import { Dashboard, ImportPage, DbrPage, EquipmentPage, ActivityPage } from './pages/Pages'
 import UsersPage from './pages/Users'
+import AuditPage from './pages/Audit'
 import { fetchMe } from './api/client'
 
 // ApexCharts berat (~700KB): muat hanya saat menu Performance dibuka.
@@ -47,6 +48,7 @@ export default function App() {
       {page === 'activity' && <ActivityPage />}
       {page === 'import' && <ImportPage />}
       {page === 'users' && me.role === 'admin' && <UsersPage />}
+      {page === 'audit' && me.role === 'admin' && <AuditPage />}
     </Layout>
   )
 }

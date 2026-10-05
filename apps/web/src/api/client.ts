@@ -98,6 +98,16 @@ export async function setPerm(body: PermRow) {
   return r.data
 }
 
+export type AuditRow = {
+  id: number; created_at: string; username?: string | null; role?: string | null
+  method: string; path: string; status: number; ip?: string | null; user_agent?: string | null
+}
+
+export async function fetchAudit(params: Record<string, string | number | undefined>) {
+  const r = await api.get('/v1/admin/audit', { params })
+  return r.data as { total: number; page: number; page_size: number; data: AuditRow[] }
+}
+
 export async function fetchResults(vesselid: string, unit_id?: string): Promise<LabRow[]> {
   const r = await api.get('/v1/results', { params: { vesselid, unit_id, limit: 20 } })
   return r.data.data
