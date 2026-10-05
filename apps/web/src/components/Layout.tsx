@@ -19,12 +19,12 @@ export default function Layout({ page, setPage, onLogout, children }: {
     <div className="flex h-screen bg-gray-50 font-outfit dark:bg-gray-900">
       {open && (
         <aside className="flex w-72 flex-col border-r border-gray-200 bg-white px-5 dark:border-gray-800 dark:bg-black">
-          <div className="flex flex-col items-start gap-2 pt-8 pb-7">
+          <div className="flex flex-col items-center gap-2 px-2 pt-8 pb-7 text-center">
             {logoSrc && (
-              <img src={logoSrc} alt="Logo MTE" className="h-20 w-auto max-w-full object-contain"
+              <img src={logoSrc} alt="Logo MTE" className="h-16 w-auto max-w-[70%] object-contain sm:h-20"
                 onError={() => setLogoIdx((i) => i + 1)} />
             )}
-            <span className="text-xl font-bold text-brand-600">MTE Data Center</span>
+            <span className="text-lg font-bold break-words text-brand-600 sm:text-xl">MTE Data Center</span>
           </div>
           <nav className="flex flex-col gap-1">
             <p className="mb-4 text-xs uppercase text-gray-400">Menu</p>
