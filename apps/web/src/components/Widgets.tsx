@@ -10,12 +10,25 @@ function fmtDate(v?: string | null) {
 }
 
 // Singkatan Unit Id khusus tampilan dashboard (data DB tidak diubah).
+const UNIT_SHORT: Record<string, string> = {
+  'FINAL DRIVE LEFT': 'FD LH',
+  'FINAL DRIVE RIGHT': 'FD RH',
+  'FINAL DRIVE LEFT FRONT': 'FD LH FR',
+  'FINAL DRIVE LEFT REAR': 'FD LH RR',
+  'FINAL DRIVE LEFT CENTER': 'FD LH CTR',
+  'FINAL DRIVE RIGHT FRONT': 'FD RH FR',
+  'FINAL DRIVE RIGHT REAR': 'FD RH RR',
+  'FINAL DRIVE RIGHT CENTER': 'FD RH CTR',
+  'TRANSMISSION': 'TM',
+  'DIFFERENTIAL CENTER': 'DIFF CTR',
+  'DIFFERENTIAL FRONT': 'DIFF FR',
+  'DIFFERENTIAL REAR': 'DIFF RR',
+  'TANDEM RIGHT': 'TDM RH',
+  'TANDEM LEFT': 'TDM LH',
+}
 function shortUnit(v?: string | null) {
   const u = (v ?? '').trim().toUpperCase()
-  if (u === 'FINAL DRIVE LEFT') return 'FD LH'
-  if (u === 'FINAL DRIVE RIGHT') return 'FD RH'
-  if (u === 'TRANSMISSION') return 'TM'
-  return v ?? ''
+  return UNIT_SHORT[u] ?? (v ?? '')
 }
 
 export function MetricCards({ total, critical, normal }: { total: number; critical: number; normal: number }) {
