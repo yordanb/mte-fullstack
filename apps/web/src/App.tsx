@@ -2,6 +2,8 @@ import { Suspense, lazy, useEffect, useState } from 'react'
 import Layout from './components/Layout'
 import LoginPage from './pages/Login'
 import { Dashboard, ImportPage, DbrPage, EquipmentPage, ActivityPage } from './pages/Pages'
+import UsersPage from './pages/Users'
+import { fetchMe } from './api/client'
 
 // ApexCharts berat (~700KB): muat hanya saat menu Performance dibuka.
 const PerformancePage = lazy(() => import('./pages/Performance'))
@@ -11,11 +13,14 @@ const IDLE_MS = 30 * 60 * 1000
 
 export default function App() {
   const [authed, setAuthed] = useState(!!localStorage.getItem('mte_token'))
+  const [me, setMe] = useState<{ username: string; role: string } | null>(null)
   const [page, setPage] = useState('dashboard')
-  const logout = () => { localStorage.clear(); setAuthed(false) }
+  const logout = () => { localStorage.clear(); setAuthed(false); setMe(null) }
   useEffect(() => {
-    if (!authed) return
-    const onUnauth = () => setAuthed(false)
+    if (!authed) { setMe(null); return }
+    // Muat profil + matriks izin dulu agar menu/tombol langsung benar.
+    fetchMe().then((m) => setMe(m)).catch(() => logout())
+    const onUnauth = () => logout()
     window.addEventListener('mte:unauthorized', onUnauth)
     let t = window.setTimeout(logout, IDLE_MS)
     const reset = () => { window.clearTimeout(t); t = window.setTimeout(logout, IDLE_MS) }
@@ -28,6 +33,7 @@ export default function App() {
     }
   }, [authed])
   if (!authed) return <LoginPage onOk={() => setAuthed(true)} />
+  if (!me) return <p className="p-6 text-theme-sm text-gray-500">Memuat hak akses...</p>
   return (
     <Layout page={page} setPage={setPage} onLogout={logout}>
       {(page === 'dashboard' || page === 'vessel') && <Dashboard />}
@@ -40,6 +46,7 @@ export default function App() {
       {page === 'equipment' && <EquipmentPage />}
       {page === 'activity' && <ActivityPage />}
       {page === 'import' && <ImportPage />}
+      {page === 'users' && me.role === 'admin' && <UsersPage />}
     </Layout>
   )
 }

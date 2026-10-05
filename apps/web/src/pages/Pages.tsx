@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, fetchActivityMonth, fetchActivitiesByDate, fetchActivity, createActivity, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, fetchActivityMonth, fetchActivitiesByDate, fetchActivity, createActivity, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -156,6 +156,14 @@ export function ImportPage() {
   }
   const pct = prog && prog.total ? Math.round((prog.done / prog.total) * 100) : 0
   const upPct = upProg && upProg.total ? Math.round((upProg.done / upProg.total) * 100) : 0
+  const canUpload = can('import', 'add')
+  if (!can('import', 'view')) {
+    return (
+      <div className="rounded-2xl border bg-white p-5">
+        <p className="text-theme-sm text-gray-500">Role Anda tidak memiliki akses ke menu ini.</p>
+      </div>
+    )
+  }
   const tile = 'flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md'
   const tileHead = 'flex items-center gap-3'
   const tileIcon = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600'
@@ -182,8 +190,8 @@ export function ImportPage() {
             <input type="file" accept=".xlsx" id="xlsx" className="hidden" onChange={(e) => setFname(e.target.files?.[0]?.name ?? '')} />
           </label>
           <div className="flex gap-2">
-            <button className="flex-1 rounded-lg border px-4 py-2 disabled:opacity-40" disabled={!fname} onClick={() => send(true)}>Dry-run</button>
-            <button className="flex-1 rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={!fname} onClick={() => send(false)}>Commit</button>
+            <button className="flex-1 rounded-lg border px-4 py-2 disabled:opacity-40" disabled={!fname || !canUpload} onClick={() => send(true)}>Dry-run</button>
+            <button className="flex-1 rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={!fname || !canUpload} onClick={() => send(false)}>Commit</button>
           </div>
           {prog && (
             prog.total === 0 ? (
@@ -219,7 +227,7 @@ export function ImportPage() {
             <input type="file" accept=".xlsx" id="dbr-xlsx-import" className="hidden" onChange={(e) => setDbrFname(e.target.files?.[0]?.name ?? '')} />
           </label>
           <div className="flex gap-2">
-            <button className="flex-1 rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={!dbrFname} onClick={up}>Upload DBR</button>
+            <button className="flex-1 rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={!dbrFname || !canUpload} onClick={up}>Upload DBR</button>
           </div>
           {upProg && upProg.total > 0 && (
             <div>
@@ -386,7 +394,9 @@ export function EquipmentPage() {
           <option value="0">Nonaktif</option>
         </select>
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => load(1)}>Tampilkan</button>
-        <button className="rounded-lg border px-4 py-2" onClick={() => setAdding(true)}>+ Tambah Unit</button>
+        {can('equipment', 'add') && (
+          <button className="rounded-lg border px-4 py-2" onClick={() => setAdding(true)}>+ Tambah Unit</button>
+        )}
         <span className="text-theme-sm text-gray-500">Total {total.toLocaleString('id-ID')}</span>
       </div>
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
@@ -411,7 +421,7 @@ export function EquipmentPage() {
                     className="mr-2 rounded-lg border px-2 py-1 text-gray-600 hover:bg-gray-100">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                   </button>
-                  <button className="underline" onClick={() => setEdit(r)}>Ubah</button>
+                  {can('equipment', 'edit') && <button className="underline" onClick={() => setEdit(r)}>Ubah</button>}
                 </td>
               </tr>
             ))}
@@ -611,7 +621,9 @@ export function ActivityPage() {
       <div className="flex flex-col gap-3 rounded-2xl border bg-white p-5">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">{sel.split('-').reverse().join('/')}</h3>
-          <button className="rounded-lg bg-brand-500 px-3 py-1 text-white" onClick={() => setForm({ initial: null })}>+ Tambah</button>
+          {can('activity', 'add') && (
+            <button className="rounded-lg bg-brand-500 px-3 py-1 text-white" onClick={() => setForm({ initial: null })}>+ Tambah</button>
+          )}
         </div>
         {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
         {items.length === 0 && <p className="text-theme-sm text-gray-500">Belum ada aktivitas.</p>}
@@ -680,16 +692,21 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
                 <a href={activityPhotoUrl(row.id, p.id)} target="_blank" rel="noreferrer">
                   <img src={activityPhotoUrl(row.id, p.id)} alt={p.orig_name ?? ''} className="h-32 w-full rounded-lg object-cover" loading="lazy" />
                 </a>
-                <button onClick={() => delPhoto(p.id)} title="Hapus foto"
-                  className="absolute top-1 right-1 rounded-lg bg-black/60 px-2 py-0.5 text-white opacity-0 group-hover:opacity-100">×</button>
-              </div>
+                {can('activity', 'delete') && (
+                  <button onClick={() => delPhoto(p.id)} title="Hapus foto"
+                    className="absolute top-1 right-1 rounded-lg bg-black/60 px-2 py-0.5 text-white opacity-0 group-hover:opacity-100">×</button>
+                )}              </div>
             ))}
           </div>
         )}
         {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
         <div className="mt-4 flex justify-end gap-2">
-          <button className="rounded-lg border border-red-300 px-4 py-2 text-red-600" onClick={del}>Hapus</button>
-          <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={onEdit}>Ubah</button>
+          {can('activity', 'delete') && (
+            <button className="rounded-lg border border-red-300 px-4 py-2 text-red-600" onClick={del}>Hapus</button>
+          )}
+          {can('activity', 'edit') && (
+            <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={onEdit}>Ubah</button>
+          )}
         </div>
       </div>
     </div>

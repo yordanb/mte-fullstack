@@ -72,7 +72,7 @@ async def _run(import_id: str, content: bytes):
             await db.commit()
             raise
 
-@router.post("/imports", dependencies=[Depends(require_role("operator", "admin"))], status_code=202)
+@router.post("/imports", dependencies=[Depends(require_role("inputer", "admin"))], status_code=202)
 async def upload_dbr(bg: BackgroundTasks, file: UploadFile = File(...),
                      db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
     content = await file.read()

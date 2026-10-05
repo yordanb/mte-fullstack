@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { can } from '../api/client'
 
 const MENU = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -8,6 +9,7 @@ const MENU = [
   { key: 'equipment', label: 'Equipment' },
   { key: 'vessel', label: 'Data Vessel' },
   { key: 'import', label: 'Update Data' },
+  { key: 'users', label: 'Users', admin: true },
 ]
 
 // Ikon menu gaya TailAdmin (stroke currentColor: aktif ikut warna brand).
@@ -33,6 +35,9 @@ const ICONS: Record<string, ReactNode> = {
   import: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
   ),
+  users: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+  ),
 }
 
 export default function Layout({ page, setPage, onLogout, children }: {
@@ -56,7 +61,9 @@ export default function Layout({ page, setPage, onLogout, children }: {
           </div>
           <nav className="flex flex-col gap-1">
             <p className="mb-4 text-xs uppercase text-gray-400">Menu</p>
-            {MENU.map((m) => (
+            {MENU.filter((m) => 'admin' in m
+              ? localStorage.getItem('mte_role') === 'admin'
+              : can(m.key, 'view')).map((m) => (
               <button key={m.key} onClick={() => setPage(m.key)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-theme-sm ${page === m.key ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-100'}`}>
                 <span className="shrink-0">{ICONS[m.key]}</span>

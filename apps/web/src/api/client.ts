@@ -44,6 +44,60 @@ export async function login(username: string, password: string) {
   return r.data
 }
 
+export type Perms = Record<string, { view: boolean; add: boolean; edit: boolean; delete: boolean }>
+
+/** Hak akses halaman/tombol. vessel ikut dashboard. admin selalu penuh. */
+export function can(menu: string, act: 'view' | 'add' | 'edit' | 'delete'): boolean {
+  if ((localStorage.getItem('mte_role') ?? '') === 'admin') return true
+  try {
+    const p = JSON.parse(localStorage.getItem('mte_perm') ?? '{}') as Perms
+    const m = menu === 'vessel' ? 'dashboard' : menu
+    return !!p[m]?.[act]
+  } catch { return false }
+}
+
+export async function fetchMe() {
+  const r = await api.get('/v1/users/me')
+  localStorage.setItem('mte_role', r.data.role)
+  localStorage.setItem('mte_perm', JSON.stringify(r.data.permissions))
+  return r.data as { username: string; role: string; permissions: Perms }
+}
+
+export async function fetchUsers() {
+  const r = await api.get('/v1/admin/users')
+  return r.data.data as { username: string; role: string; created_at?: string }[]
+}
+
+export async function createUser(body: { username: string; password: string; role: string }) {
+  const r = await api.post('/v1/admin/users', body)
+  return r.data
+}
+
+export async function patchUser(username: string, body: { role?: string; password?: string }) {
+  const r = await api.patch(`/v1/admin/users/${username}`, body)
+  return r.data
+}
+
+export async function deleteUser(username: string) {
+  const r = await api.delete(`/v1/admin/users/${username}`)
+  return r.data
+}
+
+export type PermRow = {
+  role: string; menu: string
+  can_view: boolean; can_add: boolean; can_edit: boolean; can_delete: boolean
+}
+
+export async function fetchPerms() {
+  const r = await api.get('/v1/admin/permissions')
+  return r.data.data as PermRow[]
+}
+
+export async function setPerm(body: PermRow) {
+  const r = await api.put('/v1/admin/permissions', body)
+  return r.data
+}
+
 export async function fetchResults(vesselid: string, unit_id?: string): Promise<LabRow[]> {
   const r = await api.get('/v1/results', { params: { vesselid, unit_id, limit: 20 } })
   return r.data.data

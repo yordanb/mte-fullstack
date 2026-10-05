@@ -78,7 +78,7 @@ async def detail_equipment(cn: str, db: AsyncSession = Depends(get_db),
     return dict(row)
 
 
-@router.post("", dependencies=[Depends(require_role("operator", "admin"))], status_code=201)
+@router.post("", dependencies=[Depends(require_role("inputer", "admin"))], status_code=201)
 async def create_equipment(body: dict, db: AsyncSession = Depends(get_db),
                            user=Depends(get_current_user)):
     cn = (body.get("cn") or "").strip().upper()
@@ -110,7 +110,7 @@ async def create_equipment(body: dict, db: AsyncSession = Depends(get_db),
     return dict(row)
 
 
-@router.patch("/{cn}", dependencies=[Depends(require_role("operator", "admin"))])
+@router.patch("/{cn}", dependencies=[Depends(require_role("inputer", "admin"))])
 async def update_equipment(cn: str, body: dict, db: AsyncSession = Depends(get_db),
                            user=Depends(get_current_user)):
     import json as _json

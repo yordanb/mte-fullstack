@@ -60,7 +60,7 @@ async def detail(aid: str, db: AsyncSession = Depends(get_db),
     return out
 
 
-@router.post("", dependencies=[Depends(require_role("operator", "admin"))], status_code=201)
+@router.post("", dependencies=[Depends(require_role("inputer", "admin"))], status_code=201)
 async def create(date: datetime.date = Form(...),
                  title: str = Form(...),
                  description: str | None = Form(None),
@@ -108,7 +108,7 @@ async def create(date: datetime.date = Form(...),
     return {"id": aid}
 
 
-@router.patch("/{aid}", dependencies=[Depends(require_role("operator", "admin"))])
+@router.patch("/{aid}", dependencies=[Depends(require_role("inputer", "admin"))])
 async def update(aid: str, body: dict, db: AsyncSession = Depends(get_db),
                  user=Depends(get_current_user)):
     allowed = ("date", "title", "description", "category", "cn")
@@ -141,7 +141,7 @@ async def update(aid: str, body: dict, db: AsyncSession = Depends(get_db),
     return {"id": aid}
 
 
-@router.delete("/{aid}", dependencies=[Depends(require_role("operator", "admin"))])
+@router.delete("/{aid}", dependencies=[Depends(require_role("inputer", "admin"))])
 async def remove(aid: str, db: AsyncSession = Depends(get_db),
                  user=Depends(get_current_user)):
     res = await db.execute(text("DELETE FROM activities WHERE id=:i"), {"i": aid})
@@ -153,7 +153,7 @@ async def remove(aid: str, db: AsyncSession = Depends(get_db),
     return {"ok": True}
 
 
-@router.delete("/{aid}/photos/{pid}", dependencies=[Depends(require_role("operator", "admin"))])
+@router.delete("/{aid}/photos/{pid}", dependencies=[Depends(require_role("inputer", "admin"))])
 async def remove_photo(aid: str, pid: str, db: AsyncSession = Depends(get_db),
                        user=Depends(get_current_user)):
     row = (await db.execute(text(

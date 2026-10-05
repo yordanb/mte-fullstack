@@ -7,7 +7,7 @@ from app.db.session import get_db
 
 router = APIRouter(prefix="/v1/results", tags=["results"])
 
-@router.get("", dependencies=[Depends(require_role("viewer", "operator", "admin"))])
+@router.get("", dependencies=[Depends(require_role("viewer", "inputer", "admin"))])
 async def list_results(
     vesselid: str | None = None,
     unit_id: str | None = None,
@@ -42,7 +42,7 @@ async def list_results(
     """)
     return {"data": list((await db.execute(q, params)).mappings().all())}
 
-@router.get("/latest-per-unit", dependencies=[Depends(require_role("viewer", "operator", "admin"))])
+@router.get("/latest-per-unit", dependencies=[Depends(require_role("viewer", "inputer", "admin"))])
 async def latest_per_unit(
     limit: int = Query(50, le=200),
     prefix: str | None = Query(None, min_length=2, max_length=2),
@@ -78,7 +78,7 @@ async def latest_per_unit(
     """)
     return {"data": list((await db.execute(q, params)).mappings().all())}
 
-@router.get("/{lab_no}", dependencies=[Depends(require_role("viewer", "operator", "admin"))])
+@router.get("/{lab_no}", dependencies=[Depends(require_role("viewer", "inputer", "admin"))])
 async def detail(lab_no: str, db: AsyncSession = Depends(get_db)):
     """Detail 1 baris full-column untuk grafik tren / drill-down."""
     row = (await db.execute(

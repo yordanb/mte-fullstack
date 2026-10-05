@@ -114,7 +114,7 @@ async def _run_commit(import_id: str, content: bytes):
             await db.commit()
             raise
 
-@router.post("", dependencies=[Depends(require_role("operator", "admin"))], status_code=202)
+@router.post("", dependencies=[Depends(require_role("inputer", "admin"))], status_code=202)
 async def upload_excel(
     bg: BackgroundTasks,
     file: UploadFile = File(...),
