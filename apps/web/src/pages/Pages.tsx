@@ -197,6 +197,8 @@ export function ImportPage() {
   )
 }
 
+const [showAction, setShowAction] = useState(true)
+
 const DBR_COLS: { key: keyof DbrRow; label: string }[] = [
   { key: 'date', label: 'DATE' }, { key: 'cn', label: 'C/N' },
   { key: 'section', label: 'SECTION' }, { key: 'trouble', label: 'Trouble' },
@@ -272,6 +274,9 @@ export function DbrPage() {
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => load(1)}>Tampilkan</button>
         <span className="text-theme-sm text-gray-500">Total {total.toLocaleString('id-ID')}</span>
         <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
+        <input type="checkbox" id="action-toggle" checked={showAction} onChange={(e) => setShowAction(e.target.checked)} className="rounded bg-white cursor-pointer" />
+        <label htmlFor="action-toggle" className="text-theme-sm cursor-pointer underline">Sembunyikan Action</label>
+        <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
         <input type="file" accept=".xlsx" id="dbr-xlsx" className="text-theme-sm" />
         <button className="rounded-lg border px-4 py-2" onClick={up}>Upload DBR</button>
       </div>
@@ -288,14 +293,19 @@ export function DbrPage() {
       <div className="overflow-x-auto rounded-2xl border bg-white">
         <table className="w-full border-collapse text-center text-theme-sm">
           <thead className="bg-[#d6e4c9] font-semibold">
-            <tr>{DBR_COLS.map((c) => (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>))}</tr>
+            <tr>
+          {DBR_COLS.map((c) => {
+            if (c.key === 'action') return showAction ? (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>) : null
+            return (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>)
+          })}
+        </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="border-t">
                 {DBR_COLS.map((c) => (
                   <td key={c.key} className="border px-2 py-2 whitespace-nowrap">
-                    {c.key === 'date' ? fmtD(r.date) : (r[c.key] ?? '')}
+                    {c.key === 'date' ? fmtD(r.date) : (c.key === 'action' ? (showAction ? r.action ?? '' : '') : (r[c.key] ?? ''))}
                   </td>
                 ))}
               </tr>
