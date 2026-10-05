@@ -638,7 +638,7 @@ export function PerformancePage() {
       </div>
       {st?.exclude_continue && (st?.excluded_continue ?? 0) > 0 && (
         <p className="text-theme-sm text-gray-500">
-          {st.excluded_continue.toLocaleString('id-ID')} baris CONTINUE dikecualikan — grafik menghitung kejadian breakdown, bukan hari downtime.
+          {(st?.excluded_continue ?? 0).toLocaleString('id-ID')} baris CONTINUE dikecualikan — grafik menghitung kejadian breakdown, bukan hari downtime.
         </p>
       )}
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
