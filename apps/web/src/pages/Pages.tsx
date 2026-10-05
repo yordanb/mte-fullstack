@@ -315,6 +315,7 @@ export function EquipmentPage() {
   const [page, setPage] = useState(1)
   const [msg, setMsg] = useState('')
   const [edit, setEdit] = useState<Equipment | null>(null)
+  const [view, setView] = useState<Equipment | null>(null)
   const [adding, setAdding] = useState(false)
   const load = async (p = 1) => {
     try {
@@ -372,7 +373,13 @@ export function EquipmentPage() {
                   <td key={c.key} className="border px-2 py-2 whitespace-nowrap">{String(r[c.key] ?? '')}</td>
                 ))}
                 <td className="border px-2 py-2">{r.aktif ? 'Ya' : 'Tidak'}</td>
-                <td className="border px-2 py-2"><button className="underline" onClick={() => setEdit(r)}>Ubah</button></td>
+                <td className="border px-2 py-2 whitespace-nowrap">
+                  <button title="Lihat detail" onClick={() => setView(r)}
+                    className="mr-2 rounded-lg border px-2 py-1 text-gray-600 hover:bg-gray-100">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                  </button>
+                  <button className="underline" onClick={() => setEdit(r)}>Ubah</button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -391,6 +398,7 @@ export function EquipmentPage() {
           onSave={(b) => save(edit?.cn ?? null, b)}
         />
       )}
+      {view && <EqDetail row={view} onClose={() => setView(null)} />}
     </div>
   )
 }
@@ -437,6 +445,55 @@ function EqForm({ initial, onClose, onSave }: {
           <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
           <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => onSave(f)}>Simpan</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function EqDetail({ row, onClose }: { row: Equipment; onClose: () => void }) {
+  const main: [string, string][] = [
+    ['Code Number', row.cn], ['Kategori', row.category ?? ''],
+    ['Model', row.unit_model ?? ''], ['Unit Type', row.unit_type ?? ''],
+    ['Product', row.unit_product ?? ''], ['Serial No', row.cn_serial_no ?? ''],
+    ['Tahun Unit', row.cn_year != null ? String(row.cn_year) : ''],
+    ['CN Lokasi', row.cn_lokasi ?? ''], ['Status', row.status ?? ''],
+    ['Operasional', row.operasional ?? ''], ['Pump Group', row.pump_group ?? ''],
+    ['Engine', [row.engine_model, row.engine_merk, row.engine_serial_no].filter(Boolean).join(' / ')],
+    ['Tgl Datang', row.arrived_date ? String(row.arrived_date).slice(0, 10) :
+      [row.arrived_month, row.arrived_year].filter((v) => v != null).join('/')],
+    ['HM Datang', row.arrived_hm != null ? String(row.arrived_hm) : ''],
+    ['Lokasi', row.lokasi ?? ''], ['Remark', row.remark ?? ''],
+    ['Offhire', row.offhire ?? ''], ['Aktif', row.aktif ? 'Ya' : 'Tidak'],
+  ]
+  const specs = Object.entries(row.specs ?? {}).filter(([, v]) => v != null && v !== '')
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold">Detail {row.cn}</h3>
+          <button className="rounded-lg border px-3 py-1" onClick={onClose}>Tutup</button>
+        </div>
+        <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-2 text-theme-sm sm:grid-cols-2">
+          {main.map(([k, v]) => (
+            <div key={k} className="flex flex-col border-b pb-1">
+              <dt className="text-gray-500">{k}</dt>
+              <dd className="font-medium break-words">{v || '-'}</dd>
+            </div>
+          ))}
+        </dl>
+        {specs.length > 0 && (
+          <>
+            <h4 className="mt-4 font-semibold">Komponen / Serial</h4>
+            <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-2 text-theme-sm sm:grid-cols-2">
+              {specs.map(([k, v]) => (
+                <div key={k} className="flex flex-col border-b pb-1">
+                  <dt className="text-gray-500">{k.replace(/_/g, ' ')}</dt>
+                  <dd className="font-medium break-words">{String(v)}</dd>
+                </div>
+              ))}
+            </dl>
+          </>
+        )}
       </div>
     </div>
   )
