@@ -169,9 +169,7 @@ const DBR_COLS: { key: keyof DbrRow; label: string }[] = [
   { key: 'section', label: 'SECTION' }, { key: 'trouble', label: 'Trouble' },
   { key: 'code', label: 'Code' }, { key: 'hm_start', label: 'HM Start' },
   { key: 'loc', label: 'LOC' }, { key: 'start_breakdown', label: 'Start BD' },
-  { key: 'start_time', label: 'Start' }, { key: 'finish_time', label: 'Finish' },
-  { key: 'total', label: 'Total' }, { key: 'wo', label: 'WO' },
-  { key: 'notification', label: 'Notif' }, { key: 'action', label: 'Action' },
+  { key: 'action', label: 'Action' },
   { key: 'mechanic', label: 'Mechanic' }, { key: 'gl', label: 'GL' },
 ]
 
