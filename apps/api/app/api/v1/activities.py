@@ -123,6 +123,12 @@ async def update(aid: str, body: dict, db: AsyncSession = Depends(get_db),
                         text("SELECT 1 FROM equipment WHERE cn=:c"), {"c": v})).scalar():
                     raise HTTPException(400, f"CN {v} tidak ada di master equipment")
                 params[k] = v
+            elif k == "date":
+                # JSON selalu string: parse eksplisit (asyncpg tak terima str untuk kolom DATE).
+                try:
+                    params[k] = datetime.date.fromisoformat(str(body[k])[:10])
+                except (ValueError, TypeError):
+                    raise HTTPException(400, "format tanggal salah (YYYY-MM-DD)")
             else:
                 params[k] = body[k]
             sets.append(f"{k}=:{k}")

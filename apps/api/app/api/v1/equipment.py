@@ -16,6 +16,23 @@ WRITABLE = (
 CATEGORIES = ("BIGWHEEL", "LIGHTING", "MOBILE", "PUMPING")
 
 
+def _coerce(field: str, value):
+    """JSON selalu string/number: ubah ke tipe kolom (asyncpg tak terima str untuk DATE)."""
+    import datetime as _dt
+    if value is None or (isinstance(value, str) and value.strip() == ""):
+        return None
+    try:
+        if field == "arrived_date":
+            return _dt.date.fromisoformat(str(value)[:10])
+        if field in ("arrived_year", "arrived_month", "cn_year"):
+            return int(float(str(value)))
+        if field == "arrived_hm":
+            return float(str(value))
+    except (ValueError, TypeError):
+        raise HTTPException(400, f"format {field} salah: {value!r}")
+    return value
+
+
 @router.get("")
 async def list_equipment(
     search: str | None = None,
@@ -79,7 +96,7 @@ async def create_equipment(body: dict, db: AsyncSession = Depends(get_db),
     for f in WRITABLE[1:]:
         if f in body and body[f] is not None:
             cols.append(f)
-            params[f] = body[f]
+            params[f] = _coerce(f, body[f])
     if "specs" in body and isinstance(body["specs"], dict):
         cols.append("specs")
         params["specs"] = _json.dumps(body["specs"])
@@ -105,7 +122,7 @@ async def update_equipment(cn: str, body: dict, db: AsyncSession = Depends(get_d
                 raise HTTPException(400, f"category harus salah satu {CATEGORIES}")
             sets.append(f"{f}=:{f}")
             v = body[f]
-            params[f] = str(v).upper() if f == "category" and v is not None else v
+            params[f] = _coerce(f, str(v).upper() if f == "category" and v is not None else v)
     if "specs" in body:
         if body["specs"] is not None and not isinstance(body["specs"], dict):
             raise HTTPException(400, "specs harus objek")
