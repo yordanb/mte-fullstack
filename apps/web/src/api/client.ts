@@ -53,3 +53,19 @@ export async function uploadExcel(file: File, dry_run: boolean) {
   const r = await api.post('/v1/imports', fd, { params: { dry_run } })
   return r.data
 }
+
+export type ImportStatus = {
+  id: string; filename: string; status: string
+  total_rows: number; ok_rows: number; fail_rows: number
+  processed_rows: number; uploaded_by?: string; created_at?: string
+}
+
+export async function fetchImportStatus(id: string): Promise<ImportStatus> {
+  const r = await api.get(`/v1/imports/${id}`)
+  return r.data
+}
+
+export async function fetchLatestImport(): Promise<ImportStatus | null> {
+  const r = await api.get('/v1/imports/latest')
+  return r.data?.id ? r.data : null
+}
