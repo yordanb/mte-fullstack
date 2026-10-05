@@ -156,49 +156,82 @@ export function ImportPage() {
   }
   const pct = prog && prog.total ? Math.round((prog.done / prog.total) * 100) : 0
   const upPct = upProg && upProg.total ? Math.round((upProg.done / upProg.total) * 100) : 0
+  const tile = 'flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md'
+  const tileHead = 'flex items-center gap-3'
+  const tileIcon = 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600'
+  const fileBtn = 'cursor-pointer rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-2 text-theme-sm text-gray-600 hover:bg-gray-100'
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border bg-white p-5">
-      <h2 className="font-semibold">Import Excel</h2>
-      <input type="file" accept=".xlsx" id="xlsx" onChange={(e) => setFname(e.target.files?.[0]?.name ?? '')} />
-      {fname ? <p className="text-theme-sm text-gray-600">File oli: {fname}</p> : <p className="text-theme-sm text-red-600">Belum ada file oli dipilih.</p>}
-      <div className="flex gap-2">
-        <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={!fname} onClick={() => send(true)}>Dry-run</button>
-        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={!fname} onClick={() => send(false)}>Commit</button>
+    <div className="flex flex-col gap-4">
+      <div>
+        <h2 className="text-theme-xl font-semibold">Update Data</h2>
+        <p className="text-theme-sm text-gray-500">Unggah file Excel untuk memperbarui data operasional</p>
       </div>
-      <hr className="border-gray-200" />
-      <h3 className="font-semibold">Upload DBR</h3>
-      <input type="file" accept=".xlsx" id="dbr-xlsx-import" onChange={(e) => setDbrFname(e.target.files?.[0]?.name ?? '')} />
-      {dbrFname ? <p className="text-theme-sm text-gray-600">File DBR: {dbrFname}</p> : <p className="text-theme-sm text-gray-500">Belum ada file DBR dipilih.</p>}
-      <div className="flex gap-2">
-        <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={!dbrFname} onClick={up}>Upload DBR</button>
-      </div>
-      {prog && (
-        prog.total === 0 ? (
-          <div>
-            <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200">
-              <div className="h-3 w-1/3 animate-pulse rounded-full bg-brand-500" />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className={tile}>
+          <div className={tileHead}>
+            <span className={tileIcon}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><path d="M16 13H8M16 17H8M10 9H8" /></svg>
+            </span>
+            <div>
+              <h3 className="font-semibold">Report Analisa Oli</h3>
+              <p className="text-theme-sm text-gray-500">Data lab 116 kolom per vessel + unit</p>
             </div>
-            <p className="mt-1 text-theme-sm text-gray-600">Membaca &amp; validasi file... {prog.done.toLocaleString('id-ID')} baris terbaca</p>
           </div>
-        ) : (
-          <div>
-            <div className="h-3 w-full rounded-full bg-gray-200">
-              <div className="h-3 rounded-full bg-brand-500" style={{ width: `${pct}%` }} />
-            </div>
-            <p className="mt-1 text-theme-sm text-gray-600">Menyimpan {prog.done.toLocaleString('id-ID')}/{prog.total.toLocaleString('id-ID')} ({pct}%)</p>
+          <label className={fileBtn}>
+            {fname ? `File: ${fname}` : 'Pilih file .xlsx'}
+            <input type="file" accept=".xlsx" id="xlsx" className="hidden" onChange={(e) => setFname(e.target.files?.[0]?.name ?? '')} />
+          </label>
+          <div className="flex gap-2">
+            <button className="flex-1 rounded-lg border px-4 py-2 disabled:opacity-40" disabled={!fname} onClick={() => send(true)}>Dry-run</button>
+            <button className="flex-1 rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={!fname} onClick={() => send(false)}>Commit</button>
           </div>
-        )
-      )}
-      <p>{msg}</p>
-      {upMsg && <p className="text-theme-sm text-gray-600">{upMsg}</p>}
-      {upProg && upProg.total > 0 && (
-        <div>
-          <div className="h-3 w-full rounded-full bg-gray-200">
-            <div className="h-3 rounded-full bg-brand-500" style={{ width: `${upPct}%` }} />
-          </div>
-          <p className="mt-1 text-theme-sm text-gray-600">{upProg.done.toLocaleString('id-ID')}/{upProg.total.toLocaleString('id-ID')} ({upPct}%)</p>
+          {prog && (
+            prog.total === 0 ? (
+              <div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div className="h-2 w-1/3 animate-pulse rounded-full bg-brand-500" />
+                </div>
+                <p className="mt-1 text-theme-sm text-gray-600">Membaca &amp; validasi file... {prog.done.toLocaleString('id-ID')} baris terbaca</p>
+              </div>
+            ) : (
+              <div>
+                <div className="h-2 w-full rounded-full bg-gray-200">
+                  <div className="h-2 rounded-full bg-brand-500" style={{ width: `${pct}%` }} />
+                </div>
+                <p className="mt-1 text-theme-sm text-gray-600">Menyimpan {prog.done.toLocaleString('id-ID')}/{prog.total.toLocaleString('id-ID')} ({pct}%)</p>
+              </div>
+            )
+          )}
+          {msg && <p className="border-t border-gray-100 pt-2 text-theme-sm text-gray-600">{msg}</p>}
         </div>
-      )}
+        <div className={tile}>
+          <div className={tileHead}>
+            <span className={tileIcon}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+            </span>
+            <div>
+              <h3 className="font-semibold">DBR Breakdown</h3>
+              <p className="text-theme-sm text-gray-500">Daily breakdown per code number</p>
+            </div>
+          </div>
+          <label className={fileBtn}>
+            {dbrFname ? `File: ${dbrFname}` : 'Pilih file .xlsx'}
+            <input type="file" accept=".xlsx" id="dbr-xlsx-import" className="hidden" onChange={(e) => setDbrFname(e.target.files?.[0]?.name ?? '')} />
+          </label>
+          <div className="flex gap-2">
+            <button className="flex-1 rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={!dbrFname} onClick={up}>Upload DBR</button>
+          </div>
+          {upProg && upProg.total > 0 && (
+            <div>
+              <div className="h-2 w-full rounded-full bg-gray-200">
+                <div className="h-2 rounded-full bg-brand-500" style={{ width: `${upPct}%` }} />
+              </div>
+              <p className="mt-1 text-theme-sm text-gray-600">{upProg.done.toLocaleString('id-ID')}/{upProg.total.toLocaleString('id-ID')} ({upPct}%)</p>
+            </div>
+          )}
+          {upMsg && <p className="border-t border-gray-100 pt-2 text-theme-sm text-gray-600">{upMsg}</p>}
+        </div>
+      </div>
     </div>
   )
 }
