@@ -69,7 +69,7 @@ export function Dashboard() {
           {lastUp.uploaded_by ? ` oleh ${lastUp.uploaded_by}` : ''}
         </p>
       )}
-      <VesselTable rows={slice} title={mode === 'latest' ? (critPrefix ? `Data Terbaru ${critPrefix} Critical per Vessel + Unit` : 'Data Terbaru per Vessel + Unit — Report Analisa Oli') : '20 Data Terbaru — Report Analisa Oli'} />
+      <VesselTable rows={slice} />
       <div className="flex flex-wrap items-center gap-2 text-theme-sm">
         <span className="text-gray-500">Menampilkan {from}–{to} dari {rows.length}</span>
         <span className="mx-1 hidden h-5 w-px bg-gray-200 sm:block" />

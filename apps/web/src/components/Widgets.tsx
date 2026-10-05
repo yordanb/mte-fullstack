@@ -52,7 +52,7 @@ export function MetricCards({ total, critical, normal }: { total: number; critic
   )
 }
 
-export function VesselTable({ rows, title }: { rows: LabRow[]; title?: string }) {
+export function VesselTable({ rows }: { rows: LabRow[]; title?: string }) {
   const td = 'border px-2 py-2 whitespace-nowrap'
   // sel merah jika grade parameter bukan N (A/C), sama seperti penanda Condition
   const bad = (g?: string | null) => g != null && g !== '' && g !== 'N'
@@ -60,7 +60,6 @@ export function VesselTable({ rows, title }: { rows: LabRow[]; title?: string })
   const show = (v: unknown) => (v ?? '') as string
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
-      <div className="border-b px-5 py-4 font-semibold">{title ?? 'Report Analisa Oli'}</div>
       <table className="w-full border-collapse text-center text-theme-sm">
         <thead className="bg-[#d6e4c9] font-semibold text-black">
           <tr>
