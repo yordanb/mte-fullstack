@@ -79,7 +79,7 @@ async def latest_per_unit(
     return {"data": list((await db.execute(q, params)).mappings().all())}
 
 @router.get("/{lab_no}", dependencies=[Depends(require_role("viewer", "operator", "admin"))])
-async def detail(lab_no: int, db: AsyncSession = Depends(get_db)):
+async def detail(lab_no: str, db: AsyncSession = Depends(get_db)):
     """Detail 1 baris full-column untuk grafik tren / drill-down."""
     row = (await db.execute(
         text("SELECT * FROM oil_lab_result WHERE lab_no=:l"), {"l": lab_no})).mappings().first()

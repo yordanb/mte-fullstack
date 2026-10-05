@@ -57,9 +57,25 @@ SHEET = "Rpt_Data_All_Lab"
 
 
 def parse_lab_no(v):
-    if v is None or v == "":
+    if v is None or (isinstance(v, str) and v.strip() == ""):
         raise ValueError("Lab No kosong")
-    return int(str(v).strip())
+    return str(v).strip()  # alfanumerik (cth P24001526) didukung, kolom DB TEXT
+
+
+def _num(v):
+    """Float toleran format Indonesia: '4,9' -> 4.9, '1.234,56' -> 1234.56.
+    'ND' (not detected) -> None."""
+    if isinstance(v, str):
+        s = v.strip().replace(' ', '')
+        if s.upper() in ('ND', 'N.D.', 'N/D', '-', '--'):
+            return None
+        if ',' in s:
+            if '.' in s:
+                s = s.replace('.', '').replace(',', '.')
+            else:
+                s = s.replace(',', '.')
+        return float(s)
+    return float(v)
 
 
 def norm_vessel(v):
@@ -89,18 +105,23 @@ def coerce(col: str, v):
     if col == "vesselid":
         return norm_vessel(v)
     if col in INT_COLS:
-        return int(float(str(v).strip()) if isinstance(v, str) else float(v))
+        return int(_num(v))
     if col in NUM_COLS:
-        return float(v) if not isinstance(v, str) else float(v.strip())
+        return _num(v)
     if col in DATE_COLS:
         return v  # openpyxl sudah datetime; asyncpg menerimanya
     if col in GRADE_COLS or col == "condition":
         s = str(v).strip().upper()
-        if col == "condition" and s not in ("NORMAL", "CRITICAL", "WARNING"):
+        if col == "condition" and s not in ("NORMAL", "CRITICAL", "WARNING", "CAUTION"):
             raise ValueError(f"Condition tak dikenal: {v}")
         if col in GRADE_COLS and s not in ("N", "A", "C"):
             raise ValueError(f"Grade tak dikenal {col}: {v}")
         return s
-    if col == "oil_change" and str(v).strip() not in ("Yes", "No"):
+    if col == "oil_change":
+        s = str(v).strip()
+        if s in ("Y", "y", "Yes"):
+            return "Yes"
+        if s in ("N", "n", "No"):
+            return "No"
         raise ValueError(f"Oil Change harus Yes/No: {v}")
     return str(v).strip() if isinstance(v, str) else v

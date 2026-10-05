@@ -9,7 +9,7 @@ api.interceptors.request.use((c) => {
 })
 
 export type LabRow = {
-  lab_no: number; vesselid: string; unit_id: string; model: string
+  lab_no: string; vesselid: string; unit_id: string; model: string
   sample_date: string; date_taken?: string; lead_time?: number | null
   oil_weight?: string | null; unit_time?: number | null; unit_time_oils?: number | null
   condition: string
