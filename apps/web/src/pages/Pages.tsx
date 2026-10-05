@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, type ImportStatus, type LabRow } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, type ImportStatus, type LabRow, type DbrRow } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -160,6 +160,123 @@ export function ImportPage() {
         )
       )}
       <p>{msg}</p>
+    </div>
+  )
+}
+
+const DBR_COLS: { key: keyof DbrRow; label: string }[] = [
+  { key: 'date', label: 'DATE' }, { key: 'cn', label: 'C/N' },
+  { key: 'section', label: 'SECTION' }, { key: 'trouble', label: 'Trouble' },
+  { key: 'code', label: 'Code' }, { key: 'hm_start', label: 'HM Start' },
+  { key: 'loc', label: 'LOC' }, { key: 'start_breakdown', label: 'Start BD' },
+  { key: 'start_time', label: 'Start' }, { key: 'finish_time', label: 'Finish' },
+  { key: 'total', label: 'Total' }, { key: 'wo', label: 'WO' },
+  { key: 'notification', label: 'Notif' }, { key: 'action', label: 'Action' },
+  { key: 'mechanic', label: 'Mechanic' }, { key: 'gl', label: 'GL' },
+]
+
+export function DbrPage() {
+  const d0 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)
+  const d1 = new Date().toISOString().slice(0, 10)
+  const [df, setDf] = useState(d0)
+  const [dt, setDt] = useState(d1)
+  const [cn, setCn] = useState('')
+  const [code, setCode] = useState('')
+  const [codes, setCodes] = useState<string[]>([])
+  const [rows, setRows] = useState<DbrRow[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [msg, setMsg] = useState('')
+  const fmtD = (v?: string | null) => {
+    if (!v) return ''
+    const d = new Date(v)
+    if (isNaN(d.getTime())) return String(v)
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
+  }
+  const load = async (p = 1) => {
+    try {
+      setMsg('')
+      const r = await fetchDbr({ date_from: df || undefined, date_to: dt || undefined,
+        cn: cn.toUpperCase() || undefined, code: code || undefined, page: p, page_size: 20 })
+      setRows(r.data); setTotal(r.total); setPage(r.page)
+    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  useEffect(() => { load(1); fetchDbrCodes().then(setCodes).catch(() => null) }, [])
+  const pages = Math.max(1, Math.ceil(total / 20))
+  const [upMsg, setUpMsg] = useState('')
+  const [upProg, setUpProg] = useState<{ done: number; total: number } | null>(null)
+  const up = async () => {
+    const el = document.getElementById('dbr-xlsx') as HTMLInputElement
+    const f = el.files?.[0]
+    if (!f) { setUpMsg('Pilih file DBR dulu.'); return }
+    setUpMsg('mengunggah...'); setUpProg(null)
+    try {
+      const r = await uploadDbr(f)
+      const poll = async () => {
+        for (;;) {
+          await new Promise((x) => setTimeout(x, 2000))
+          const s = await fetchImportStatus(r.import_id)
+          setUpProg({ done: s.processed_rows, total: s.total_rows })
+          if (s.status === 'COMMITTED') { setUpMsg(`Selesai: ok=${s.ok_rows} fail=${s.fail_rows}`); load(1); break }
+          if (s.status === 'FAILED') { setUpMsg('Gagal di server.'); break }
+        }
+      }
+      poll()
+    } catch (e) { setUpMsg(`gagal: ${String(e)}`) }
+  }
+  const pct = upProg && upProg.total ? Math.round((upProg.done / upProg.total) * 100) : 0
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <input type="date" className="rounded-lg border px-3 py-2" value={df} onChange={(e) => setDf(e.target.value)} />
+        <span>–</span>
+        <input type="date" className="rounded-lg border px-3 py-2" value={dt} onChange={(e) => setDt(e.target.value)} />
+        <input className="w-28 rounded-lg border px-3 py-2" value={cn} onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="C/N cth TL960" />
+        <select className="rounded-lg border px-3 py-2" value={code} onChange={(e) => setCode(e.target.value)}>
+          <option value="">Code: semua</option>
+          <option value="__EMPTY__">Code: (kosong)</option>
+          {codes.map((c) => (<option key={c} value={c}>{c}</option>))}
+        </select>
+        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => load(1)}>Tampilkan</button>
+        <span className="text-theme-sm text-gray-500">Total {total.toLocaleString('id-ID')}</span>
+        <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
+        <input type="file" accept=".xlsx" id="dbr-xlsx" className="text-theme-sm" />
+        <button className="rounded-lg border px-4 py-2" onClick={up}>Upload DBR</button>
+      </div>
+      {upMsg && <p className="text-theme-sm text-gray-600">{upMsg}</p>}
+      {upProg && upProg.total > 0 && (
+        <div>
+          <div className="h-3 w-full rounded-full bg-gray-200">
+            <div className="h-3 rounded-full bg-brand-500" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="mt-1 text-theme-sm text-gray-600">{upProg.done.toLocaleString('id-ID')}/{upProg.total.toLocaleString('id-ID')} ({pct}%)</p>
+        </div>
+      )}
+      {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
+      <div className="overflow-x-auto rounded-2xl border bg-white">
+        <table className="w-full border-collapse text-center text-theme-sm">
+          <thead className="bg-[#d6e4c9] font-semibold">
+            <tr>{DBR_COLS.map((c) => (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>))}</tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className="border-t">
+                {DBR_COLS.map((c) => (
+                  <td key={c.key} className="border px-2 py-2 whitespace-nowrap">
+                    {c.key === 'date' ? fmtD(r.date) : (r[c.key] ?? '')}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center gap-2 text-theme-sm">
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => load(page - 1)}>‹ Prev</button>
+        <span>Halaman {page} dari {pages}</span>
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= pages} onClick={() => load(page + 1)}>Next ›</button>
+      </div>
     </div>
   )
 }

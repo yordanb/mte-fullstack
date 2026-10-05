@@ -69,3 +69,29 @@ export async function fetchLatestImport(): Promise<ImportStatus | null> {
   const r = await api.get('/v1/imports/latest')
   return r.data?.id ? r.data : null
 }
+
+export type DbrRow = {
+  id: number; date: string; cn: string; section?: string | null
+  trouble?: string | null; code?: string | null; hm_start?: string | null
+  loc?: string | null; start_breakdown?: string | null; start_time?: string | null
+  finish_time?: string | null; total?: string | null; wo?: string | null
+  notification?: string | null; action?: string | null
+  mechanic?: string | null; gl?: string | null
+}
+
+export async function fetchDbr(params: Record<string, string | number | undefined>) {
+  const r = await api.get('/v1/dbr/records', { params })
+  return r.data as { total: number; page: number; page_size: number; data: DbrRow[] }
+}
+
+export async function fetchDbrCodes(): Promise<string[]> {
+  const r = await api.get('/v1/dbr/codes')
+  return r.data.data
+}
+
+export async function uploadDbr(file: File) {
+  const fd = new FormData()
+  fd.append('file', file)
+  const r = await api.post('/v1/dbr/imports', fd)
+  return r.data
+}
