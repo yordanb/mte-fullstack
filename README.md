@@ -26,7 +26,6 @@ File `~$*` (lock Excel) diabaikan git (lihat `.gitignore`).
 | **DBR Breakdown** | Tabel 16→11 kolom (Start/Finish/Total/WO/Notif disembunyikan), filter rentang tanggal (date-picker), C/N, dropdown Code (termasuk opsi baris kosong), pagination, checkbox *Sembunyikan CONTINUE* (sembunyikan baris carry-over). Format tanggal `12 Jul 26`. |
 | **Performance** | Dashboard frekuensi breakdown: filter tanggal + granularitas Harian/Mingguan/Bulanan + prefix + code + checkbox *Kecualikan CONTINUE* (default on — grafik menghitung **kejadian**, bukan hari downtime). Grafik batang-tumpuk 6 prefix teratas + garis total, 3 Pareto (Top 10 Trouble/Section/Code), 4 kartu ringkasan. |
 | **Equipment** | Master 330 unit: tabel Code Number, Unit Type, Product, Operasional (+kategori, model, lokasi, status, aktif), filter kategori/aktif, ikon mata (popup detail lengkap + serial komponen), Ubah via modal, + Tambah Unit. Baris nonaktif abu-abu. |
-| **Data Vessel** | Tampilan sama dengan Dashboard (pencarian per vessel). |
 | **Update Data** | Kartu gaya SAP Fiori: *Report Analisa Oli* (Dry-run + Commit + progress 2 tahap) dan *DBR Breakdown* (Upload + progress). |
 
 Perilaku sesi: **auto-logout setelah 30 menit tanpa aktivitas** (mouse/klik/ketik/sentuh)

@@ -7,7 +7,6 @@ const MENU = [
   { key: 'performance', label: 'Performance' },
   { key: 'activity', label: 'Activity' },
   { key: 'equipment', label: 'Equipment' },
-  { key: 'vessel', label: 'Data Vessel' },
   { key: 'import', label: 'Update Data' },
   { key: 'users', label: 'Users', admin: true },
   { key: 'audit', label: 'Audit Log', admin: true },

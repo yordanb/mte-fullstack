@@ -37,7 +37,7 @@ export default function App() {
   if (!me) return <p className="p-6 text-theme-sm text-gray-500">Memuat hak akses...</p>
   return (
     <Layout page={page} setPage={setPage} onLogout={logout}>
-      {(page === 'dashboard' || page === 'vessel') && <Dashboard />}
+      {page === 'dashboard' && <Dashboard />}
       {page === 'dbr' && <DbrPage />}
       {page === 'performance' && (
         <Suspense fallback={<p className="text-theme-sm text-gray-500">Memuat grafik...</p>}>
