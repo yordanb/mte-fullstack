@@ -109,6 +109,7 @@ export function ImportPage() {
   const [msg, setMsg] = useState('')
   const [fname, setFname] = useState('')
   const [prog, setProg] = useState<{ done: number; total: number } | null>(null)
+  const [dbrFname, setDbrFname] = useState('')
   const [upMsg, setUpMsg] = useState('')
   const [upProg, setUpProg] = useState<{ done: number; total: number } | null>(null)
   const poll = async (id: string) => {
@@ -135,7 +136,7 @@ export function ImportPage() {
     } catch (e) { setMsg(`gagal: ${String(e)}`) }
   }
   const up = async () => {
-    const el = document.getElementById('dbr-xlsx') as HTMLInputElement
+    const el = document.getElementById('dbr-xlsx-import') as HTMLInputElement
     const f = el.files?.[0]
     if (!f) { setUpMsg('Pilih file DBR dulu.'); return }
     setUpMsg('mengunggah...'); setUpProg(null)
@@ -159,12 +160,17 @@ export function ImportPage() {
     <div className="flex flex-col gap-4 rounded-2xl border bg-white p-5">
       <h2 className="font-semibold">Import Excel</h2>
       <input type="file" accept=".xlsx" id="xlsx" onChange={(e) => setFname(e.target.files?.[0]?.name ?? '')} />
-      <input accept=".xlsx" id="dbr-xlsx" className="hidden" onChange={(e) => setFname(e.target.files?.[0]?.name ?? '')} />
-      {fname ? <p className="text-theme-sm text-gray-600">File: {fname}</p> : <p className="text-theme-sm text-red-600">Belum ada file dipilih.</p>}
+      {fname ? <p className="text-theme-sm text-gray-600">File oli: {fname}</p> : <p className="text-theme-sm text-red-600">Belum ada file oli dipilih.</p>}
       <div className="flex gap-2">
         <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={!fname} onClick={() => send(true)}>Dry-run</button>
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={!fname} onClick={() => send(false)}>Commit</button>
-        <button className="rounded-lg border px-4 py-2" onClick={up}>Upload DBR</button>
+      </div>
+      <hr className="border-gray-200" />
+      <h3 className="font-semibold">Upload DBR</h3>
+      <input type="file" accept=".xlsx" id="dbr-xlsx-import" onChange={(e) => setDbrFname(e.target.files?.[0]?.name ?? '')} />
+      {dbrFname ? <p className="text-theme-sm text-gray-600">File DBR: {dbrFname}</p> : <p className="text-theme-sm text-gray-500">Belum ada file DBR dipilih.</p>}
+      <div className="flex gap-2">
+        <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={!dbrFname} onClick={up}>Upload DBR</button>
       </div>
       {prog && (
         prog.total === 0 ? (
@@ -197,8 +203,6 @@ export function ImportPage() {
   )
 }
 
-const [showAction, setShowAction] = useState(true)
-
 const DBR_COLS: { key: keyof DbrRow; label: string }[] = [
   { key: 'date', label: 'DATE' }, { key: 'cn', label: 'C/N' },
   { key: 'section', label: 'SECTION' }, { key: 'trouble', label: 'Trouble' },
@@ -220,6 +224,8 @@ export function DbrPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [msg, setMsg] = useState('')
+  const [hideAction, setHideAction] = useState(false)
+  const visibleCols = hideAction ? DBR_COLS.filter((c) => c.key !== 'action') : DBR_COLS
   const fmtD = (v?: string | null) => {
     if (!v) return ''
     const d = new Date(v)
@@ -237,28 +243,6 @@ export function DbrPage() {
   }
   useEffect(() => { load(1); fetchDbrCodes().then(setCodes).catch(() => null) }, [])
   const pages = Math.max(1, Math.ceil(total / 20))
-  const [upMsg, setUpMsg] = useState('')
-  const [upProg, setUpProg] = useState<{ done: number; total: number } | null>(null)
-  const up = async () => {
-    const el = document.getElementById('dbr-xlsx') as HTMLInputElement
-    const f = el.files?.[0]
-    if (!f) { setUpMsg('Pilih file DBR dulu.'); return }
-    setUpMsg('mengunggah...'); setUpProg(null)
-    try {
-      const r = await uploadDbr(f)
-      const poll = async () => {
-        for (;;) {
-          await new Promise((x) => setTimeout(x, 2000))
-          const s = await fetchImportStatus(r.import_id)
-          setUpProg({ done: s.processed_rows, total: s.total_rows })
-          if (s.status === 'COMMITTED') { setUpMsg(`Selesai: ok=${s.ok_rows} fail=${s.fail_rows}`); break }
-          if (s.status === 'FAILED') { setUpMsg('Gagal di server.'); break }
-        }
-      }
-      poll()
-    } catch (e) { setUpMsg(`gagal: ${String(e)}`) }
-  }
-  const pct = upProg && upProg.total ? Math.round((upProg.done / upProg.total) * 100) : 0
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -273,39 +257,23 @@ export function DbrPage() {
         </select>
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => load(1)}>Tampilkan</button>
         <span className="text-theme-sm text-gray-500">Total {total.toLocaleString('id-ID')}</span>
-        <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
-        <input type="checkbox" id="action-toggle" checked={showAction} onChange={(e) => setShowAction(e.target.checked)} className="rounded bg-white cursor-pointer" />
-        <label htmlFor="action-toggle" className="text-theme-sm cursor-pointer underline">Sembunyikan Action</label>
-        <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
-        <input type="file" accept=".xlsx" id="dbr-xlsx" className="text-theme-sm" />
-        <button className="rounded-lg border px-4 py-2" onClick={up}>Upload DBR</button>
+        <label className="flex cursor-pointer items-center gap-1 rounded-lg border bg-white px-3 py-2">
+          <input type="checkbox" checked={hideAction} onChange={(e) => setHideAction(e.target.checked)} />
+          Sembunyikan Action
+        </label>
       </div>
-      {upMsg && <p className="text-theme-sm text-gray-600">{upMsg}</p>}
-      {upProg && upProg.total > 0 && (
-        <div>
-          <div className="h-3 w-full rounded-full bg-gray-200">
-            <div className="h-3 rounded-full bg-brand-500" style={{ width: `${pct}%` }} />
-          </div>
-          <p className="mt-1 text-theme-sm text-gray-600">{upProg.done.toLocaleString('id-ID')}/{upProg.total.toLocaleString('id-ID')} ({pct}%)</p>
-        </div>
-      )}
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
       <div className="overflow-x-auto rounded-2xl border bg-white">
         <table className="w-full border-collapse text-center text-theme-sm">
           <thead className="bg-[#d6e4c9] font-semibold">
-            <tr>
-          {DBR_COLS.map((c) => {
-            if (c.key === 'action') return showAction ? (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>) : null
-            return (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>)
-          })}
-        </tr>
+            <tr>{visibleCols.map((c) => (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>))}</tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id} className="border-t">
-                {DBR_COLS.map((c) => (
+                {visibleCols.map((c) => (
                   <td key={c.key} className="border px-2 py-2 whitespace-nowrap">
-                    {c.key === 'date' ? fmtD(r.date) : (c.key === 'action' ? (showAction ? r.action ?? '' : '') : (r[c.key] ?? ''))}
+                    {c.key === 'date' ? fmtD(r.date) : (r[c.key] ?? '')}
                   </td>
                 ))}
               </tr>
