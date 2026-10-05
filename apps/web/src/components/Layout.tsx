@@ -2,10 +2,9 @@ import { useState, type ReactNode } from 'react'
 
 const MENU = [
   { key: 'dashboard', label: 'Dashboard' },
-  { key: 'vessel', label: 'Data Vessel' },
-  { key: 'fleet', label: 'Fleet Alert' },
   { key: 'dbr', label: 'DBR Breakdown' },
-  { key: 'import', label: 'Import Excel' },
+  { key: 'vessel', label: 'Data Vessel' },
+  { key: 'import', label: 'Update Data' },
 ]
 
 export default function Layout({ page, setPage, onLogout, children }: {
