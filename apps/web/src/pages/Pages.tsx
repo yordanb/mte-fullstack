@@ -109,6 +109,8 @@ export function ImportPage() {
   const [msg, setMsg] = useState('')
   const [fname, setFname] = useState('')
   const [prog, setProg] = useState<{ done: number; total: number } | null>(null)
+  const [upMsg, setUpMsg] = useState('')
+  const [upProg, setUpProg] = useState<{ done: number; total: number } | null>(null)
   const poll = async (id: string) => {
     for (;;) {
       await new Promise((r) => setTimeout(r, 2000))
@@ -132,15 +134,37 @@ export function ImportPage() {
       poll(r.import_id)
     } catch (e) { setMsg(`gagal: ${String(e)}`) }
   }
+  const up = async () => {
+    const el = document.getElementById('dbr-xlsx') as HTMLInputElement
+    const f = el.files?.[0]
+    if (!f) { setUpMsg('Pilih file DBR dulu.'); return }
+    setUpMsg('mengunggah...'); setUpProg(null)
+    try {
+      const r = await uploadDbr(f)
+      const poll = async () => {
+        for (;;) {
+          await new Promise((x) => setTimeout(x, 2000))
+          const s = await fetchImportStatus(r.import_id)
+          setUpProg({ done: s.processed_rows, total: s.total_rows })
+          if (s.status === 'COMMITTED') { setUpMsg(`Selesai: ok=${s.ok_rows} fail=${s.fail_rows}`); break }
+          if (s.status === 'FAILED') { setUpMsg('Gagal di server.'); break }
+        }
+      }
+      poll()
+    } catch (e) { setUpMsg(`gagal: ${String(e)}`) }
+  }
   const pct = prog && prog.total ? Math.round((prog.done / prog.total) * 100) : 0
+  const upPct = upProg && upProg.total ? Math.round((upProg.done / upProg.total) * 100) : 0
   return (
     <div className="flex flex-col gap-4 rounded-2xl border bg-white p-5">
       <h2 className="font-semibold">Import Excel</h2>
       <input type="file" accept=".xlsx" id="xlsx" onChange={(e) => setFname(e.target.files?.[0]?.name ?? '')} />
+      <input accept=".xlsx" id="dbr-xlsx" className="hidden" onChange={(e) => setFname(e.target.files?.[0]?.name ?? '')} />
       {fname ? <p className="text-theme-sm text-gray-600">File: {fname}</p> : <p className="text-theme-sm text-red-600">Belum ada file dipilih.</p>}
       <div className="flex gap-2">
         <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={!fname} onClick={() => send(true)}>Dry-run</button>
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={!fname} onClick={() => send(false)}>Commit</button>
+        <button className="rounded-lg border px-4 py-2" onClick={up}>Upload DBR</button>
       </div>
       {prog && (
         prog.total === 0 ? (
@@ -160,6 +184,15 @@ export function ImportPage() {
         )
       )}
       <p>{msg}</p>
+      {upMsg && <p className="text-theme-sm text-gray-600">{upMsg}</p>}
+      {upProg && upProg.total > 0 && (
+        <div>
+          <div className="h-3 w-full rounded-full bg-gray-200">
+            <div className="h-3 rounded-full bg-brand-500" style={{ width: `${upPct}%` }} />
+          </div>
+          <p className="mt-1 text-theme-sm text-gray-600">{upProg.done.toLocaleString('id-ID')}/{upProg.total.toLocaleString('id-ID')} ({upPct}%)</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -185,16 +218,12 @@ export function DbrPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [msg, setMsg] = useState('')
-  const setRange = (days: number) => {
-    setDt(new Date().toISOString().slice(0, 10))
-    setDf(new Date(Date.now() - days * 864e5).toISOString().slice(0, 10))
-  }
   const fmtD = (v?: string | null) => {
     if (!v) return ''
     const d = new Date(v)
     if (isNaN(d.getTime())) return String(v)
-    const p = (n: number) => String(n).padStart(2, '0')
-    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
+    const month = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'][d.getMonth()]
+    return `${d.getDate()} ${month} ${d.getFullYear() % 100}`
   }
   const load = async (p = 1) => {
     try {
@@ -220,7 +249,7 @@ export function DbrPage() {
           await new Promise((x) => setTimeout(x, 2000))
           const s = await fetchImportStatus(r.import_id)
           setUpProg({ done: s.processed_rows, total: s.total_rows })
-          if (s.status === 'COMMITTED') { setUpMsg(`Selesai: ok=${s.ok_rows} fail=${s.fail_rows}`); load(1); break }
+          if (s.status === 'COMMITTED') { setUpMsg(`Selesai: ok=${s.ok_rows} fail=${s.fail_rows}`); break }
           if (s.status === 'FAILED') { setUpMsg('Gagal di server.'); break }
         }
       }
@@ -234,9 +263,6 @@ export function DbrPage() {
         <input type="date" className="rounded-lg border px-3 py-2" value={df} max={dt} onChange={(e) => setDf(e.target.value)} />
         <span>–</span>
         <input type="date" className="rounded-lg border px-3 py-2" value={dt} min={df} onChange={(e) => setDt(e.target.value)} />
-        {[7, 30, 90].map((n) => (
-          <button key={n} className="rounded-lg border px-3 py-2" onClick={() => setRange(n)}>{n} hari</button>
-        ))}
         <input className="w-28 rounded-lg border px-3 py-2" value={cn} onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="C/N cth TL960" />
         <select className="rounded-lg border px-3 py-2" value={code} onChange={(e) => setCode(e.target.value)}>
           <option value="">Code: semua</option>
