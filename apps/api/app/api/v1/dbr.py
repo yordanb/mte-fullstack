@@ -195,5 +195,6 @@ async def stats(
             "top_trouble": await top("trouble", True),
             "top_section": await top("section", True),
             "top_code": await top("code", True),
+            "top_cn": await top("cn", True),
             "summary": dict(summ) if summ else {}}
 

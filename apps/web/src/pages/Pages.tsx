@@ -668,10 +668,11 @@ export function PerformancePage() {
           </ResponsiveContainer>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {pareto('Top 10 Trouble', st?.top_trouble)}
         {pareto('Top 10 Section', st?.top_section)}
         {pareto('Top 10 Code', st?.top_code)}
+        {pareto('Top 10 Code Number', st?.top_cn)}
       </div>
     </div>
   )

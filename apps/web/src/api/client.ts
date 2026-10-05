@@ -108,6 +108,7 @@ export type DbrStats = {
   top_trouble: { k: string; v: number }[]
   top_section: { k: string; v: number }[]
   top_code: { k: string; v: number }[]
+  top_cn: { k: string; v: number }[]
   summary: { total: number; units: number; days: number; empty_code: number }
 }
 
