@@ -8,6 +8,18 @@ api.interceptors.request.use((c) => {
   return c
 })
 
+api.interceptors.response.use(
+  (r) => r,
+  (e) => {
+    // Token kedaluwarsa/ditolak -> paksa kembali ke halaman login.
+    if (e?.response?.status === 401 && localStorage.getItem('mte_token')) {
+      localStorage.clear()
+      window.dispatchEvent(new Event('mte:unauthorized'))
+    }
+    return Promise.reject(e)
+  },
+)
+
 export type LabRow = {
   lab_no: string; vesselid: string; unit_id: string; model: string
   sample_date: string; date_taken?: string; lead_time?: number | null
