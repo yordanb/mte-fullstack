@@ -276,8 +276,12 @@ export async function fetchActivity(id: string) {
   return r.data as Activity
 }
 
-export async function createActivity(fd: FormData) {
-  const r = await api.post('/v1/activities', fd)
+export async function createActivity(fd: FormData, onProgress?: (pct: number) => void) {
+  const r = await api.post('/v1/activities', fd, {
+    onUploadProgress: (e) => {
+      if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
+    },
+  })
   return r.data
 }
 

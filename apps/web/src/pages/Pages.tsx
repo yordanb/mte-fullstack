@@ -776,25 +776,31 @@ function ActForm({ date, initial, onClose, onSaved }: {
   const [cn, setCn] = useState(initial?.cn ?? '')
   const [desc, setDesc] = useState(initial?.description ?? '')
   const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [pct, setPct] = useState(0)
   const inp = 'w-full rounded-lg border px-3 py-2'
   const save = async () => {
+    if (busy) return
     try {
       setMsg('')
+      if (!title.trim()) { setMsg('Judul wajib diisi.'); return }
       if (!crew.trim()) { setMsg('Crew wajib diisi.'); return }
+      setBusy(true); setPct(0)
       if (initial) {
         await patchActivity(initial.id, { date: d, title, category: category || null, crew: crew.trim(), cn: cn || null, description: desc || null })
       } else {
         const el = document.getElementById('act-files') as HTMLInputElement
+        const files = Array.from(el.files ?? [])
         const fd = new FormData()
         fd.append('date', d); fd.append('title', title); fd.append('crew', crew.trim())
         if (category) fd.append('category', category)
         if (cn) fd.append('cn', cn.toUpperCase())
         if (desc) fd.append('description', desc)
-        Array.from(el.files ?? []).forEach((f) => fd.append('files', f))
-        await createActivity(fd)
+        files.forEach((f) => fd.append('files', f))
+        await createActivity(fd, (p) => setPct(p))
       }
       onSaved()
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${String(e)}`); setBusy(false) }
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -820,9 +826,19 @@ function ActForm({ date, initial, onClose, onSaved }: {
           )}
         </div>
         {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
+        {busy && (
+          <div className="mt-2">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200">
+              <div className="h-2 rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="mt-1 text-theme-sm text-gray-600">Mengunggah... {pct}% — jangan tutup halaman.</p>
+          </div>
+        )}
         <div className="mt-4 flex justify-end gap-2">
-          <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
-          <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={save}>Simpan</button>
+          <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={busy} onClick={onClose}>Batal</button>
+          <button className="rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40" disabled={busy} onClick={save}>
+            {busy ? 'Menyimpan...' : 'Simpan'}
+          </button>
         </div>
       </div>
     </div>
