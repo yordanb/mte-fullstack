@@ -675,7 +675,7 @@ export function ActivityPage() {
       <div className="overflow-x-auto rounded-2xl border bg-white">
         <table className="w-full border-collapse text-center text-theme-sm">
           <thead className="bg-[#d6e4c9] font-semibold">
-            <tr>{['Tanggal', 'Judul', 'Crew', 'Kategori', 'CN', 'Foto'].map((h) => (
+            <tr>{['Tanggal', 'Judul', 'Crew', 'Kategori', 'CN', 'HM', 'Foto'].map((h) => (
               <th key={h} className="border px-2 py-2 whitespace-nowrap">{h}</th>
             ))}</tr>
           </thead>
@@ -687,6 +687,7 @@ export function ActivityPage() {
                 <td className="border px-2 py-2 whitespace-nowrap">{a.crew ?? '-'}</td>
                 <td className="border px-2 py-2 whitespace-nowrap">{a.category ?? '-'}</td>
                 <td className="border px-2 py-2 whitespace-nowrap">{a.cn ?? '-'}</td>
+                <td className="border px-2 py-2 whitespace-nowrap">{a.hm ?? '-'}</td>
                 <td className="border px-2 py-2 whitespace-nowrap">{a.photos_count ?? 0}</td>
               </tr>
             ))}
@@ -735,7 +736,7 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
           <button className="rounded-lg border px-3 py-1" onClick={onClose}>Tutup</button>
         </div>
         <p className="mt-1 text-theme-sm text-gray-500">
-          {[row.date.split('-').reverse().join('/'), row.crew, row.category, row.cn, row.created_by ? `oleh ${row.created_by}` : ''].filter(Boolean).join(' • ')}
+          {[row.date.split('-').reverse().join('/'), row.crew, row.category, row.cn, row.hm != null ? `HM ${row.hm}` : '', row.created_by ? `oleh ${row.created_by}` : ''].filter(Boolean).join(' • ')}
         </p>
         {row.description && <p className="mt-3 whitespace-pre-wrap text-theme-sm">{row.description}</p>}
         {(row.photos ?? []).length > 0 && (
@@ -773,6 +774,7 @@ function ActForm({ date, initial, onClose, onSaved }: {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [category, setCategory] = useState(initial?.category ?? '')
   const [crew, setCrew] = useState(initial?.crew ?? '')
+  const [hm, setHm] = useState(initial?.hm != null ? String(initial.hm) : '')
   const [cn, setCn] = useState(initial?.cn ?? '')
   const [desc, setDesc] = useState(initial?.description ?? '')
   const [msg, setMsg] = useState('')
@@ -787,7 +789,7 @@ function ActForm({ date, initial, onClose, onSaved }: {
       if (!crew.trim()) { setMsg('Crew wajib diisi.'); return }
       setBusy(true); setPct(0)
       if (initial) {
-        await patchActivity(initial.id, { date: d, title, category: category || null, crew: crew.trim(), cn: cn || null, description: desc || null })
+        await patchActivity(initial.id, { date: d, title, category: category || null, crew: crew.trim(), cn: cn || null, hm: hm.trim() || null, description: desc || null })
       } else {
         const el = document.getElementById('act-files') as HTMLInputElement
         const files = Array.from(el.files ?? [])
@@ -795,6 +797,7 @@ function ActForm({ date, initial, onClose, onSaved }: {
         fd.append('date', d); fd.append('title', title); fd.append('crew', crew.trim())
         if (category) fd.append('category', category)
         if (cn) fd.append('cn', cn.toUpperCase())
+        if (hm.trim()) fd.append('hm', hm.trim())
         if (desc) fd.append('description', desc)
         files.forEach((f) => fd.append('files', f))
         await createActivity(fd, (p) => setPct(p))
@@ -809,16 +812,19 @@ function ActForm({ date, initial, onClose, onSaved }: {
         <div className="mt-3 flex flex-col gap-2">
           <label className="text-theme-sm">Tanggal<input type="date" className={inp} value={d} onChange={(e) => setD(e.target.value)} /></label>
           <label className="text-theme-sm">Judul<input className={inp} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="cth Perbaikan pompa WP855" /></label>
-          <label className="text-theme-sm">Crew (wajib)
-            <input className={inp} list="act-crew-form" value={crew} onChange={(e) => setCrew(e.target.value)} placeholder="pilih / ketik manual" />
-          </label>
-          <datalist id="act-crew-form">{ACT_CREWS.map((c) => (<option key={c} value={c} />))}</datalist>
-          <datalist id="act-cat-form">{ACT_CATS.map((c) => (<option key={c} value={c} />))}</datalist>
           <div className="grid grid-cols-2 gap-2">
+            <label className="text-theme-sm">Crew (wajib)
+              <input className={inp} list="act-crew-form" value={crew} onChange={(e) => setCrew(e.target.value)} placeholder="pilih / ketik manual" />
+            </label>
             <label className="text-theme-sm">Kategori
               <input className={inp} list="act-cat-form" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="pilih / ketik manual" />
             </label>
+          </div>
+          <datalist id="act-crew-form">{ACT_CREWS.map((c) => (<option key={c} value={c} />))}</datalist>
+          <datalist id="act-cat-form">{ACT_CATS.map((c) => (<option key={c} value={c} />))}</datalist>
+          <div className="grid grid-cols-2 gap-2">
             <label className="text-theme-sm">Unit / CN<input className={inp} value={cn} onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="cth WP855" /></label>
+            <label className="text-theme-sm">Hourmeter<input type="number" min="0" step="any" className={inp} value={hm} onChange={(e) => setHm(e.target.value)} placeholder="cth 12500" /></label>
           </div>
           <label className="text-theme-sm">Keterangan<textarea className={inp} rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} /></label>
           {!initial && (

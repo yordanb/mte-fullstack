@@ -251,7 +251,7 @@ export async function patchEquipment(cn: string, body: Partial<Equipment>) {
 
 export type Activity = {
   id: string; date: string; title: string; description?: string | null
-  category?: string | null; crew?: string | null; cn?: string | null; created_by?: string | null
+  category?: string | null; crew?: string | null; cn?: string | null; hm?: number | null; created_by?: string | null
   created_at?: string; photos?: { id: string; orig_name?: string | null }[]
   photos_count?: number; cover_id?: string | null
 }

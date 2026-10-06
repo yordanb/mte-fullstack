@@ -93,6 +93,7 @@ async def create(date: datetime.date = Form(...),
                  category: str | None = Form(None),
                  crew: str | None = Form(None),
                  cn: str | None = Form(None),
+                 hm: float | None = Form(None),
                  files: list[UploadFile] = File(default=[]),
                  db: AsyncSession = Depends(get_db),
                  user=Depends(get_current_user)):
@@ -108,10 +109,10 @@ async def create(date: datetime.date = Form(...),
         if not ok:
             raise HTTPException(400, f"CN {cn} tidak ada di master equipment")
     res = await db.execute(text(
-        "INSERT INTO activities(date,title,description,category,crew,cn,created_by) "
-        "VALUES (:d,:t,:desc,:cat,:cw,:cn,:u) RETURNING id"),
+        "INSERT INTO activities(date,title,description,category,crew,cn,hm,created_by) "
+        "VALUES (:d,:t,:desc,:cat,:cw,:cn,:hm,:u) RETURNING id"),
         {"d": date, "t": title, "desc": description, "cat": (category or "").strip() or None,
-         "cw": crew, "cn": cn, "u": user["username"]})
+         "cw": crew, "cn": cn, "hm": hm, "u": user["username"]})
     aid = str(res.scalar_one())
     adir = _dir() / aid
     adir.mkdir(parents=True, exist_ok=True)
@@ -141,7 +142,7 @@ async def create(date: datetime.date = Form(...),
 @router.patch("/{aid}", dependencies=[Depends(require_role("inputer", "admin"))])
 async def update(aid: str, body: dict, db: AsyncSession = Depends(get_db),
                  user=Depends(get_current_user)):
-    allowed = ("date", "title", "description", "category", "crew", "cn")
+    allowed = ("date", "title", "description", "category", "crew", "cn", "hm")
     sets, params = [], {"i": aid}
     for k in allowed:
         if k in body:
@@ -159,6 +160,14 @@ async def update(aid: str, body: dict, db: AsyncSession = Depends(get_db),
                     params[k] = datetime.date.fromisoformat(str(body[k])[:10])
                 except (ValueError, TypeError):
                     raise HTTPException(400, "format tanggal salah (YYYY-MM-DD)")
+            elif k == "hm":
+                if body[k] is None or (isinstance(body[k], str) and body[k].strip() == ""):
+                    params[k] = None
+                else:
+                    try:
+                        params[k] = float(body[k])
+                    except (ValueError, TypeError):
+                        raise HTTPException(400, "format hourmeter salah")
             else:
                 params[k] = body[k]
             sets.append(f"{k}=:{k}")
