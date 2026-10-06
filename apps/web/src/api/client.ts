@@ -300,6 +300,17 @@ export async function deleteActivityPhoto(aid: string, pid: string) {
   return r.data
 }
 
+export async function addActivityPhotos(aid: string, files: File[], onProgress?: (pct: number) => void) {
+  const fd = new FormData()
+  files.forEach((f) => fd.append('files', f))
+  const r = await api.post(`/v1/activities/${aid}/photos`, fd, {
+    onUploadProgress: (e) => {
+      if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
+    },
+  })
+  return r.data
+}
+
 export function activityPhotoUrl(aid: string, pid: string) {
   return `/api/v1/activities/${aid}/photos/${pid}?token=${localStorage.getItem('mte_token') ?? ''}`
 }

@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -790,6 +790,9 @@ function ActForm({ date, initial, onClose, onSaved }: {
       setBusy(true); setPct(0)
       if (initial) {
         await patchActivity(initial.id, { date: d, title, category: category || null, crew: crew.trim(), cn: cn || null, hm: hm.trim() || null, description: desc || null })
+        const el = document.getElementById('act-files-edit') as HTMLInputElement | null
+        const extra = Array.from(el?.files ?? [])
+        if (extra.length > 0) await addActivityPhotos(initial.id, extra, (p) => setPct(p))
       } else {
         const el = document.getElementById('act-files') as HTMLInputElement
         const files = Array.from(el.files ?? [])
@@ -827,9 +830,11 @@ function ActForm({ date, initial, onClose, onSaved }: {
             <label className="text-theme-sm">Hourmeter<input type="number" min="0" step="any" className={inp} value={hm} onChange={(e) => setHm(e.target.value)} placeholder="cth 12500" /></label>
           </div>
           <label className="text-theme-sm">Keterangan<textarea className={inp} rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} /></label>
-          {!initial && (
+          {!initial ? (
             <label className="text-theme-sm">Foto (boleh banyak)<input type="file" id="act-files" accept="image/*" multiple className={inp} /></label>
-          )}
+          ) : localStorage.getItem('mte_role') === 'admin' ? (
+            <label className="text-theme-sm">Tambah foto (admin, boleh banyak)<input type="file" id="act-files-edit" accept="image/*" multiple className={inp} /></label>
+          ) : null}
         </div>
         {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
         {busy && (

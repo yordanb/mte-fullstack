@@ -1,5 +1,4 @@
 import datetime
-import uuid
 from pathlib import Path
 from fastapi import APIRouter, Depends, Request, UploadFile, File, Form, Query, HTTPException
 from fastapi.responses import FileResponse
@@ -114,13 +113,22 @@ async def create(date: datetime.date = Form(...),
         {"d": date, "t": title, "desc": description, "cat": (category or "").strip() or None,
          "cw": crew, "cn": cn, "hm": hm, "u": user["username"]})
     aid = str(res.scalar_one())
+    await _save_files(db, aid, files)
+    await db.commit()
+    return {"id": aid}
+
+
+async def _save_files(db, aid: str, files: list[UploadFile]) -> int:
+    """Simpan file ke volume + catat DB. Dipakai create & tambah-foto."""
+    import uuid as _uuid
     adir = _dir() / aid
     adir.mkdir(parents=True, exist_ok=True)
+    n = 0
     for f in files:
         if not f.filename:
             continue
         ext = Path(f.filename).suffix[:10]
-        stored = f"{uuid.uuid4().hex}{ext}"
+        stored = f"{_uuid.uuid4().hex}{ext}"
         dest = adir / stored
         size = 0
         with dest.open("wb") as out:
@@ -135,8 +143,24 @@ async def create(date: datetime.date = Form(...),
             "VALUES (:a,:fn,:on,:ct,:s)"),
             {"a": aid, "fn": stored, "on": f.filename[:200],
              "ct": f.content_type, "s": size})
+        n += 1
+    return n
+
+
+@router.post("/{aid}/photos", dependencies=[Depends(require_role("admin"))], status_code=201)
+async def add_photos(aid: str, files: list[UploadFile] = File(...),
+                     db: AsyncSession = Depends(get_db),
+                     user=Depends(get_current_user)):
+    """Tambah foto ke aktivitas yang sudah ada. Khusus admin."""
+    ok = (await db.execute(text("SELECT 1 FROM activities WHERE id=:i"),
+                           {"i": aid})).scalar()
+    if not ok:
+        raise HTTPException(404, "aktivitas tidak ditemukan")
+    n = await _save_files(db, aid, files)
+    if n == 0:
+        raise HTTPException(400, "tidak ada file diterima")
     await db.commit()
-    return {"id": aid}
+    return {"added": n}
 
 
 @router.patch("/{aid}", dependencies=[Depends(require_role("inputer", "admin"))])
