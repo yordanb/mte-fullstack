@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import ReactApexChart from 'react-apexcharts'
-import { fetchDbrStats, fetchDbrCodes, type DbrStats } from '../api/client'
+import { fetchDbrStats, fetchDbrCodes, todayLocal, type DbrStats } from '../api/client'
 
 const PERF_COLORS = ['#465fff', '#9cb878', '#e6a23c', '#e26d5c', '#7b7fd4', '#4fb0c6', '#8a8a8a']
 const PERF_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
 
 export default function PerformancePage() {
-  const d1 = new Date().toISOString().slice(0, 10)
-  const d0 = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10)
+  const d1 = todayLocal()
+  const d0 = todayLocal(90)
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
   useEffect(() => {
     const f = () => setDark(document.documentElement.classList.contains('dark'))

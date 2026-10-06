@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { fetchAudit, type AuditRow } from '../api/client'
+import { fetchAudit, todayLocal, type AuditRow } from '../api/client'
 
 export default function AuditPage() {
-  const d1 = new Date().toISOString().slice(0, 10)
-  const d0 = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10)
+  const d1 = todayLocal()
+  const d0 = todayLocal(7)
   const [df, setDf] = useState(d0)
   const [dt, setDt] = useState(d1)
   const [uname, setUname] = useState('')

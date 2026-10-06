@@ -2,6 +2,14 @@ import axios from 'axios'
 
 export const api = axios.create({ baseURL: '/api' })
 
+/** Tanggal lokal (YYYY-MM-DD) — JANGAN pakai toISOString (UTC, bisa beda hari). */
+export function todayLocal(daysAgo = 0) {
+  const d = new Date()
+  d.setDate(d.getDate() - daysAgo)
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
+
 api.interceptors.request.use((c) => {
   const t = localStorage.getItem('mte_token')
   if (t) c.headers.Authorization = `Bearer ${t}`

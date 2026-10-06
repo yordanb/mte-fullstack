@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, fetchActivityMonth, fetchActivitiesByDate, fetchActivity, createActivity, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, fetchActivityMonth, fetchActivitiesByDate, fetchActivity, createActivity, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -254,8 +254,8 @@ const DBR_COLS: { key: keyof DbrRow; label: string }[] = [
 ]
 
 export function DbrPage() {
-  const d0 = new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10)
-  const d1 = new Date().toISOString().slice(0, 10)
+  const d0 = todayLocal(30)
+  const d1 = todayLocal()
   const [df, setDf] = useState(d0)
   const [dt, setDt] = useState(d1)
   const [cn, setCn] = useState('')
@@ -550,7 +550,7 @@ export function ActivityPage() {
   const now = new Date()
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() + 1 })
   const [counts, setCounts] = useState<Record<string, number>>({})
-  const [sel, setSel] = useState(now.toISOString().slice(0, 10))
+  const [sel, setSel] = useState(todayLocal())
   const [items, setItems] = useState<Activity[]>([])
   const [detail, setDetail] = useState<Activity | null>(null)
   const [form, setForm] = useState<{ initial: Activity | null } | null>(null)
@@ -587,7 +587,7 @@ export function ActivityPage() {
     const nd = new Date(ym.y, ym.m, k)
     cells.push({ d: iso(nd.getFullYear(), nd.getMonth() + 1, nd.getDate()), n: nd.getDate(), inMonth: false, y: nd.getFullYear(), m: nd.getMonth() + 1 })
   }
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayLocal()
   const openDetail = async (id: string) => {
     try { setDetail(await fetchActivity(id)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
   }
