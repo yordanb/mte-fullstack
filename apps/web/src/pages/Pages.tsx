@@ -65,22 +65,22 @@ export function Dashboard() {
       {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-theme-sm text-red-700">{err}</p>}
       {lastUp && (
         <p className="text-theme-sm text-gray-500">
-          Last update: {lastUp.filename} â€¢ {fmtDT(lastUp.created_at)} â€¢ {lastUp.status} â€¢ ok {lastUp.ok_rows}/{lastUp.total_rows}
+          Last update: {lastUp.filename} • {fmtDT(lastUp.created_at)} • {lastUp.status} • ok {lastUp.ok_rows}/{lastUp.total_rows}
           {lastUp.uploaded_by ? ` oleh ${lastUp.uploaded_by}` : ''}
         </p>
       )}
       <VesselTable rows={slice} />
       <div className="flex flex-wrap items-center gap-2 text-theme-sm">
-        <span className="text-gray-500">Menampilkan {from}â€“{to} dari {rows.length}</span>
+        <span className="text-gray-500">Menampilkan {from}–{to} dari {rows.length}</span>
         <span className="mx-1 hidden h-5 w-px bg-gray-200 sm:block" />
         <label className="flex items-center gap-1">Per halaman:
           <select className="rounded-lg border px-2 py-1" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}>
             {[10, 20, 50].map((n) => (<option key={n} value={n}>{n}</option>))}
           </select>
         </label>
-        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={cur <= 1} onClick={() => setPage(cur - 1)}>â€¹ Prev</button>
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={cur <= 1} onClick={() => setPage(cur - 1)}>‹ Prev</button>
         <span>Halaman {cur} dari {totalPages}</span>
-        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={cur >= totalPages} onClick={() => setPage(cur + 1)}>Next â€º</button>
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={cur >= totalPages} onClick={() => setPage(cur + 1)}>Next ›</button>
       </div>
     </div>
   )
@@ -99,7 +99,7 @@ export function FleetPage() {
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={load}>Tampilkan</button>
       </div>
       <ul className="rounded-2xl border bg-white p-5">
-        {rows.map((r) => (<li key={`${r.vesselid}-${r.unit_id}`}>{r.vesselid} / {r.unit_id} â€” {r.condition} ({r.sample_date})</li>))}
+        {rows.map((r) => (<li key={`${r.vesselid}-${r.unit_id}`}>{r.vesselid} / {r.unit_id} — {r.condition} ({r.sample_date})</li>))}
       </ul>
     </div>
   )
@@ -288,7 +288,7 @@ export function DbrPage() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
         <input type="date" className="rounded-lg border px-3 py-2" value={df} max={dt} onChange={(e) => setDf(e.target.value)} />
-        <span>â€“</span>
+        <span>–</span>
         <input type="date" className="rounded-lg border px-3 py-2" value={dt} min={df} onChange={(e) => setDt(e.target.value)} />
         <input className="w-28 rounded-lg border px-3 py-2" value={cn} onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="C/N cth TL960" />
         <select className="rounded-lg border px-3 py-2" value={code} onChange={(e) => setCode(e.target.value)}>
@@ -323,9 +323,9 @@ export function DbrPage() {
         </table>
       </div>
       <div className="flex items-center gap-2 text-theme-sm">
-        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => load(page - 1)}>â€¹ Prev</button>
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => load(page - 1)}>‹ Prev</button>
         <span>Halaman {page} dari {pages}</span>
-        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= pages} onClick={() => load(page + 1)}>Next â€º</button>
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= pages} onClick={() => load(page + 1)}>Next ›</button>
       </div>
     </div>
   )
@@ -429,9 +429,9 @@ export function EquipmentPage() {
         </table>
       </div>
       <div className="flex items-center gap-2 text-theme-sm">
-        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => load(page - 1)}>â€¹ Prev</button>
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => load(page - 1)}>‹ Prev</button>
         <span>Halaman {page} dari {pages}</span>
-        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= pages} onClick={() => load(page + 1)}>Next â€º</button>
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= pages} onClick={() => load(page + 1)}>Next ›</button>
       </div>
       {(edit || adding) && (
         <EqForm
