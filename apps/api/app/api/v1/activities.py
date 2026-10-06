@@ -21,14 +21,40 @@ def _dir() -> Path:
 @router.get("/month")
 async def month_counts(year: int = Query(..., ge=2000, le=2100),
                        month: int = Query(..., ge=1, le=12),
+                       crew: str | None = None,
+                       category: str | None = None,
                        db: AsyncSession = Depends(get_db),
                        user=Depends(get_current_user)):
     """Jumlah aktivitas per tanggal dalam sebulan (untuk dot kalender)."""
+    conds, p = ["date_trunc('month', date) = make_date(:y, :m, 1)"], {"y": year, "m": month}
+    if crew:
+        conds.append("crew ILIKE :cw"); p["cw"] = f"%{crew}%"
+    if category:
+        conds.append("category ILIKE :ct"); p["ct"] = f"%{category}%"
     rows = (await db.execute(text(
-        "SELECT date::text AS d, count(*) AS n FROM activities "
-        "WHERE date_trunc('month', date) = make_date(:y, :m, 1) "
-        "GROUP BY 1"), {"y": year, "m": month})).mappings().all()
+        f"SELECT date::text AS d, count(*) AS n FROM activities "
+        f"WHERE {' AND '.join(conds)} GROUP BY 1"), p)).mappings().all()
     return {"counts": {r["d"]: r["n"] for r in rows}}
+
+
+@router.get("/recap")
+async def recap(year: int = Query(..., ge=2000, le=2100),
+                month: int = Query(..., ge=1, le=12),
+                crew: str | None = None,
+                category: str | None = None,
+                db: AsyncSession = Depends(get_db),
+                user=Depends(get_current_user)):
+    """Rekap semua aktivitas sebulan + filter crew/kategori."""
+    conds, p = ["date_trunc('month', date) = make_date(:y, :m, 1)"], {"y": year, "m": month}
+    if crew:
+        conds.append("crew ILIKE :cw"); p["cw"] = f"%{crew}%"
+    if category:
+        conds.append("category ILIKE :ct"); p["ct"] = f"%{category}%"
+    rows = (await db.execute(text(
+        f"SELECT a.*, (SELECT count(*) FROM activity_photos x WHERE x.activity_id=a.id) AS photos_count "
+        f"FROM activities a WHERE {' AND '.join(conds)} "
+        f"ORDER BY a.date DESC, a.created_at LIMIT 500"), p)).mappings().all()
+    return {"data": [dict(r) for r in rows]}
 
 
 @router.get("")
@@ -65,6 +91,7 @@ async def create(date: datetime.date = Form(...),
                  title: str = Form(...),
                  description: str | None = Form(None),
                  category: str | None = Form(None),
+                 crew: str | None = Form(None),
                  cn: str | None = Form(None),
                  files: list[UploadFile] = File(default=[]),
                  db: AsyncSession = Depends(get_db),
@@ -72,16 +99,19 @@ async def create(date: datetime.date = Form(...),
     title = title.strip()
     if not title:
         raise HTTPException(400, "judul wajib diisi")
+    crew = (crew or "").strip() or None
+    if not crew:
+        raise HTTPException(400, "crew wajib diisi")
     cn = (cn or "").strip().upper() or None
     if cn:
         ok = (await db.execute(text("SELECT 1 FROM equipment WHERE cn=:c"), {"c": cn})).scalar()
         if not ok:
             raise HTTPException(400, f"CN {cn} tidak ada di master equipment")
     res = await db.execute(text(
-        "INSERT INTO activities(date,title,description,category,cn,created_by) "
-        "VALUES (:d,:t,:desc,:cat,:cn,:u) RETURNING id"),
+        "INSERT INTO activities(date,title,description,category,crew,cn,created_by) "
+        "VALUES (:d,:t,:desc,:cat,:cw,:cn,:u) RETURNING id"),
         {"d": date, "t": title, "desc": description, "cat": (category or "").strip() or None,
-         "cn": cn, "u": user["username"]})
+         "cw": crew, "cn": cn, "u": user["username"]})
     aid = str(res.scalar_one())
     adir = _dir() / aid
     adir.mkdir(parents=True, exist_ok=True)
@@ -111,7 +141,7 @@ async def create(date: datetime.date = Form(...),
 @router.patch("/{aid}", dependencies=[Depends(require_role("inputer", "admin"))])
 async def update(aid: str, body: dict, db: AsyncSession = Depends(get_db),
                  user=Depends(get_current_user)):
-    allowed = ("date", "title", "description", "category", "cn")
+    allowed = ("date", "title", "description", "category", "crew", "cn")
     sets, params = [], {"i": aid}
     for k in allowed:
         if k in body:

@@ -251,14 +251,19 @@ export async function patchEquipment(cn: string, body: Partial<Equipment>) {
 
 export type Activity = {
   id: string; date: string; title: string; description?: string | null
-  category?: string | null; cn?: string | null; created_by?: string | null
+  category?: string | null; crew?: string | null; cn?: string | null; created_by?: string | null
   created_at?: string; photos?: { id: string; orig_name?: string | null }[]
   photos_count?: number; cover_id?: string | null
 }
 
-export async function fetchActivityMonth(year: number, month: number) {
-  const r = await api.get('/v1/activities/month', { params: { year, month } })
+export async function fetchActivityMonth(year: number, month: number, crew?: string, category?: string) {
+  const r = await api.get('/v1/activities/month', { params: { year, month, crew, category } })
   return r.data.counts as Record<string, number>
+}
+
+export async function fetchActivityRecap(year: number, month: number, crew?: string, category?: string) {
+  const r = await api.get('/v1/activities/recap', { params: { year, month, crew, category } })
+  return r.data.data as Activity[]
 }
 
 export async function fetchActivitiesByDate(date: string) {

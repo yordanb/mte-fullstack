@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, fetchActivityMonth, fetchActivitiesByDate, fetchActivity, createActivity, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -543,15 +543,21 @@ function EqDetail({ row, onClose }: { row: Equipment; onClose: () => void }) {
 }
 
 const ACT_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+const ACT_CREWS = ['Pumping', 'Lighting', 'Mobile', 'Grader', 'PCH']
+const ACT_CATS = ['Proker', 'FUI', 'USM', 'SCM']
 const iso = (y: number, m: number, d: number) =>
   `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 
 export function ActivityPage() {
   const now = new Date()
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() + 1 })
+  const [tab, setTab] = useState<'cal' | 'recap'>('cal')
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [sel, setSel] = useState(todayLocal())
   const [items, setItems] = useState<Activity[]>([])
+  const [recap, setRecap] = useState<Activity[]>([])
+  const [fCrew, setFCrew] = useState('')
+  const [fCat, setFCat] = useState('')
   const [detail, setDetail] = useState<Activity | null>(null)
   const [form, setForm] = useState<{ initial: Activity | null } | null>(null)
   const [msg, setMsg] = useState('')
@@ -559,14 +565,21 @@ export function ActivityPage() {
     const d = new Date(ym.y, ym.m - 1 + n, 1)
     setYm({ y: d.getFullYear(), m: d.getMonth() + 1 })
   }
-  const loadMonth = async (y: number, m: number) => {
-    try { setCounts(await fetchActivityMonth(y, m)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  const loadMonth = async (y: number, m: number, cw = fCrew, ct = fCat) => {
+    try { setCounts(await fetchActivityMonth(y, m, cw || undefined, ct || undefined)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
   }
   const loadDay = async (d: string) => {
     try { setItems(await fetchActivitiesByDate(d)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
   }
-  useEffect(() => { loadMonth(ym.y, ym.m) }, [ym])
+  const loadRecap = async (y: number, m: number, cw = fCrew, ct = fCat) => {
+    try { setRecap(await fetchActivityRecap(y, m, cw || undefined, ct || undefined)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  useEffect(() => { loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m) }, [ym])
   useEffect(() => { loadDay(sel) }, [sel])
+  const applyFilter = () => { loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m) }
+  const match = (a: Activity) =>
+    (!fCrew || (a.crew ?? '').toLowerCase().includes(fCrew.toLowerCase())) &&
+    (!fCat || (a.category ?? '').toLowerCase().includes(fCat.toLowerCase()))
   const pick = (d: string, inMonth: boolean, oy: number, om: number) => {
     if (!inMonth) setYm({ y: oy, m: om })
     setSel(d)
@@ -591,9 +604,24 @@ export function ActivityPage() {
   const openDetail = async (id: string) => {
     try { setDetail(await fetchActivity(id)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
   }
-  const afterSave = () => { setForm(null); loadMonth(ym.y, ym.m); loadDay(sel) }
+  const afterSave = () => { setForm(null); loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m); loadDay(sel) }
+  const shown = items.filter(match)
+  const finp = 'rounded-lg border px-3 py-2'
   return (
-    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex rounded-lg border p-1">
+          <button className={`rounded-md px-4 py-1 ${tab === 'cal' ? 'bg-brand-500 text-white' : ''}`} onClick={() => setTab('cal')}>Kalender</button>
+          <button className={`rounded-md px-4 py-1 ${tab === 'recap' ? 'bg-brand-500 text-white' : ''}`} onClick={() => { setTab('recap'); loadRecap(ym.y, ym.m) }}>Rekap</button>
+        </div>
+        <input className={`${finp} w-28`} list="act-crew-list" value={fCrew} onChange={(e) => setFCrew(e.target.value)} placeholder="Crew: semua" />
+        <input className={`${finp} w-28`} list="act-cat-list" value={fCat} onChange={(e) => setFCat(e.target.value)} placeholder="Kategori: semua" />
+        <datalist id="act-crew-list">{ACT_CREWS.map((c) => (<option key={c} value={c} />))}</datalist>
+        <datalist id="act-cat-list">{ACT_CATS.map((c) => (<option key={c} value={c} />))}</datalist>
+        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={applyFilter}>Tampilkan</button>
+      </div>
+      {tab === 'cal' ? (
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
       <div className="rounded-2xl border bg-white p-5">
         <div className="flex items-center justify-between">
           <button className="rounded-lg border px-3 py-1" onClick={() => shift(-1)}>‹</button>
@@ -626,8 +654,8 @@ export function ActivityPage() {
           )}
         </div>
         {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
-        {items.length === 0 && <p className="text-theme-sm text-gray-500">Belum ada aktivitas.</p>}
-        {items.map((a) => (
+        {shown.length === 0 && <p className="text-theme-sm text-gray-500">Belum ada aktivitas.</p>}
+        {shown.map((a) => (
           <button key={a.id} onClick={() => openDetail(a.id)}
             className="flex items-center gap-3 rounded-xl border p-2 text-left hover:bg-gray-50">
             {a.cover_id
@@ -636,18 +664,43 @@ export function ActivityPage() {
             <span className="min-w-0">
               <span className="block truncate font-medium">{a.title}</span>
               <span className="block truncate text-theme-sm text-gray-500">
-                {[a.category, a.cn].filter(Boolean).join(' • ')}{a.photos_count ? ` • ${a.photos_count} foto` : ''}
+                {[a.crew, a.category, a.cn].filter(Boolean).join(' • ')}{a.photos_count ? ` • ${a.photos_count} foto` : ''}
               </span>
             </span>
           </button>
         ))}
       </div>
+      </div>
+      ) : (
+      <div className="overflow-x-auto rounded-2xl border bg-white">
+        <table className="w-full border-collapse text-center text-theme-sm">
+          <thead className="bg-[#d6e4c9] font-semibold">
+            <tr>{['Tanggal', 'Judul', 'Crew', 'Kategori', 'CN', 'Foto'].map((h) => (
+              <th key={h} className="border px-2 py-2 whitespace-nowrap">{h}</th>
+            ))}</tr>
+          </thead>
+          <tbody>
+            {recap.map((a) => (
+              <tr key={a.id} className="border-t hover:bg-gray-50">
+                <td className="border px-2 py-2 whitespace-nowrap">{String(a.date).slice(0, 10).split('-').reverse().join('/')}</td>
+                <td className="border px-2 py-2 text-left"><button className="underline" onClick={() => openDetail(a.id)}>{a.title}</button></td>
+                <td className="border px-2 py-2 whitespace-nowrap">{a.crew ?? '-'}</td>
+                <td className="border px-2 py-2 whitespace-nowrap">{a.category ?? '-'}</td>
+                <td className="border px-2 py-2 whitespace-nowrap">{a.cn ?? '-'}</td>
+                <td className="border px-2 py-2 whitespace-nowrap">{a.photos_count ?? 0}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {recap.length === 0 && <p className="p-4 text-theme-sm text-gray-500">Belum ada aktivitas untuk filter ini.</p>}
+      </div>
+      )}
       {detail && (
         <ActDetail
           row={detail}
           onClose={() => setDetail(null)}
           onEdit={() => { setForm({ initial: detail }); setDetail(null) }}
-          onDeleted={() => { setDetail(null); loadMonth(ym.y, ym.m); loadDay(sel) }}
+          onDeleted={() => { setDetail(null); loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m); loadDay(sel) }}
           onPhotoDeleted={() => openDetail(detail.id)}
         />
       )}
@@ -682,7 +735,7 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
           <button className="rounded-lg border px-3 py-1" onClick={onClose}>Tutup</button>
         </div>
         <p className="mt-1 text-theme-sm text-gray-500">
-          {[row.date.split('-').reverse().join('/'), row.category, row.cn, row.created_by ? `oleh ${row.created_by}` : ''].filter(Boolean).join(' • ')}
+          {[row.date.split('-').reverse().join('/'), row.crew, row.category, row.cn, row.created_by ? `oleh ${row.created_by}` : ''].filter(Boolean).join(' • ')}
         </p>
         {row.description && <p className="mt-3 whitespace-pre-wrap text-theme-sm">{row.description}</p>}
         {(row.photos ?? []).length > 0 && (
@@ -719,6 +772,7 @@ function ActForm({ date, initial, onClose, onSaved }: {
   const [d, setD] = useState(initial?.date ?? date)
   const [title, setTitle] = useState(initial?.title ?? '')
   const [category, setCategory] = useState(initial?.category ?? '')
+  const [crew, setCrew] = useState(initial?.crew ?? '')
   const [cn, setCn] = useState(initial?.cn ?? '')
   const [desc, setDesc] = useState(initial?.description ?? '')
   const [msg, setMsg] = useState('')
@@ -726,12 +780,13 @@ function ActForm({ date, initial, onClose, onSaved }: {
   const save = async () => {
     try {
       setMsg('')
+      if (!crew.trim()) { setMsg('Crew wajib diisi.'); return }
       if (initial) {
-        await patchActivity(initial.id, { date: d, title, category: category || null, cn: cn || null, description: desc || null })
+        await patchActivity(initial.id, { date: d, title, category: category || null, crew: crew.trim(), cn: cn || null, description: desc || null })
       } else {
         const el = document.getElementById('act-files') as HTMLInputElement
         const fd = new FormData()
-        fd.append('date', d); fd.append('title', title)
+        fd.append('date', d); fd.append('title', title); fd.append('crew', crew.trim())
         if (category) fd.append('category', category)
         if (cn) fd.append('cn', cn.toUpperCase())
         if (desc) fd.append('description', desc)
@@ -748,8 +803,15 @@ function ActForm({ date, initial, onClose, onSaved }: {
         <div className="mt-3 flex flex-col gap-2">
           <label className="text-theme-sm">Tanggal<input type="date" className={inp} value={d} onChange={(e) => setD(e.target.value)} /></label>
           <label className="text-theme-sm">Judul<input className={inp} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="cth Perbaikan pompa WP855" /></label>
+          <label className="text-theme-sm">Crew (wajib)
+            <input className={inp} list="act-crew-form" value={crew} onChange={(e) => setCrew(e.target.value)} placeholder="pilih / ketik manual" />
+          </label>
+          <datalist id="act-crew-form">{ACT_CREWS.map((c) => (<option key={c} value={c} />))}</datalist>
+          <datalist id="act-cat-form">{ACT_CATS.map((c) => (<option key={c} value={c} />))}</datalist>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-theme-sm">Kategori<input className={inp} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="cth Perbaikan" /></label>
+            <label className="text-theme-sm">Kategori
+              <input className={inp} list="act-cat-form" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="pilih / ketik manual" />
+            </label>
             <label className="text-theme-sm">Unit / CN<input className={inp} value={cn} onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="cth WP855" /></label>
           </div>
           <label className="text-theme-sm">Keterangan<textarea className={inp} rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} /></label>
