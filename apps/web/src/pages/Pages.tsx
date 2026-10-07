@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -917,6 +917,7 @@ export function FuiPage() {
     ['CN Serial No', eq.cn_serial_no ?? '-'], ['Engine Serial No', eq.engine_serial_no ?? '-'],
   ] : []
   const [pdfBusy, setPdfBusy] = useState(false)
+  const [pamaBusy, setPamaBusy] = useState(false)
   const exportPdf = async () => {
     if (!vessel || pdfBusy) return
     try {
@@ -924,6 +925,14 @@ export function FuiPage() {
       await downloadFuiPdf(vessel)
     } catch (e) { setMsg(`gagal export: ${String(e)}`) }
     finally { setPdfBusy(false) }
+  }
+  const exportPama = async () => {
+    if (!vessel || pamaBusy) return
+    try {
+      setPamaBusy(true); setMsg('')
+      await downloadPamaPdf(vessel)
+    } catch (e) { setMsg(`gagal export: ${String(e)}`) }
+    finally { setPamaBusy(false) }
   }
   return (
     <div className="flex flex-col gap-4">
@@ -937,9 +946,14 @@ export function FuiPage() {
           onKeyDown={(e) => { if (e.key === 'Enter') load() }} />
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={load}>Tampilkan</button>
         {(eq || dbr.length > 0 || units.length > 0) && (
-          <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={pdfBusy} onClick={exportPdf}>
-            {pdfBusy ? 'Menyusun PDF...' : 'Export PDF'}
-          </button>
+          <>
+            <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={pdfBusy} onClick={exportPdf}>
+              {pdfBusy ? 'Menyusun PDF...' : 'Export PDF'}
+            </button>
+            <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={pamaBusy} onClick={exportPama}>
+              {pamaBusy ? 'Menyusun PAMA...' : 'Export PAMA'}
+            </button>
+          </>
         )}
       </div>
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
