@@ -897,7 +897,7 @@ export function FuiPage() {
       setVessel(v); setEq(null); setEqMiss(false); setDbr([]); setUnits([])
       const [e, d, u] = await Promise.all([
         fetchEquipmentOne(v),
-        fetchDbr({ date_from: '2020-01-01', date_to: todayLocal(), cn: v, page: 1, page_size: 10 }),
+        fetchDbr({ date_from: '2020-01-01', date_to: todayLocal(), cn: v, exclude_continue: true, page: 1, page_size: 10 }),
         fetchVesselUnits(v),
       ])
       if (!e) setEqMiss(true)

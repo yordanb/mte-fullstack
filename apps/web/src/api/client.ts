@@ -189,7 +189,7 @@ export type DbrRow = {
   mechanic?: string | null; gl?: string | null
 }
 
-export async function fetchDbr(params: Record<string, string | number | undefined>) {
+export async function fetchDbr(params: Record<string, string | number | boolean | undefined>) {
   const r = await api.get('/v1/dbr/records', { params })
   return r.data as { total: number; page: number; page_size: number; data: DbrRow[] }
 }

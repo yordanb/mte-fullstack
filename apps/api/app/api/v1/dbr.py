@@ -101,6 +101,7 @@ async def records(
     cn: str | None = None,
     prefix: str | None = Query(None, min_length=2, max_length=2),
     code: str | None = None,
+    exclude_continue: bool = False,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -123,6 +124,8 @@ async def records(
         conds.append("code IS NULL")
     elif code:
         conds.append("code = UPPER(:code)"); p["code"] = code
+    if exclude_continue:
+        conds.append("(action IS NULL OR UPPER(action) != 'CONTINUE')")
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
     total = (await db.execute(text(f"SELECT count(*) FROM dbr_records {where}"), p)).scalar()
     rows = (await db.execute(text(
