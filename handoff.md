@@ -143,7 +143,8 @@ Tanggal kirim sebagai `YYYY-MM-DD`; CN selalu **UPPERCASE**.
 - **Desimal Indonesia** di Excel oli (`4,9`), `ND`/`-` → NULL.
 - **Duplikat DBR** di-upsert via `(date, cn, start_breakdown)`.
 - **GS256** ganda (lighting vs pumping) — versi pumping yang dipakai.
-- **Auto-logout web 30 menit idle** — mobile tiru sesuai kebutuhan (disarankan ya).
+- **Auto-logout web saat idle: admin 60 menit, lainnya 45 menit** (timer reset tiap
+  aktivitas; 401 dari server juga melempar ke login) — mobile tiru sesuai kebutuhan.
 - **Foto tanpa batas jumlah** (streaming upload + progress bar + cegah double-submit);
   avatar dibatasi 5MB.
 - **`mv_latest_status`** di-refresh tiap commit import oli (sumber report follow-up).
