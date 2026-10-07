@@ -268,7 +268,7 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
   return (
     <div className="flex h-screen bg-gray-50 font-outfit dark:bg-gray-900">
       {open && (
-        <aside className="flex w-72 flex-col border-r border-gray-200 bg-white px-5 dark:border-gray-800 dark:bg-black">
+        <aside className="flex w-72 flex-col border-r border-gray-200 bg-white px-5 print:hidden dark:border-gray-800 dark:bg-black">
           <div className="flex items-center justify-start gap-3 pt-8 pb-7">
             {logoSrc && (
               <img src={logoSrc} alt="Logo MTE" className="h-10 w-auto shrink-0 object-contain sm:h-11"
@@ -292,7 +292,7 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
         </aside>
       )}
       <div className="flex flex-1 flex-col">
-        <header className="flex items-center gap-2 border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
+        <header className="flex items-center gap-2 border-b border-gray-200 bg-white px-6 py-4 print:hidden dark:border-gray-800 dark:bg-gray-900">
           <button onClick={() => setOpen(!open)} className="rounded-lg border px-3 py-1 text-gray-500">☰</button>
           <h1 className="text-theme-xl font-semibold">Monitoring Oil Lab</h1>
           <div className="ml-auto flex items-center gap-2">

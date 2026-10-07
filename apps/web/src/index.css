@@ -600,6 +600,32 @@ layer(base);
   background-color: rgb(18 183 106 / 0.15);
 }
 
+/* Cetak laporan FUI: A4 portrait, margin 5mm, warna dipertahankan. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 5mm;
+  }
+  .print-report,
+  .print-report table {
+    color: #000;
+  }
+  .print-report table {
+    border-collapse: collapse;
+  }
+  .print-report th,
+  .print-report td {
+    border: 1px solid #555;
+  }
+  .print-report * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .print-unit {
+    break-inside: avoid;
+  }
+}
+
 /* Customer map markers: solid filled circles with white ring */
 #mapCustomerPinPoint .jvm-marker.jvm-element {
   fill: #465fff !important;
