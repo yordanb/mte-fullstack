@@ -914,6 +914,7 @@ export function FuiPage() {
   const info: [string, string][] = eq ? [
     ['Code Unit', eq.cn], ['Unit Type', eq.unit_type ?? '-'],
     ['Product', eq.unit_product ?? '-'], ['Engine', engine || '-'],
+    ['CN Serial No', eq.cn_serial_no ?? '-'], ['Engine Serial No', eq.engine_serial_no ?? '-'],
   ] : []
   return (
     <div className="flex flex-col gap-4">
@@ -935,7 +936,7 @@ export function FuiPage() {
         </p>
       )}
       {eq && (
-        <div className="grid grid-cols-2 gap-4 rounded-2xl border bg-white p-5 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 rounded-2xl border bg-white p-5 xl:grid-cols-3">
           {info.map(([k, v]) => (
             <div key={k}>
               <p className="text-theme-sm text-gray-500">{k}</p>
