@@ -1029,15 +1029,15 @@ export function FuiPage() {
         </table>
       )}
       <p className="mb-1 font-bold">DBR Breakdown — 10 terbaru (Code USM, tanpa CONTINUE)</p>
-      <table className="mb-2 w-full text-center">
+      <table className="mb-2 w-full table-fixed text-center">
         <thead>
-          <tr>{DBR_COLS.map((c) => (<th key={c.key} className="px-1 py-1 whitespace-nowrap">{c.label}</th>))}</tr>
+          <tr>{DBR_COLS.map((c) => (<th key={c.key} className="px-1 py-1 break-words">{c.label}</th>))}</tr>
         </thead>
         <tbody>
           {dbr.map((r) => (
             <tr key={r.id}>
               {DBR_COLS.map((c) => (
-                <td key={c.key} className="px-1 py-1">{c.key === 'date' ? fmtD(r.date) : String(r[c.key] ?? '')}</td>
+                <td key={c.key} className="px-1 py-1 break-words">{c.key === 'date' ? fmtD(r.date) : String(r[c.key] ?? '')}</td>
               ))}
             </tr>
           ))}
@@ -1046,17 +1046,17 @@ export function FuiPage() {
       <p className="mb-1 font-bold">Report Analisa Oli — 10 terakhir per component</p>
       <div className="grid grid-cols-2 gap-2">
         {units.map(({ unit, rows }) => (
-          <div key={unit} className="print-unit">
+          <div key={unit} className="print-unit min-w-0">
             <p className="mb-1 font-bold">Component: {unit}</p>
-            <table className="w-full text-center text-[7px]">
+            <table className="w-full table-fixed text-center text-[6.5px] leading-tight">
               <thead>
-                <tr>{OIL_P.map((c) => (<th key={c.key} className="px-0.5 py-0.5 whitespace-nowrap">{c.label}</th>))}</tr>
+                <tr>{OIL_P.map((c) => (<th key={c.key} className="px-0.5 py-0.5 break-words">{c.label}</th>))}</tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.lab_no}>
                     {OIL_P.map((c) => (
-                      <td key={c.key} className={`px-0.5 py-0.5 whitespace-nowrap ${oilBad(r, c.key) ? 'font-bold text-red-700' : ''}`}>
+                      <td key={c.key} className={`px-0.5 py-0.5 break-words ${c.key === 'lab_no' ? 'break-all' : ''} ${oilBad(r, c.key) ? 'font-bold text-red-700' : ''}`}>
                         {c.key === 'sample_date' ? fmtD(r.sample_date) : String(r[c.key] ?? '')}
                       </td>
                     ))}
