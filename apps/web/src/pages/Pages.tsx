@@ -332,12 +332,16 @@ export function DbrPage() {
 }
 
 const EQ_CATS = ['BIGWHEEL', 'LIGHTING', 'MOBILE', 'PUMPING']
-const EQ_COLS: { key: keyof Equipment; label: string }[] = [
+const EQ_COLS: { key: string; label: string }[] = [
   { key: 'cn', label: 'Code Number' }, { key: 'unit_type', label: 'Unit Type' },
-  { key: 'unit_product', label: 'Product' }, { key: 'operasional', label: 'Operasional' },
+  { key: 'unit_product', label: 'Product' },
   { key: 'category', label: 'Kategori' }, { key: 'unit_model', label: 'Model' },
-  { key: 'lokasi', label: 'Lokasi' }, { key: 'status', label: 'Status' },
+  { key: 'engine', label: 'Engine' }, { key: 'status', label: 'Status' },
 ]
+const eqCell = (r: Equipment, key: string) => {
+  if (key === 'engine') return [r.engine_model, r.engine_merk].filter(Boolean).join(' / ')
+  return String(r[key as keyof Equipment] ?? '')
+}
 const EQ_EDIT_FIELDS: { key: keyof Equipment; label: string }[] = [
   { key: 'unit_model', label: 'Model' }, { key: 'unit_type', label: 'Unit Type' },
   { key: 'unit_product', label: 'Product' }, { key: 'cn_serial_no', label: 'Serial No' },
@@ -413,7 +417,7 @@ export function EquipmentPage() {
             {rows.map((r) => (
               <tr key={r.cn} className={`border-t ${r.aktif ? '' : 'bg-gray-100 text-gray-400'}`}>
                 {EQ_COLS.map((c) => (
-                  <td key={c.key} className="border px-2 py-2 whitespace-nowrap">{String(r[c.key] ?? '')}</td>
+                  <td key={c.key} className="border px-2 py-2 whitespace-nowrap">{eqCell(r, c.key)}</td>
                 ))}
                 <td className="border px-2 py-2">{r.aktif ? 'Ya' : 'Tidak'}</td>
                 <td className="border px-2 py-2 whitespace-nowrap">
