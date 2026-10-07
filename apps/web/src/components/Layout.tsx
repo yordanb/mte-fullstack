@@ -9,6 +9,7 @@ const MENU = [
   { key: 'equipment', label: 'Equipment' },
   { key: 'fui', label: 'FUI' },
   { key: 'sugfui', label: 'Suggestion FUI' },
+  { key: 'fureport', label: 'Report Follow Up' },
   { key: 'import', label: 'Update Data' },
   { key: 'users', label: 'Users', admin: true },
   { key: 'audit', label: 'Audit Log', admin: true },
@@ -36,6 +37,9 @@ const ICONS: Record<string, ReactNode> = {
   ),
   sugfui: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /><path d="M11 8v3l2 2" /></svg>
+  ),
+  fureport: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><path d="M9 13h6M9 17h6" /></svg>
   ),
   vessel: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2.5" /><path d="M12 7.5V21M5 12H2a10 10 0 0 0 20 0h-3" /></svg>

@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import Layout from './components/Layout'
 import LoginPage from './pages/Login'
-import { Dashboard, ImportPage, DbrPage, EquipmentPage, ActivityPage, FuiPage, SugFuiPage } from './pages/Pages'
+import { Dashboard, ImportPage, DbrPage, EquipmentPage, ActivityPage, FuiPage, SugFuiPage, SugReportPage } from './pages/Pages'
 import UsersPage from './pages/Users'
 import AuditPage from './pages/Audit'
 import { fetchMe, can } from './api/client'
@@ -48,6 +48,7 @@ export default function App() {
       {page === 'equipment' && <EquipmentPage />}
       {page === 'fui' && can('fui', 'view') && <FuiPage />}
       {page === 'sugfui' && can('sugfui', 'view') && <SugFuiPage />}
+      {page === 'fureport' && can('fureport', 'view') && <SugReportPage />}
       {page === 'activity' && <ActivityPage />}
       {page === 'import' && <ImportPage />}
       {page === 'users' && me.role === 'admin' && <UsersPage />}

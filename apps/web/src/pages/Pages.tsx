@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, canWrite, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -1017,6 +1017,7 @@ export function SugFuiPage() {
   const [groups, setGroups] = useState<{ key: string; rows: (LabRow & { unit_type?: string | null; unit_product?: string | null })[] }[]>([])
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sug, setSug] = useState<LabRow | null>(null)
   const load = async () => {
     try {
       setMsg(''); setLoading(true)
@@ -1056,12 +1057,187 @@ export function SugFuiPage() {
               ` — ${[rows[0]?.unit_type, rows[0]?.unit_product].filter(Boolean).join(' / ')}`}
             {' — '}{rows[0]?.condition}
           </h3>
-          <VesselTable rows={rows} />
+          <VesselTable rows={rows} onSuggest={canWrite() ? (r) => setSug(r) : undefined} />
         </div>
       ))}
       {!loading && groups.length === 0 && (
         <p className="text-theme-sm text-gray-500">Tidak ada unit {cat} yang perlu follow-up.</p>
       )}
+      {sug && <SuggestModal row={sug} onClose={() => setSug(null)} />}
+    </div>
+  )
+}
+
+export function SuggestModal({ row, onClose }: { row: LabRow; onClose: () => void }) {
+  const [text, setText] = useState('')
+  const [pic, setPic] = useState('')
+  const [msg, setMsg] = useState('')
+  const [done, setDone] = useState(false)
+  const save = async () => {
+    try {
+      setMsg('')
+      await addSuggest({ lab_no: String(row.lab_no), suggestion: text, pic: pic || undefined })
+      setDone(true)
+    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  const inp = 'w-full rounded-lg border px-3 py-2'
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-5">
+        <h3 className="font-semibold">Suggest Follow Up</h3>
+        <p className="mt-1 text-theme-sm text-gray-500">
+          {row.vesselid} / {row.unit_id} • Lab {row.lab_no} • {row.condition}
+        </p>
+        {done ? (
+          <>
+            <p className="mt-3 text-theme-sm text-green-700">Tersimpan. Klik lagi untuk menambah riwayat lain.</p>
+            <div className="mt-4 flex justify-end">
+              <button className="rounded-lg border px-4 py-2" onClick={onClose}>Tutup</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mt-3 flex flex-col gap-2">
+              <label className="text-theme-sm">Saran / rekomendasi
+                <textarea className={inp} rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="cth Ganti oli + filter, monitor 250 HM" />
+              </label>
+              <label className="text-theme-sm">PIC
+                <input className={inp} value={pic} onChange={(e) => setPic(e.target.value)} placeholder="nama penanggung jawab" />
+              </label>
+            </div>
+            {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
+              <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={save}>Simpan</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export function SugReportPage() {
+  const [cat, setCat] = useState('')
+  const [q, setQ] = useState('')
+  const [st, setSt] = useState('')
+  const [rows, setRows] = useState<SuggestReportRow[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [msg, setMsg] = useState('')
+  const [hist, setHist] = useState<{ lab: string; data: Suggest[] } | null>(null)
+  const [sug, setSug] = useState<{ lab_no: string; vesselid: string; unit_id: string; condition: string } | null>(null)
+  const load = async (p = 1) => {
+    try {
+      setMsg('')
+      const r = await fetchSuggestReport({
+        category: cat || undefined, search: q.toUpperCase() || undefined,
+        has_suggest: st === '' ? undefined : st === '1',
+        page: p, page_size: 20,
+      })
+      setRows(r.data); setTotal(r.total); setPage(r.page)
+      if (sug) setSug(null)
+    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  useEffect(() => { load(1) }, [])
+  const pages = Math.max(1, Math.ceil(total / 20))
+  const openHist = async (lab: string) => {
+    try { setHist({ lab, data: (await fetchSuggestHistory(lab)).data }) }
+    catch (e) { setMsg(`gagal: ${String(e)}`) }
+  }
+  const fmtDT = (v?: string | null) => {
+    if (!v) return ''
+    const d = new Date(v)
+    if (isNaN(d.getTime())) return String(v)
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`
+  }
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <h2 className="text-theme-xl font-semibold">Report Follow Up</h2>
+        <p className="text-theme-sm text-gray-500">Oil terakhir non-NORMAL per unit + status Suggest Follow Up</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <select className="rounded-lg border px-3 py-2" value={cat} onChange={(e) => setCat(e.target.value)}>
+          <option value="">Kategori: semua</option>
+          {SUG_CATS.map((c) => (<option key={c} value={c}>{c}</option>))}
+        </select>
+        <input className="w-40 rounded-lg border px-3 py-2" value={q}
+          onChange={(e) => setQ(e.target.value.toUpperCase())} placeholder="Cari CN / unit" />
+        <select className="rounded-lg border px-3 py-2" value={st} onChange={(e) => setSt(e.target.value)}>
+          <option value="">Suggest: semua</option>
+          <option value="1">Sudah ada</option>
+          <option value="0">Belum ada</option>
+        </select>
+        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => load(1)}>Tampilkan</button>
+        <span className="text-theme-sm text-gray-500">Total {total.toLocaleString('id-ID')}</span>
+      </div>
+      {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
+      <div className="overflow-x-auto rounded-2xl border bg-white">
+        <table className="w-full border-collapse text-center text-theme-sm">
+          <thead className="bg-[#d6e4c9] font-semibold">
+            <tr>
+              {['Vessel', 'Unit', 'Type / Product', 'Sample', 'HM', 'Condition', 'Suggest', 'Saran Terakhir', 'Aksi'].map((h) => (
+                <th key={h} className="border px-2 py-2 whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.lab_no} className="border-t">
+                <td className="border px-2 py-2 whitespace-nowrap">{r.vesselid}</td>
+                <td className="border px-2 py-2 whitespace-nowrap">{r.unit_id}</td>
+                <td className="border px-2 py-2 whitespace-nowrap">{[r.unit_type, r.unit_product].filter(Boolean).join(' / ') || '-'}</td>
+                <td className="border px-2 py-2 whitespace-nowrap">{String(r.sample_date).slice(0, 10).split('-').reverse().join('/')}</td>
+                <td className="border px-2 py-2 whitespace-nowrap">{r.unit_time ?? '-'}</td>
+                <td className="border px-2 py-2 whitespace-nowrap">
+                  <span className="rounded-full bg-red-100 px-2 py-1 text-theme-xs text-red-700">{r.condition}</span>
+                </td>
+                <td className="border px-2 py-2 whitespace-nowrap">
+                  {r.suggest_count > 0
+                    ? <span className="rounded-full bg-green-100 px-2 py-1 text-theme-xs text-green-700">Sudah ({r.suggest_count})</span>
+                    : <span className="rounded-full bg-gray-100 px-2 py-1 text-theme-xs text-gray-600">Belum</span>}
+                </td>
+                <td className="max-w-64 truncate border px-2 py-2 text-left" title={r.latest_suggestion ?? ''}>
+                  {r.latest_suggestion ? `${r.latest_suggestion} — ${r.latest_pic ?? ''} (${r.latest_by ?? ''})` : '-'}
+                </td>
+                <td className="border px-2 py-2 whitespace-nowrap">
+                  <button className="mr-2 underline" onClick={() => openHist(r.lab_no)}>Riwayat</button>
+                  {canWrite() && (
+                    <button className="underline" onClick={() => setSug({ lab_no: String(r.lab_no), vesselid: r.vesselid, unit_id: r.unit_id, condition: r.condition })}>Suggest</button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center gap-2 text-theme-sm">
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => load(page - 1)}>‹ Prev</button>
+        <span>Halaman {page} dari {pages}</span>
+        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= pages} onClick={() => load(page + 1)}>Next ›</button>
+      </div>
+      {hist && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setHist(null)}>
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Riwayat suggest — Lab {hist.lab}</h3>
+              <button className="rounded-lg border px-3 py-1" onClick={() => setHist(null)}>Tutup</button>
+            </div>
+            {hist.data.length === 0 && <p className="mt-3 text-theme-sm text-gray-500">Belum ada suggest.</p>}
+            {hist.data.map((s) => (
+              <div key={s.id} className="mt-2 rounded-xl border p-3">
+                <p className="text-theme-sm">{s.suggestion}</p>
+                <p className="mt-1 text-theme-xs text-gray-500">
+                  PIC: {s.pic ?? '-'} • oleh {s.created_by ?? '-'} • {fmtDT(s.created_at)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {sug && <SuggestModal row={{ lab_no: sug.lab_no, vesselid: sug.vesselid, unit_id: sug.unit_id, model: '', sample_date: '', condition: sug.condition } as LabRow} onClose={() => { setSug(null); load(page) }} />}
     </div>
   )
 }

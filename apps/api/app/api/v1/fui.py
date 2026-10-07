@@ -1,5 +1,6 @@
 import io
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -138,3 +139,85 @@ async def suggestions(category: str = Query(..., min_length=3),
         "ORDER BY r.vesselid, r.unit_id, r.sample_date DESC LIMIT 600"),
         {"cat": category.upper()})).mappings().all()
     return {"category": category.upper(), "data": [dict(r) for r in rows]}
+
+
+class SuggestIn(BaseModel):
+    lab_no: str
+    suggestion: str
+    pic: str | None = None
+
+
+@router.post("/suggests", dependencies=[Depends(require_role("inputer", "admin"))],
+            status_code=201)
+async def add_suggest(body: SuggestIn, db: AsyncSession = Depends(get_db),
+                      user=Depends(get_current_user)):
+    if not (body.suggestion or "").strip():
+        raise HTTPException(400, "isi saran wajib diisi")
+    ok = (await db.execute(text("SELECT 1 FROM oil_lab_result WHERE lab_no=:l"),
+                           {"l": body.lab_no.strip()})).scalar()
+    if not ok:
+        raise HTTPException(404, "lab_no tidak ditemukan")
+    res = await db.execute(text(
+        "INSERT INTO followup_suggests(lab_no,suggestion,pic,created_by) "
+        "VALUES (:l,:s,:p,:u) RETURNING id"),
+        {"l": body.lab_no.strip(), "s": body.suggestion.strip(),
+         "p": (body.pic or "").strip() or None, "u": user["username"]})
+    await db.commit()
+    return {"id": str(res.scalar_one())}
+
+
+@router.get("/suggests")
+async def suggest_history(lab_no: str,
+                          db: AsyncSession = Depends(get_db),
+                          user=Depends(get_current_user)):
+    """Riwayat suggest 1 sample (terbaru dulu)."""
+    rows = (await db.execute(text(
+        "SELECT id::text AS id, suggestion, pic, created_by, created_at "
+        "FROM followup_suggests WHERE lab_no=:l ORDER BY created_at DESC"),
+        {"l": lab_no.strip()})).mappings().all()
+    return {"lab_no": lab_no.strip(), "data": [dict(r) for r in rows]}
+
+
+@router.get("/suggest-report")
+async def suggest_report(
+    category: str | None = None,
+    search: str | None = None,
+    has_suggest: bool | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Oil terakhir non-NORMAL per unit + status suggest."""
+    conds, p = ['m."condition" IS DISTINCT FROM \'NORMAL\''],
+    {"lim": page_size, "off": (page - 1) * page_size}
+    if category:
+        if category.upper() not in ("BIGWHEEL", "LIGHTING", "MOBILE", "PUMPING"):
+            raise HTTPException(400, "category tidak valid")
+        conds.append("e.category=:cat")
+        p["cat"] = category.upper()
+    if search:
+        conds.append("(m.vesselid ILIKE :s OR m.unit_id ILIKE :s)")
+        p["s"] = f"%{search.upper()}%"
+    if has_suggest is True:
+        conds.append("COALESCE(c.n, 0) > 0")
+    elif has_suggest is False:
+        conds.append("COALESCE(c.n, 0) = 0")
+    where = f"WHERE {' AND '.join(conds)}"
+    base = (f"FROM mv_latest_status m "
+            f"LEFT JOIN equipment e ON e.cn = m.vesselid "
+            f"LEFT JOIN LATERAL (SELECT suggestion, pic, created_by, created_at "
+            f"FROM followup_suggests WHERE lab_no = m.lab_no "
+            f"ORDER BY created_at DESC LIMIT 1) s ON true "
+            f"LEFT JOIN LATERAL (SELECT count(*) AS n FROM followup_suggests "
+            f"WHERE lab_no = m.lab_no) c ON true {where}")
+    total = (await db.execute(text(f"SELECT count(*) {base}"), p)).scalar()
+    rows = (await db.execute(text(
+        f"SELECT m.lab_no, m.vesselid, m.unit_id, m.sample_date, m.unit_time, "
+        f"m.\"condition\", e.unit_type, e.unit_product, "
+        f"COALESCE(c.n, 0) AS suggest_count, s.suggestion AS latest_suggestion, "
+        f"s.pic AS latest_pic, s.created_by AS latest_by, s.created_at AS latest_at "
+        f"{base} ORDER BY m.sample_date DESC LIMIT :lim OFFSET :off"), p)
+    ).mappings().all()
+    return {"total": total, "page": page, "page_size": page_size,
+            "data": [dict(r) for r in rows]}

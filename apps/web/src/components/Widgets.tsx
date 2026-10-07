@@ -52,7 +52,7 @@ export function MetricCards({ total, critical, normal }: { total: number; critic
   )
 }
 
-export function VesselTable({ rows }: { rows: LabRow[]; title?: string }) {
+export function VesselTable({ rows, onSuggest }: { rows: LabRow[]; title?: string; onSuggest?: (r: LabRow) => void }) {
   const td = 'border px-2 py-2 whitespace-nowrap'
   // sel merah jika grade parameter bukan N (A/C), sama seperti penanda Condition
   const bad = (g?: string | null) => g != null && g !== '' && g !== 'N'
@@ -93,7 +93,11 @@ export function VesselTable({ rows }: { rows: LabRow[]; title?: string }) {
               <td className={cell(r.fe, r.grade_fe)}>{show(r.fe)}</td><td className={cell(r.cu, r.grade_cu)}>{show(r.cu)}</td>
               <td className={cell(r.al, r.grade_al)}>{show(r.al)}</td><td className={cell(r.cr, r.grade_cr)}>{show(r.cr)}</td>
               <td className={cell(r.pb, r.grade_pb)}>{show(r.pb)}</td><td className={cell(r.na, r.grade_na)}>{show(r.na)}</td>
-              <td className={td}><span className={`rounded-full px-2 py-1 text-theme-xs ${r.condition === 'NORMAL' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.condition}</span></td>
+              <td className={td}><span className={`rounded-full px-2 py-1 text-theme-xs ${r.condition === 'NORMAL' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.condition}</span>
+                {onSuggest && r.condition !== 'NORMAL' && (
+                  <><br /><button className="mt-1 rounded-lg border px-2 py-0.5 text-theme-xs underline" onClick={() => onSuggest(r)}>Suggest Follow Up</button></>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

@@ -278,6 +278,39 @@ export async function fetchSuggestions(category: string) {
   return r.data as { category: string; data: (LabRow & { unit_type?: string | null; unit_product?: string | null })[] }
 }
 
+export type Suggest = {
+  id: string; suggestion: string; pic?: string | null
+  created_by?: string | null; created_at?: string
+}
+
+export async function addSuggest(body: { lab_no: string; suggestion: string; pic?: string }) {
+  const r = await api.post('/v1/fui/suggests', body)
+  return r.data
+}
+
+export async function fetchSuggestHistory(lab_no: string) {
+  const r = await api.get('/v1/fui/suggests', { params: { lab_no } })
+  return r.data as { lab_no: string; data: Suggest[] }
+}
+
+export type SuggestReportRow = {
+  lab_no: string; vesselid: string; unit_id: string; sample_date: string
+  unit_time?: number | null; condition: string
+  unit_type?: string | null; unit_product?: string | null
+  suggest_count: number; latest_suggestion?: string | null; latest_pic?: string | null
+  latest_by?: string | null; latest_at?: string | null
+}
+
+export async function fetchSuggestReport(params: Record<string, string | number | boolean | undefined>) {
+  const r = await api.get('/v1/fui/suggest-report', { params })
+  return r.data as { total: number; page: number; page_size: number; data: SuggestReportRow[] }
+}
+
+/** Boleh tulis (inputer/admin). Viewer read-only. */
+export function canWrite(): boolean {
+  return localStorage.getItem('mte_role') !== 'viewer'
+}
+
 export async function createEquipment(body: Partial<Equipment>) {
   const r = await api.post('/v1/equipment', body)
   return r.data
