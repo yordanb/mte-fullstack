@@ -99,15 +99,15 @@ async def pama(cn: str = Query(..., min_length=2),
                                       f'attachment; filename="PAMA-{v}.pdf"'})
 
 
-SUG_COLS = ("o.lab_no, o.vesselid, o.unit_id, o.model, o.sample_date, o.date_taken, "
-            "ROUND(EXTRACT(EPOCH FROM (o.date_taken - o.sample_date)) / 86400, 1) AS lead_time, "
-            "o.oil_weight, o.unit_time, o.unit_time_oils, "
-            "o.visc, o.fuel, o.soot, o.oxi, o.nitr, o.water, o.tbn, "
-            "o.si, o.fe, o.cu, o.al, o.cr, o.pb, o.na, "
-            "o.grade_visc, o.grade_fuel, o.grade_soot, o.grade_oxi, o.grade_nitr, "
-            "o.grade_water, o.grade_tbn, o.grade_si, o.grade_fe, o.grade_cu, "
-            "o.grade_al, o.grade_cr, o.grade_pb, o.grade_na, "
-            "o.\"condition\", o.english_description, "
+SUG_COLS = ("r.lab_no, r.vesselid, r.unit_id, r.model, r.sample_date, r.date_taken, "
+            "ROUND(EXTRACT(EPOCH FROM (r.date_taken - r.sample_date)) / 86400, 1) AS lead_time, "
+            "r.oil_weight, r.unit_time, r.unit_time_oils, "
+            "r.visc, r.fuel, r.soot, r.oxi, r.nitr, r.water, r.tbn, "
+            "r.si, r.fe, r.cu, r.al, r.cr, r.pb, r.na, "
+            "r.grade_visc, r.grade_fuel, r.grade_soot, r.grade_oxi, r.grade_nitr, "
+            "r.grade_water, r.grade_tbn, r.grade_si, r.grade_fe, r.grade_cu, "
+            "r.grade_al, r.grade_cr, r.grade_pb, r.grade_na, "
+            "r.\"condition\", r.english_description, "
             "e.unit_type, e.unit_product")
 
 
