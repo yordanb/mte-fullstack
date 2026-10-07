@@ -31,7 +31,10 @@ TITLE = ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=12,
 SUB = ParagraphStyle("sub", fontName="Helvetica-Bold", fontSize=9,
                      alignment=TA_CENTER)
 H2 = ParagraphStyle("h2", fontName="Helvetica-Bold", fontSize=10, leading=12)
+H2L = ParagraphStyle("h2l", parent=H2, alignment=TA_LEFT)
 REC = ParagraphStyle("rec", fontName="Helvetica", fontSize=8, leading=10)
+WHITEB = ParagraphStyle("whiteb", parent=CELL_C, fontName="Helvetica-Bold",
+                        textColor=colors.white)
 KLABEL = ParagraphStyle("klabel", fontName="Helvetica-Bold", fontSize=9,
                         textColor=RED, alignment=TA_CENTER)
 
@@ -88,25 +91,53 @@ def _grid(t, header_rows=1):
     return t
 
 
-def _kop(canvas, doc, subtitle):
+def _logo_path():
+    from pathlib import Path as _P
+    p = _P(__file__).resolve().parent.parent / "assets" / "logopama.png"
+    return str(p) if p.is_file() else None
+
+
+def _kop(canvas, W, H, left_margin, right_margin):
     canvas.saveState()
-    W = doc.pagesize[0]
-    canvas.setFont("Helvetica-Bold", 12)
-    canvas.setFillColor(HexColor("#0000cc"))
-    canvas.drawCentredString(W / 2, doc.pagesize[1] - 9 * mm, "PT PAMAPERSADA NUSANTARA")
-    canvas.setFont("Helvetica-Bold", 9)
+    logo = _logo_path()
+    text_x = left_margin
+    if logo:
+        lw = 9 * mm
+        try:
+            from PIL import Image as _PIL
+            with _PIL.open(logo) as im:
+                ratio = im.size[1] / im.size[0]
+        except Exception:
+            ratio = 1.0
+        lh = lw * ratio
+        canvas.drawImage(logo, left_margin, H - 5 * mm - lh,
+                         width=lw, height=lh,
+                         preserveAspectRatio=True, mask="auto")
+        text_x = left_margin + lw + 4 * mm
+    canvas.setFont("Helvetica-Bold", 10)
     canvas.setFillColor(colors.black)
-    canvas.drawCentredString(W / 2, doc.pagesize[1] - 14 * mm, subtitle)
+    canvas.drawString(text_x, H - 13 * mm, "PT PAMAPERSADA NUSANTARA")
+    canvas.setFont("Helvetica", 6)
+    canvas.drawString(text_x, H - 17 * mm, "Mining And Earth Moving Contractor")
+    canvas.setStrokeColor(colors.black)
+    canvas.setLineWidth(0.5)
+    canvas.line(left_margin, H - 21 * mm, W - right_margin, H - 21 * mm)
     canvas.restoreState()
 
 
-def _footer(canvas, doc):
+def _footer(canvas, W, page):
     canvas.saveState()
     canvas.setFont("Helvetica", 7)
     canvas.setFillColor(GREY)
-    canvas.drawRightString(doc.pagesize[0] - 10 * mm, 10 * mm,
-                           f"Halaman {doc.page}")
+    canvas.drawCentredString(W / 2, 10 * mm, f"Halaman {page}")
     canvas.restoreState()
+
+
+def _make_headfoot(W, H, left_margin, right_margin):
+    def headfoot(canvas, doc):
+        _kop(canvas, W, H, left_margin, right_margin)
+        _footer(canvas, W, doc.page)
+    return headfoot
 
 
 def _component_block(unit, rows, width, cn_fallback, district_fallback):
@@ -154,8 +185,10 @@ def _component_block(unit, rows, width, cn_fallback, district_fallback):
               "-", _idn(r.get("unit_time_oils"))] + [""] * (n + 1)
         body.append([_p(v) for v in lt])
     lim = first
-    wmin = ([_p("Warning Limit Minimum", HEAD)] + [_p("")] * 3
-            + [_p(_idn(lim.get(NMIN[p]))) for p in PARAMS] + [_p("")])
+    wmin = ([Paragraph('<font color="white"><b>Warning Limit Minimum</b></font>', WHITEB)]
+            + [_p("")] * 3
+            + [Paragraph(f'<font color="white"><b>{_idn(lim.get(NMIN[p]))}</b></font>', CELL_C)
+               for p in PARAMS] + [_p("")])
     wmax = ([Paragraph(f'<font color="{RED.hexval()}"><b>Warning Limit Maximum</b></font>', HEAD)]
             + [_p("")] * 3
             + [Paragraph(f'<font color="{RED.hexval()}"><b>{_idn(lim.get(NMAX[p]))}</b></font>', CELL_C)
@@ -181,7 +214,8 @@ def _component_block(unit, rows, width, cn_fallback, district_fallback):
                 colWidths=[width * mm])
     rec.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.5, colors.black),
                              ("VALIGN", (0, 0), (-1, -1), "TOP")]))
-    return [band, Spacer(1, 2 * mm), t, Spacer(1, 2 * mm), rec]
+    return [Paragraph(unit, H2L), Spacer(1, 1 * mm),
+            band, Spacer(1, 2 * mm), t, Spacer(1, 2 * mm), rec]
 
 
 def build_pama_pdf(eq, units_oil, latest_dbr, cn, district_default=None):
@@ -194,20 +228,16 @@ def build_pama_pdf(eq, units_oil, latest_dbr, cn, district_default=None):
     else:      # portrait penuh
         W, H = pw, ph
     doc = BaseDocTemplate(buf, leftMargin=5 * mm, rightMargin=5 * mm,
-                          topMargin=22 * mm, bottomMargin=5 * mm,
+                          topMargin=24 * mm, bottomMargin=5 * mm,
                           title=f"PAMA-{cn}", author="MTE Data Center")
     fw = W - 10 * mm
-    subtitle = "Lab. Oils Analysis - KIDE"
-
-    def headfoot(canvas, _doc):
-        _kop(canvas, _doc, subtitle)
-        _footer(canvas, _doc)
+    headfoot = _make_headfoot(W, H, doc.leftMargin, doc.rightMargin)
 
     if multi:
         # koran 2 kolom: blok mengalir kolom1 -> kolom2 otomatis
         from reportlab.platypus import NextPageTemplate
         colw = (fw - 4 * mm) / 2
-        fh = H - 27 * mm
+        fh = H - 29 * mm
         frames = [Frame(doc.leftMargin, doc.bottomMargin, colw, fh, id="c1"),
                   Frame(doc.leftMargin + colw + 4 * mm, doc.bottomMargin,
                         colw, fh, id="c2")]
@@ -220,7 +250,7 @@ def build_pama_pdf(eq, units_oil, latest_dbr, cn, district_default=None):
     else:
         doc.addPageTemplates([PageTemplate(
             id="main", frames=[Frame(doc.leftMargin, doc.bottomMargin,
-                                     fw, H - 27 * mm)],
+                                     fw, H - 29 * mm)],
             pagesize=(W, H), onPage=headfoot)])
     story = []
     if multi:
