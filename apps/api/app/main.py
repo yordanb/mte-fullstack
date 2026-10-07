@@ -8,6 +8,7 @@ from app.api.v1.dbr import router as dbr_router
 from app.api.v1.equipment import router as equipment_router
 from app.api.v1.activities import router as activities_router
 from app.api.v1.users import router as users_router, admin_router
+from app.api.v1.fui import router as fui_router
 from app.core.config import settings
 from app.core.security import hash_pw
 from app.core.audit import write_log
@@ -80,3 +81,4 @@ app.include_router(equipment_router)
 app.include_router(activities_router)
 app.include_router(users_router)
 app.include_router(admin_router)
+app.include_router(fui_router)

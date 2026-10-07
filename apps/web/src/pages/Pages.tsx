@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -916,33 +916,17 @@ export function FuiPage() {
     ['Product', eq.unit_product ?? '-'], ['Engine', engine || '-'],
     ['CN Serial No', eq.cn_serial_no ?? '-'], ['Engine Serial No', eq.engine_serial_no ?? '-'],
   ] : []
-  // Kolom oil versi cetak (ringkas agar 2 tabel muat selebar A4 portrait).
-  const OIL_P: { key: keyof LabRow; label: string }[] = [
-    { key: 'lab_no', label: 'Lab No' }, { key: 'sample_date', label: 'Sample' },
-    { key: 'unit_time', label: 'HM' }, { key: 'unit_time_oils', label: 'HM Oil' },
-    { key: 'visc', label: 'VISC' }, { key: 'fuel', label: 'FUEL' },
-    { key: 'soot', label: 'SOOT' }, { key: 'oxi', label: 'OXI' },
-    { key: 'nitr', label: 'NITR' }, { key: 'water', label: 'WTR' },
-    { key: 'tbn', label: 'TBN' }, { key: 'si', label: 'Si' },
-    { key: 'fe', label: 'Fe' }, { key: 'cu', label: 'Cu' },
-    { key: 'al', label: 'Al' }, { key: 'cr', label: 'Cr' },
-    { key: 'pb', label: 'Pb' }, { key: 'na', label: 'Na' },
-    { key: 'condition', label: 'Cond' },
-  ]
-  const OIL_G: Record<string, keyof LabRow | undefined> = {
-    visc: 'grade_visc', fuel: 'grade_fuel', soot: 'grade_soot', oxi: 'grade_oxi',
-    nitr: 'grade_nitr', water: 'grade_water', tbn: 'grade_tbn', si: 'grade_si',
-    fe: 'grade_fe', cu: 'grade_cu', al: 'grade_al', cr: 'grade_cr',
-    pb: 'grade_pb', na: 'grade_na',
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const exportPdf = async () => {
+    if (!vessel || pdfBusy) return
+    try {
+      setPdfBusy(true); setMsg('')
+      await downloadFuiPdf(vessel)
+    } catch (e) { setMsg(`gagal export: ${String(e)}`) }
+    finally { setPdfBusy(false) }
   }
-  const oilBad = (r: LabRow, k: keyof LabRow) => {
-    const g = OIL_G[String(k)] ? r[OIL_G[String(k)] as keyof LabRow] : undefined
-    return g != null && g !== '' && g !== 'N'
-  }
-  const printDate = fmtD(todayLocal())
   return (
-    <>
-    <div className="flex flex-col gap-4 print:hidden">
+    <div className="flex flex-col gap-4">
       <div>
         <h2 className="text-theme-xl font-semibold">FUI — Follow Up Instruction</h2>
         <p className="text-theme-sm text-gray-500">Dossier per unit: info equipment + 10 DBR terbaru + 10 oil terakhir per component</p>
@@ -953,7 +937,9 @@ export function FuiPage() {
           onKeyDown={(e) => { if (e.key === 'Enter') load() }} />
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={load}>Tampilkan</button>
         {(eq || dbr.length > 0 || units.length > 0) && (
-          <button className="rounded-lg border px-4 py-2" onClick={() => window.print()}>Export PDF</button>
+          <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={pdfBusy} onClick={exportPdf}>
+            {pdfBusy ? 'Menyusun PDF...' : 'Export PDF'}
+          </button>
         )}
       </div>
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
@@ -1005,79 +991,5 @@ export function FuiPage() {
         <p className="text-theme-sm text-gray-500">Tidak ada data oil untuk {vessel}.</p>
       )}
     </div>
-    {(eq || dbr.length > 0 || units.length > 0) && (
-    <div className="print-report hidden text-[9px] leading-tight print:block">
-      <div className="mb-2 text-center">
-        <p className="text-base font-bold">MTE DATA CENTER</p>
-        <p className="text-xs font-semibold">FOLLOW UP INSTRUCTION (FUI) — {vessel}</p>
-        <p>Tanggal cetak: {printDate}</p>
-      </div>
-      {eq && (
-        <table className="mb-2 w-full text-center">
-          <tbody>
-            <tr>
-              {info.slice(0, 3).map(([k, v]) => (
-                <td key={k} className="px-1 py-1"><b>{k}</b><br />{v}</td>
-              ))}
-            </tr>
-            <tr>
-              {info.slice(3).map(([k, v]) => (
-                <td key={k} className="px-1 py-1"><b>{k}</b><br />{v}</td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
-      )}
-      <p className="mb-1 font-bold">DBR Breakdown — 10 terbaru (Code USM, tanpa CONTINUE)</p>
-      <table className="mb-2 w-full table-fixed text-center">
-        <thead>
-          <tr>{DBR_COLS.map((c) => (<th key={c.key} className="px-1 py-1 break-words">{c.label}</th>))}</tr>
-        </thead>
-        <tbody>
-          {dbr.map((r) => (
-            <tr key={r.id}>
-              {DBR_COLS.map((c) => (
-                <td key={c.key} className="px-1 py-1 break-words">{c.key === 'date' ? fmtD(r.date) : String(r[c.key] ?? '')}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <p className="mb-1 font-bold">Report Analisa Oli — 10 terakhir per component</p>
-      <div className="grid grid-cols-2 gap-2">
-        {units.map(({ unit, rows }) => (
-          <div key={unit} className="print-unit min-w-0">
-            <p className="mb-1 font-bold">Component: {unit}</p>
-            <table className="w-full table-fixed text-center text-[6.5px] leading-tight">
-              <thead>
-                <tr>{OIL_P.map((c) => (<th key={c.key} className="px-0.5 py-0.5 break-words">{c.label}</th>))}</tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.lab_no}>
-                    {OIL_P.map((c) => (
-                      <td key={c.key} className={`px-0.5 py-0.5 break-words ${c.key === 'lab_no' ? 'break-all' : ''} ${oilBad(r, c.key) ? 'font-bold text-red-700' : ''}`}>
-                        {c.key === 'sample_date' ? fmtD(r.sample_date) : String(r[c.key] ?? '')}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-        {['Dibuat Oleh', 'Diperiksa', 'Disetujui'].map((t) => (
-          <div key={t}>
-            <p>{t}</p>
-            <div className="mx-2 mt-12 border-b" />
-            <p>Nama / Tanda tangan / Tanggal</p>
-          </div>
-        ))}
-      </div>
-    </div>
-    )}
-    </>
   )
 }

@@ -253,6 +253,16 @@ export async function fetchVesselUnits(vesselid: string): Promise<string[]> {
   return r.data.data
 }
 
+export async function downloadFuiPdf(cn: string) {
+  const r = await api.get('/v1/fui/report.pdf', { params: { cn }, responseType: 'blob' })
+  const url = URL.createObjectURL(new Blob([r.data], { type: 'application/pdf' }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `FUI-${cn}.pdf`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 5000)
+}
+
 export async function createEquipment(body: Partial<Equipment>) {
   const r = await api.post('/v1/equipment', body)
   return r.data
