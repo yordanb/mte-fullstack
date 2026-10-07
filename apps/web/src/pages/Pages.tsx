@@ -897,7 +897,7 @@ export function FuiPage() {
       setVessel(v); setEq(null); setEqMiss(false); setDbr([]); setUnits([])
       const [e, d, u] = await Promise.all([
         fetchEquipmentOne(v),
-        fetchDbr({ date_from: '2020-01-01', date_to: todayLocal(), cn: v, exclude_continue: true, page: 1, page_size: 10 }),
+        fetchDbr({ date_from: '2020-01-01', date_to: todayLocal(), cn: v, code: 'USM', exclude_continue: true, page: 1, page_size: 10 }),
         fetchVesselUnits(v),
       ])
       if (!e) setEqMiss(true)
@@ -947,7 +947,7 @@ export function FuiPage() {
       )}
       {(eq || (vessel && !loading)) && (
         <div className="overflow-x-auto rounded-2xl border bg-white">
-          <div className="border-b px-5 py-3 font-semibold">10 DBR Breakdown terbaru — {vessel}</div>
+          <div className="border-b px-5 py-3 font-semibold">10 DBR Breakdown terbaru (Code USM, tanpa CONTINUE) — {vessel}</div>
           <table className="w-full border-collapse text-center text-theme-sm">
             <thead className="bg-[#d6e4c9] font-semibold">
               <tr>{DBR_COLS.map((c) => (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>))}</tr>
