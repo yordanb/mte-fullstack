@@ -239,6 +239,20 @@ export async function fetchEquipment(params: Record<string, string | number | bo
   return r.data as { total: number; page: number; page_size: number; data: Equipment[] }
 }
 
+export async function fetchEquipmentOne(cn: string): Promise<Equipment | null> {
+  try {
+    const r = await api.get(`/v1/equipment/${cn}`)
+    return r.data as Equipment
+  } catch {
+    return null
+  }
+}
+
+export async function fetchVesselUnits(vesselid: string): Promise<string[]> {
+  const r = await api.get('/v1/results/units', { params: { vesselid } })
+  return r.data.data
+}
+
 export async function createEquipment(body: Partial<Equipment>) {
   const r = await api.post('/v1/equipment', body)
   return r.data

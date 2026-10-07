@@ -1,10 +1,10 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import Layout from './components/Layout'
 import LoginPage from './pages/Login'
-import { Dashboard, ImportPage, DbrPage, EquipmentPage, ActivityPage } from './pages/Pages'
+import { Dashboard, ImportPage, DbrPage, EquipmentPage, ActivityPage, FuiPage } from './pages/Pages'
 import UsersPage from './pages/Users'
 import AuditPage from './pages/Audit'
-import { fetchMe } from './api/client'
+import { fetchMe, can } from './api/client'
 
 // ApexCharts berat (~700KB): muat hanya saat menu Performance dibuka.
 const PerformancePage = lazy(() => import('./pages/Performance'))
@@ -46,6 +46,7 @@ export default function App() {
         </Suspense>
       )}
       {page === 'equipment' && <EquipmentPage />}
+      {page === 'fui' && can('fui', 'view') && <FuiPage />}
       {page === 'activity' && <ActivityPage />}
       {page === 'import' && <ImportPage />}
       {page === 'users' && me.role === 'admin' && <UsersPage />}

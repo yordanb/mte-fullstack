@@ -78,6 +78,18 @@ async def latest_per_unit(
     """)
     return {"data": list((await db.execute(q, params)).mappings().all())}
 
+@router.get("/units", dependencies=[Depends(require_role("viewer", "inputer", "admin"))])
+async def distinct_units(
+    vesselid: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Daftar unit_id (component) milik satu vessel — untuk halaman FUI."""
+    rows = (await db.execute(text(
+        "SELECT DISTINCT unit_id FROM oil_lab_result "
+        "WHERE vesselid = UPPER(TRIM(:v)) AND unit_id IS NOT NULL AND TRIM(unit_id) <> '' "
+        "ORDER BY unit_id"), {"v": vesselid})).scalars().all()
+    return {"data": list(rows)}
+
 @router.get("/{lab_no}", dependencies=[Depends(require_role("viewer", "inputer", "admin"))])
 async def detail(lab_no: str, db: AsyncSession = Depends(get_db)):
     """Detail 1 baris full-column untuk grafik tren / drill-down."""

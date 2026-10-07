@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -868,6 +868,113 @@ function ActForm({ date, initial, onClose, onSaved }: {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+const FUI_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
+
+export function FuiPage() {
+  const [cn, setCn] = useState('')
+  const [vessel, setVessel] = useState('')
+  const [eq, setEq] = useState<Equipment | null>(null)
+  const [eqMiss, setEqMiss] = useState(false)
+  const [dbr, setDbr] = useState<DbrRow[]>([])
+  const [units, setUnits] = useState<{ unit: string; rows: LabRow[] }[]>([])
+  const [msg, setMsg] = useState('')
+  const [loading, setLoading] = useState(false)
+  const fmtD = (v?: string | null) => {
+    if (!v) return ''
+    const d = new Date(v)
+    if (isNaN(d.getTime())) return String(v)
+    return `${d.getDate()} ${FUI_MONTH[d.getMonth()]} ${d.getFullYear() % 100}`
+  }
+  const load = async () => {
+    const v = cn.trim().toUpperCase()
+    if (!v) { setMsg('Isi code number dulu.'); return }
+    try {
+      setMsg(''); setLoading(true)
+      setVessel(v); setEq(null); setEqMiss(false); setDbr([]); setUnits([])
+      const [e, d, u] = await Promise.all([
+        fetchEquipmentOne(v),
+        fetchDbr({ date_from: '2020-01-01', date_to: todayLocal(), cn: v, page: 1, page_size: 10 }),
+        fetchVesselUnits(v),
+      ])
+      if (!e) setEqMiss(true)
+      setEq(e)
+      setDbr(d.data)
+      const perUnit = await Promise.all(
+        u.map(async (unit) => ({ unit, rows: (await fetchResults(v, unit)).slice(0, 10) })),
+      )
+      setUnits(perUnit.filter((x) => x.rows.length > 0))
+    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    finally { setLoading(false) }
+  }
+  const engine = eq ? [eq.engine_merk, eq.engine_model].filter(Boolean).join(' - ') : ''
+  const info: [string, string][] = eq ? [
+    ['Code Unit', eq.cn], ['Unit Type', eq.unit_type ?? '-'],
+    ['Product', eq.unit_product ?? '-'], ['Engine', engine || '-'],
+  ] : []
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <h2 className="text-theme-xl font-semibold">FUI — Follow Up Instruction</h2>
+        <p className="text-theme-sm text-gray-500">Dossier per unit: info equipment + 10 DBR terbaru + 10 oil terakhir per component</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <input className="w-40 rounded-lg border px-3 py-2" value={cn}
+          onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="Code number cth WP855"
+          onKeyDown={(e) => { if (e.key === 'Enter') load() }} />
+        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={load}>Tampilkan</button>
+      </div>
+      {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
+      {loading && <p className="text-theme-sm text-gray-500">Memuat data {vessel}...</p>}
+      {eqMiss && vessel && !loading && (
+        <p className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 text-theme-sm text-yellow-800">
+          {vessel} tidak ada di master Equipment — DBR & oil tetap ditampilkan.
+        </p>
+      )}
+      {eq && (
+        <div className="grid grid-cols-2 gap-4 rounded-2xl border bg-white p-5 xl:grid-cols-4">
+          {info.map(([k, v]) => (
+            <div key={k}>
+              <p className="text-theme-sm text-gray-500">{k}</p>
+              <p className="mt-1 font-bold break-words">{v}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {(eq || (vessel && !loading)) && (
+        <div className="overflow-x-auto rounded-2xl border bg-white">
+          <div className="border-b px-5 py-3 font-semibold">10 DBR Breakdown terbaru — {vessel}</div>
+          <table className="w-full border-collapse text-center text-theme-sm">
+            <thead className="bg-[#d6e4c9] font-semibold">
+              <tr>{DBR_COLS.map((c) => (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>))}</tr>
+            </thead>
+            <tbody>
+              {dbr.map((r) => (
+                <tr key={r.id} className="border-t">
+                  {DBR_COLS.map((c) => (
+                    <td key={c.key} className="border px-2 py-2 whitespace-nowrap">
+                      {c.key === 'date' ? fmtD(r.date) : (r[c.key] ?? '')}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {dbr.length === 0 && <p className="p-4 text-theme-sm text-gray-500">Tidak ada data DBR untuk {vessel}.</p>}
+        </div>
+      )}
+      {units.map(({ unit, rows }) => (
+        <div key={unit}>
+          <h3 className="mb-2 font-semibold">Component: {unit} — 10 oil terakhir</h3>
+          <VesselTable rows={rows} />
+        </div>
+      ))}
+      {vessel && !loading && units.length === 0 && dbr.length > 0 && (
+        <p className="text-theme-sm text-gray-500">Tidak ada data oil untuk {vessel}.</p>
+      )}
     </div>
   )
 }
