@@ -161,3 +161,34 @@ profil (avatar + ganti password) + dark mode + notifikasi.
 
 - Kerja di branch turun
 ...[truncated 615 chars]
+
+## 9. Progress mobile Flutter (MTE Data Center)
+
+- **M1 SELESAI (2026-10-08)**: project `apps/mobile` (`id.mibt/mte_data_center`).
+  Login + refresh-once-401 + guard route + dashboard oli (latest per unit,
+  cari vessel, filter Critical TL/GS/WP, last update) + dark mode + logout.
+  `flutter analyze` bersih, `flutter test` lolos, APK debug terbuild.
+- **Keputusan yang mengikat sesi paralel**:
+  - Default `baseUrl = https://mte2.mibt.my.id/api` (`app_config.dart:7`).
+    Dev lokal/emulator wajib override:
+    `--dart-define=API_BASE_URL=http://10.0.2.2:8802`.
+    `/api` wajib di produksi (nginx strip prefix, pola web); langsung
+    `http://host:8802` tanpa `/api` hanya untuk dev langsung-ke-API.
+  - `minSdk = 23` (`android/app/build.gradle.kts`) — syarat
+    `flutter_secure_storage` v10.
+  - Kunci storage: `mte_access/mte_refresh/mte_role/mte_username/mte_perm/mte_theme`.
+  - `crit` dashboard = `condition != NORMAL` (WARNING ikut, sama seperti web).
+- **M2 SELESAI (2026-10-08, Activity)**: kalender bulanan (dot jumlah,
+  minggu mulai Senin) + list harian + tab rekap + filter crew/kategori +
+  detail + foto (`?token=`, tap = pratinjau) + tambah/ubah/hapus aktivitas +
+  tambah/hapus foto. Upload multipart `files[]` + progress bar + cegah
+  double-submit; tambah-foto saat ubah khusus admin; gating tombol
+  `activity.add/edit/delete`. Crew `Pumping/Lighting/Mobile/Grader/PCH`,
+  kategori `Proker/FUI/USM/SCM` (bebas ketik). `analyze` bersih, 6 test
+  lolos, APK debug terbuild.
+- **M3 SELESAI (2026-10-08, DBR)**: tabel 11 kolom + filter tanggal/CN/code
+  (dropdown `GET /dbr/codes` + `__EMPTY__` = Code kosong) + sembunyikan
+  CONTINUE client-side (tidak dikirim ke server, sama seperti web) +
+  paginasi server page_size 20 + tanggal tampil `fmtDdbr`. Default 30 hari
+  terakhir. `analyze` bersih, 8 test lolos, APK debug terbuild.
+- **M4 BERIKUTNYA (belum dikerjakan)**: Performance (grafik + Pareto fl_chart).

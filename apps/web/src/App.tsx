@@ -9,8 +9,8 @@ import { fetchMe, can } from './api/client'
 // ApexCharts berat (~700KB): muat hanya saat menu Performance dibuka.
 const PerformancePage = lazy(() => import('./pages/Performance'))
 
-// Batas diam (tanpa klik/gerak mouse/sentuh/ketik): 30 menit -> auto logout.
-const IDLE_MS = 30 * 60 * 1000
+// Batas diam -> auto logout: admin 60 mnt, lainnya 45 mnt.
+const idleMs = (role?: string) => (role === 'admin' ? 60 : 45) * 60 * 1000
 
 export default function App() {
   const [authed, setAuthed] = useState(!!localStorage.getItem('mte_token'))
@@ -22,10 +22,13 @@ export default function App() {
     if (!authed) { setMe(null); return }
     // Muat profil + matriks izin dulu agar menu/tombol langsung benar.
     fetchMe().then((m) => setMe(m)).catch(() => logout())
+  }, [authed])
+  useEffect(() => {
+    if (!authed) return
     const onUnauth = () => logout()
     window.addEventListener('mte:unauthorized', onUnauth)
-    let t = window.setTimeout(logout, IDLE_MS)
-    const reset = () => { window.clearTimeout(t); t = window.setTimeout(logout, IDLE_MS) }
+    let t = window.setTimeout(logout, idleMs(me?.role))
+    const reset = () => { window.clearTimeout(t); t = window.setTimeout(logout, idleMs(me?.role)) }
     const events = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart'] as const
     events.forEach((ev) => window.addEventListener(ev, reset, { passive: true }))
     return () => {
@@ -33,7 +36,7 @@ export default function App() {
       window.clearTimeout(t)
       events.forEach((ev) => window.removeEventListener(ev, reset))
     }
-  }, [authed])
+  }, [authed, me?.role])
   if (!authed) return <LoginPage onOk={() => setAuthed(true)} />
   if (!me) return <p className="p-6 text-theme-sm text-gray-500">Memuat hak akses...</p>
   return (
