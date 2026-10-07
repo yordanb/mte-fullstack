@@ -357,21 +357,28 @@ export function EquipmentPage() {
   const [rows, setRows] = useState<Equipment[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
+  const [sort, setSort] = useState('cn')
+  const [order, setOrder] = useState<'asc' | 'desc'>('asc')
   const [msg, setMsg] = useState('')
   const [edit, setEdit] = useState<Equipment | null>(null)
   const [view, setView] = useState<Equipment | null>(null)
   const [adding, setAdding] = useState(false)
-  const load = async (p = 1) => {
+  const load = async (p = 1, s = sort, o = order) => {
     try {
       setMsg('')
       const r = await fetchEquipment({
         search: q || undefined, category: cat || undefined,
         aktif: aktif === '' ? undefined : aktif === '1',
-        page: p, page_size: 20,
+        sort: s, order: o, page: p, page_size: 20,
       })
       setRows(r.data); setTotal(r.total); setPage(r.page)
     } catch (e) { setMsg(`gagal: ${String(e)}`) }
   }
+  const toggleSort = (key: string) => {
+    const o = sort === key && order === 'asc' ? 'desc' : 'asc'
+    setSort(key); setOrder(o); load(1, key, o)
+  }
+  const arrow = (key: string) => (sort === key ? (order === 'asc' ? ' ▲' : ' ▼') : '')
   useEffect(() => { load(1) }, [])
   const pages = Math.max(1, Math.ceil(total / 20))
   const save = async (cn: string | null, body: Partial<Equipment>) => {
@@ -407,7 +414,13 @@ export function EquipmentPage() {
         <table className="w-full border-collapse text-center text-theme-sm">
           <thead className="bg-[#d6e4c9] font-semibold">
             <tr>
-              {EQ_COLS.map((c) => (<th key={c.key} className="border px-2 py-2 whitespace-nowrap">{c.label}</th>))}
+              {EQ_COLS.map((c) => (
+                <th key={c.key} className="border px-2 py-2 whitespace-nowrap">
+                  <button onClick={() => toggleSort(c.key)} title="Urutkan">
+                    {c.label}{arrow(c.key)}
+                  </button>
+                </th>
+              ))}
               <th className="border px-2 py-2">Aktif</th>
               <th className="border px-2 py-2">Aksi</th>
             </tr>

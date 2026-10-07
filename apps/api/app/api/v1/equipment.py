@@ -39,6 +39,8 @@ async def list_equipment(
     category: str | None = None,
     prefix: str | None = Query(None, min_length=2, max_length=2),
     aktif: bool | None = None,
+    sort: str = Query("cn", pattern="^(cn|unit_type|unit_product|unit_model|category|status|aktif|engine)$"),
+    order: str = Query("asc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -60,9 +62,12 @@ async def list_equipment(
         conds.append("aktif = :akt")
         p["akt"] = aktif
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
+    sort_col = {"engine": "engine_merk, engine_model"}.get(sort, sort)
+    nl = "NULLS LAST"
     total = (await db.execute(text(f"SELECT count(*) FROM equipment {where}"), p)).scalar()
     rows = (await db.execute(text(
-        f"SELECT * FROM equipment {where} ORDER BY cn LIMIT :lim OFFSET :off"), p)
+        f"SELECT * FROM equipment {where} ORDER BY {sort_col} {order.upper()} {nl} "
+        f"LIMIT :lim OFFSET :off"), p)
     ).mappings().all()
     return {"total": total, "page": page, "page_size": page_size,
             "data": [dict(r) for r in rows]}
