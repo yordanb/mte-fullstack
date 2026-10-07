@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchUsers, createUser, patchUser, deleteUser, fetchPerms, setPerm, fetchMe, type PermRow } from '../api/client'
 
 const ROLES = ['admin', 'inputer', 'viewer']
-const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'equipment', 'fui', 'vessel', 'import']
+const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'equipment', 'fui', 'sugfui', 'vessel', 'import']
 const ACTS = [
   { key: 'can_view', label: 'Lihat' },
   { key: 'can_add', label: 'Tambah' },

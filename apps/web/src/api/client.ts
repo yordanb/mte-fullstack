@@ -273,6 +273,11 @@ export async function downloadPamaPdf(cn: string) {
   setTimeout(() => URL.revokeObjectURL(url), 5000)
 }
 
+export async function fetchSuggestions(category: string) {
+  const r = await api.get('/v1/fui/suggestions', { params: { category } })
+  return r.data as { category: string; data: (LabRow & { unit_type?: string | null; unit_product?: string | null })[] }
+}
+
 export async function createEquipment(body: Partial<Equipment>) {
   const r = await api.post('/v1/equipment', body)
   return r.data

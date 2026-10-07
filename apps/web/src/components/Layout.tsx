@@ -8,6 +8,7 @@ const MENU = [
   { key: 'activity', label: 'Activity' },
   { key: 'equipment', label: 'Equipment' },
   { key: 'fui', label: 'FUI' },
+  { key: 'sugfui', label: 'Suggestion FUI' },
   { key: 'import', label: 'Update Data' },
   { key: 'users', label: 'Users', admin: true },
   { key: 'audit', label: 'Audit Log', admin: true },
@@ -32,6 +33,9 @@ const ICONS: Record<string, ReactNode> = {
   ),
   fui: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="m9 14 2 2 4-4" /></svg>
+  ),
+  sugfui: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /><path d="M11 8v3l2 2" /></svg>
   ),
   vessel: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2.5" /><path d="M12 7.5V21M5 12H2a10 10 0 0 0 20 0h-3" /></svg>

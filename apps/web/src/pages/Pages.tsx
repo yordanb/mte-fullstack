@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -1005,6 +1005,62 @@ export function FuiPage() {
       ))}
       {vessel && !loading && units.length === 0 && dbr.length > 0 && (
         <p className="text-theme-sm text-gray-500">Tidak ada data oil untuk {vessel}.</p>
+      )}
+    </div>
+  )
+}
+
+const SUG_CATS = ['BIGWHEEL', 'LIGHTING', 'MOBILE', 'PUMPING']
+
+export function SugFuiPage() {
+  const [cat, setCat] = useState('MOBILE')
+  const [groups, setGroups] = useState<{ key: string; rows: (LabRow & { unit_type?: string | null; unit_product?: string | null })[] }[]>([])
+  const [msg, setMsg] = useState('')
+  const [loading, setLoading] = useState(false)
+  const load = async () => {
+    try {
+      setMsg(''); setLoading(true)
+      const r = await fetchSuggestions(cat)
+      const g: typeof groups = []
+      r.data.forEach((row) => {
+        const key = `${row.vesselid} / ${row.unit_id}`
+        const last = g[g.length - 1]
+        if (last && last.key === key) last.rows.push(row)
+        else g.push({ key, rows: [row] })
+      })
+      setGroups(g)
+    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    finally { setLoading(false) }
+  }
+  useEffect(() => { load() }, [])
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <h2 className="text-theme-xl font-semibold">Suggestion FUI</h2>
+        <p className="text-theme-sm text-gray-500">Unit aktif yang sample terakhirnya bukan NORMAL + 3 oil terakhirnya</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <select className="rounded-lg border px-3 py-2" value={cat} onChange={(e) => setCat(e.target.value)}>
+          {SUG_CATS.map((c) => (<option key={c} value={c}>{c}</option>))}
+        </select>
+        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={load}>Tampilkan</button>
+        <span className="text-theme-sm text-gray-500">{groups.length} unit perlu follow-up</span>
+      </div>
+      {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
+      {loading && <p className="text-theme-sm text-gray-500">Memuat...</p>}
+      {groups.map(({ key, rows }) => (
+        <div key={key}>
+          <h3 className="mb-2 font-semibold">
+            {key}
+            {[rows[0]?.unit_type, rows[0]?.unit_product].filter(Boolean).length > 0 &&
+              ` — ${[rows[0]?.unit_type, rows[0]?.unit_product].filter(Boolean).join(' / ')}`}
+            {' — '}{rows[0]?.condition}
+          </h3>
+          <VesselTable rows={rows} />
+        </div>
+      ))}
+      {!loading && groups.length === 0 && (
+        <p className="text-theme-sm text-gray-500">Tidak ada unit {cat} yang perlu follow-up.</p>
       )}
     </div>
   )

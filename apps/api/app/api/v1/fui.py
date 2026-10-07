@@ -1,5 +1,5 @@
 import io
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -97,3 +97,44 @@ async def pama(cn: str = Query(..., min_length=2),
     return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf",
                              headers={"Content-Disposition":
                                       f'attachment; filename="PAMA-{v}.pdf"'})
+
+
+SUG_COLS = ("o.lab_no, o.vesselid, o.unit_id, o.model, o.sample_date, o.date_taken, "
+            "ROUND(EXTRACT(EPOCH FROM (o.date_taken - o.sample_date)) / 86400, 1) AS lead_time, "
+            "o.oil_weight, o.unit_time, o.unit_time_oils, "
+            "o.visc, o.fuel, o.soot, o.oxi, o.nitr, o.water, o.tbn, "
+            "o.si, o.fe, o.cu, o.al, o.cr, o.pb, o.na, "
+            "o.grade_visc, o.grade_fuel, o.grade_soot, o.grade_oxi, o.grade_nitr, "
+            "o.grade_water, o.grade_tbn, o.grade_si, o.grade_fe, o.grade_cu, "
+            "o.grade_al, o.grade_cr, o.grade_pb, o.grade_na, "
+            "o.\"condition\", o.english_description, "
+            "e.unit_type, e.unit_product")
+
+
+@router.get("/suggestions", dependencies=[Depends(require_role("viewer", "inputer", "admin"))])
+async def suggestions(category: str = Query(..., min_length=3),
+                      db: AsyncSession = Depends(get_db),
+                      user=Depends(get_current_user)):
+    """Unit aktif 1 kategori yang sample terakhirnya non-NORMAL + 3 oil terakhirnya."""
+    if category.upper() not in ("BIGWHEEL", "LIGHTING", "MOBILE", "PUMPING"):
+        raise HTTPException(400, "category harus BIGWHEEL/LIGHTING/MOBILE/PUMPING")
+    rows = (await db.execute(text(
+        f"SELECT {SUG_COLS} FROM ("
+        "SELECT o.*, ROW_NUMBER() OVER (PARTITION BY o.vesselid, o.unit_id "
+        "ORDER BY o.sample_date DESC, o.lab_no DESC) AS rn "
+        "FROM oil_lab_result o "
+        "JOIN equipment e ON e.cn = o.vesselid "
+        "WHERE e.category=:cat AND e.aktif) r "
+        "JOIN equipment e ON e.cn = r.vesselid "
+        "JOIN (SELECT vesselid, unit_id FROM ("
+        "SELECT o.vesselid, o.unit_id, ROW_NUMBER() OVER (PARTITION BY o.vesselid, o.unit_id "
+        "ORDER BY o.sample_date DESC, o.lab_no DESC) AS rn, o.\"condition\" "
+        "FROM oil_lab_result o "
+        "JOIN equipment e ON e.cn = o.vesselid "
+        "WHERE e.category=:cat AND e.aktif) t "
+        "WHERE rn = 1 AND \"condition\" IS DISTINCT FROM 'NORMAL') l "
+        "USING (vesselid, unit_id) "
+        "WHERE r.rn <= 3 "
+        "ORDER BY r.vesselid, r.unit_id, r.sample_date DESC LIMIT 600"),
+        {"cat": category.upper()})).mappings().all()
+    return {"category": category.upper(), "data": [dict(r) for r in rows]}
