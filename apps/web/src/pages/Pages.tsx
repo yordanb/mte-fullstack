@@ -873,6 +873,8 @@ function ActForm({ date, initial, onClose, onSaved }: {
 }
 
 const FUI_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
+// Export PDF dinonaktifkan sementara (hasil belum sesuai) — set true untuk menyalakan lagi.
+const SHOW_FUI_EXPORT = false
 
 export function FuiPage() {
   const [cn, setCn] = useState('')
@@ -945,7 +947,7 @@ export function FuiPage() {
           onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="Code number cth WP855"
           onKeyDown={(e) => { if (e.key === 'Enter') load() }} />
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={load}>Tampilkan</button>
-        {(eq || dbr.length > 0 || units.length > 0) && (
+        {SHOW_FUI_EXPORT && (eq || dbr.length > 0 || units.length > 0) && (
           <>
             <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={pdfBusy} onClick={exportPdf}>
               {pdfBusy ? 'Menyusun PDF...' : 'Export PDF'}
