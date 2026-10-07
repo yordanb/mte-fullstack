@@ -334,12 +334,11 @@ export function DbrPage() {
 const EQ_CATS = ['BIGWHEEL', 'LIGHTING', 'MOBILE', 'PUMPING']
 const EQ_COLS: { key: string; label: string }[] = [
   { key: 'cn', label: 'Code Number' }, { key: 'unit_type', label: 'Unit Type' },
-  { key: 'unit_product', label: 'Product' },
-  { key: 'category', label: 'Kategori' }, { key: 'unit_model', label: 'Model' },
-  { key: 'engine', label: 'Engine' }, { key: 'status', label: 'Status' },
+  { key: 'unit_product', label: 'Product' }, { key: 'unit_model', label: 'Model' },
+  { key: 'engine', label: 'Engine' },
 ]
 const eqCell = (r: Equipment, key: string) => {
-  if (key === 'engine') return [r.engine_model, r.engine_merk].filter(Boolean).join(' / ')
+  if (key === 'engine') return [r.engine_merk, r.engine_model].filter(Boolean).join(' - ')
   return String(r[key as keyof Equipment] ?? '')
 }
 const EQ_EDIT_FIELDS: { key: keyof Equipment; label: string }[] = [
