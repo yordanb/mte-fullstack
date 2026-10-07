@@ -189,35 +189,52 @@ async def suggest_report(
     user=Depends(get_current_user),
 ):
     """Oil terakhir non-NORMAL per unit + status suggest."""
-    conds, p = ['m."condition" IS DISTINCT FROM \'NORMAL\''],
-    {"lim": page_size, "off": (page - 1) * page_size}
+    conds = ['m."condition" IS DISTINCT FROM \'NORMAL\'']
+    p: dict = {}
     if category:
         if category.upper() not in ("BIGWHEEL", "LIGHTING", "MOBILE", "PUMPING"):
             raise HTTPException(400, "category tidak valid")
-        conds.append("e.category=:cat")
+        conds.append("e.category = :cat")
         p["cat"] = category.upper()
     if search:
         conds.append("(m.vesselid ILIKE :s OR m.unit_id ILIKE :s)")
         p["s"] = f"%{search.upper()}%"
-    if has_suggest is True:
-        conds.append("COALESCE(c.n, 0) > 0")
-    elif has_suggest is False:
-        conds.append("COALESCE(c.n, 0) = 0")
     where = f"WHERE {' AND '.join(conds)}"
-    base = (f"FROM mv_latest_status m "
-            f"LEFT JOIN equipment e ON e.cn = m.vesselid "
-            f"LEFT JOIN LATERAL (SELECT suggestion, pic, created_by, created_at "
-            f"FROM followup_suggests WHERE lab_no = m.lab_no "
-            f"ORDER BY created_at DESC LIMIT 1) s ON true "
-            f"LEFT JOIN LATERAL (SELECT count(*) AS n FROM followup_suggests "
-            f"WHERE lab_no = m.lab_no) c ON true {where}")
-    total = (await db.execute(text(f"SELECT count(*) {base}"), p)).scalar()
     rows = (await db.execute(text(
         f"SELECT m.lab_no, m.vesselid, m.unit_id, m.sample_date, m.unit_time, "
-        f"m.\"condition\", e.unit_type, e.unit_product, "
-        f"COALESCE(c.n, 0) AS suggest_count, s.suggestion AS latest_suggestion, "
-        f"s.pic AS latest_pic, s.created_by AS latest_by, s.created_at AS latest_at "
-        f"{base} ORDER BY m.sample_date DESC LIMIT :lim OFFSET :off"), p)
+        f"m.\"condition\", e.unit_type, e.unit_product "
+        f"FROM mv_latest_status m "
+        f"LEFT JOIN equipment e ON e.cn = m.vesselid "
+        f"{where} ORDER BY m.sample_date DESC LIMIT 500"), p)
     ).mappings().all()
-    return {"total": total, "page": page, "page_size": page_size,
-            "data": [dict(r) for r in rows]}
+    data = [dict(r) for r in rows]
+    labs = [d["lab_no"] for d in data]
+    info: dict = {}
+    if labs:
+        for r in (await db.execute(text(
+                "SELECT lab_no, count(*) AS n FROM followup_suggests "
+                "WHERE lab_no = ANY(:labs) GROUP BY lab_no"),
+                {"labs": labs})).mappings().all():
+            info[r["lab_no"]] = {"n": r["n"]}
+        for r in (await db.execute(text(
+                "SELECT DISTINCT ON (lab_no) lab_no, suggestion, pic, "
+                "created_by, created_at FROM followup_suggests "
+                "WHERE lab_no = ANY(:labs) ORDER BY lab_no, created_at DESC"),
+                {"labs": labs})).mappings().all():
+            info.setdefault(r["lab_no"], {"n": 0}).update({
+                "suggestion": r["suggestion"], "pic": r["pic"],
+                "by": r["created_by"], "at": r["created_at"]})
+    if has_suggest is True:
+        data = [d for d in data if info.get(d["lab_no"], {}).get("n", 0) > 0]
+    elif has_suggest is False:
+        data = [d for d in data if info.get(d["lab_no"], {}).get("n", 0) == 0]
+    total = len(data)
+    start = (page - 1) * page_size
+    out = []
+    for d in data[start:start + page_size]:
+        s = info.get(d["lab_no"], {})
+        out.append({**d, "suggest_count": s.get("n", 0),
+                    "latest_suggestion": s.get("suggestion"),
+                    "latest_pic": s.get("pic"), "latest_by": s.get("by"),
+                    "latest_at": s.get("at")})
+    return {"total": total, "page": page, "page_size": page_size, "data": out}
