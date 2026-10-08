@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, canWrite, todayLocal, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, canWrite, todayLocal, errMsg, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -22,17 +22,17 @@ export function Dashboard() {
   const got = (r: LabRow[]) => { setRows(r); setPage(1) }
   const loadLatest = async () => {
     try { setErr(''); setMode('latest'); setCritPrefix(''); got(await fetchLatestPerUnit(200)) }
-    catch (e) { setErr(`Gagal muat default (perlu pull+rebuild api di VPS?): ${String(e)}`) }
+    catch (e) { setErr(`Gagal muat default (perlu pull+rebuild api di VPS?): ${errMsg(e)}`) }
   }
   const loadCrit = async (p: '' | 'TL' | 'GS' | 'WP') => {
     try {
       setErr(''); setMode('latest'); setCritPrefix(p)
       got(p ? await fetchLatestPerUnit(200, p, 'CRITICAL') : await fetchLatestPerUnit(200))
-    } catch (e) { setErr(`Gagal filter: ${String(e)}`) }
+    } catch (e) { setErr(`Gagal filter: ${errMsg(e)}`) }
   }
   const load = async () => {
     try { setErr(''); setMode('search'); setCritPrefix(''); got(await fetchResults(vessel, unit || undefined)) }
-    catch (e) { setErr(`Gagal cari: ${String(e)}`) }
+    catch (e) { setErr(`Gagal cari: ${errMsg(e)}`) }
   }
   useEffect(() => { loadLatest(); fetchLatestImport().then(setLastUp).catch(() => null) }, [])
   const crit = rows.filter((r) => r.condition !== 'NORMAL').length
@@ -120,7 +120,7 @@ export function ImportPage() {
         setProg({ done: s.processed_rows, total: s.total_rows })
         if (s.status === 'COMMITTED') { setMsg(`Selesai: ok=${s.ok_rows} fail=${s.fail_rows} import=${s.id}`); break }
         if (s.status === 'FAILED') { setMsg(`Gagal di server, cek log api. import=${s.id}`); break }
-      } catch (e) { setMsg(`gagal pantau: ${String(e)}`); break }
+      } catch (e) { setMsg(`gagal pantau: ${errMsg(e)}`); break }
     }
   }
   const send = async (dry: boolean) => {
@@ -133,7 +133,7 @@ export function ImportPage() {
       if (dry) { setMsg(`Dry-run: ok=${r.ok} fail=${r.fail}`); return }
       setMsg(`Commit diterima, mulai membaca file...`)
       poll(r.import_id)
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const up = async () => {
     const el = document.getElementById('dbr-xlsx-import') as HTMLInputElement
@@ -152,7 +152,7 @@ export function ImportPage() {
         }
       }
       poll()
-    } catch (e) { setUpMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setUpMsg(`gagal: ${errMsg(e)}`) }
   }
   const pct = prog && prog.total ? Math.round((prog.done / prog.total) * 100) : 0
   const upPct = upProg && upProg.total ? Math.round((upProg.done / upProg.total) * 100) : 0
@@ -280,7 +280,7 @@ export function DbrPage() {
       const r = await fetchDbr({ date_from: df || undefined, date_to: dt || undefined,
         cn: cn.toUpperCase() || undefined, code: code || undefined, page: p, page_size: 20 })
       setRows(r.data); setTotal(r.total); setPage(r.page)
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   useEffect(() => { load(1); fetchDbrCodes().then(setCodes).catch(() => null) }, [])
   const pages = Math.max(1, Math.ceil(total / 20))
@@ -372,7 +372,7 @@ export function EquipmentPage() {
         sort: s, order: o, page: p, page_size: 20,
       })
       setRows(r.data); setTotal(r.total); setPage(r.page)
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const toggleSort = (key: string) => {
     const o = sort === key && order === 'asc' ? 'desc' : 'asc'
@@ -387,7 +387,7 @@ export function EquipmentPage() {
       if (cn) await patchEquipment(cn, body)
       else await createEquipment(body)
       setEdit(null); setAdding(false); load(page)
-    } catch (e) { setMsg(`gagal simpan: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal simpan: ${errMsg(e)}`) }
   }
   return (
     <div className="flex flex-col gap-4">
@@ -582,13 +582,13 @@ export function ActivityPage() {
     setYm({ y: d.getFullYear(), m: d.getMonth() + 1 })
   }
   const loadMonth = async (y: number, m: number, cw = fCrew, ct = fCat) => {
-    try { setCounts(await fetchActivityMonth(y, m, cw || undefined, ct || undefined)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    try { setCounts(await fetchActivityMonth(y, m, cw || undefined, ct || undefined)) } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const loadDay = async (d: string) => {
-    try { setItems(await fetchActivitiesByDate(d)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    try { setItems(await fetchActivitiesByDate(d)) } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const loadRecap = async (y: number, m: number, cw = fCrew, ct = fCat) => {
-    try { setRecap(await fetchActivityRecap(y, m, cw || undefined, ct || undefined)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    try { setRecap(await fetchActivityRecap(y, m, cw || undefined, ct || undefined)) } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   useEffect(() => { loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m) }, [ym])
   useEffect(() => { loadDay(sel) }, [sel])
@@ -618,7 +618,7 @@ export function ActivityPage() {
   }
   const today = todayLocal()
   const openDetail = async (id: string) => {
-    try { setDetail(await fetchActivity(id)) } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    try { setDetail(await fetchActivity(id)) } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const afterSave = () => { setForm(null); loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m); loadDay(sel) }
   const shown = items.filter(match)
@@ -738,11 +738,11 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
   const [msg, setMsg] = useState('')
   const del = async () => {
     if (!confirm(`Hapus aktivitas "${row.title}" beserta fotonya?`)) return
-    try { await deleteActivity(row.id); onDeleted() } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    try { await deleteActivity(row.id); onDeleted() } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const delPhoto = async (pid: string) => {
     if (!confirm('Hapus foto ini?')) return
-    try { await deleteActivityPhoto(row.id, pid); onPhotoDeleted() } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    try { await deleteActivityPhoto(row.id, pid); onPhotoDeleted() } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -822,7 +822,7 @@ function ActForm({ date, initial, onClose, onSaved }: {
         await createActivity(fd, (p) => setPct(p))
       }
       onSaved()
-    } catch (e) { setMsg(`gagal: ${String(e)}`); setBusy(false) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`); setBusy(false) }
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -909,7 +909,7 @@ export function FuiPage() {
         u.map(async (unit) => ({ unit, rows: (await fetchResults(v, unit)).slice(0, 10) })),
       )
       setUnits(perUnit.filter((x) => x.rows.length > 0))
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
     finally { setLoading(false) }
   }
   const engine = eq ? [eq.engine_merk, eq.engine_model].filter(Boolean).join(' - ') : ''
@@ -925,7 +925,7 @@ export function FuiPage() {
     try {
       setPdfBusy(true); setMsg('')
       await downloadFuiPdf(vessel)
-    } catch (e) { setMsg(`gagal export: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal export: ${errMsg(e)}`) }
     finally { setPdfBusy(false) }
   }
   const exportPama = async () => {
@@ -933,7 +933,7 @@ export function FuiPage() {
     try {
       setPamaBusy(true); setMsg('')
       await downloadPamaPdf(vessel)
-    } catch (e) { setMsg(`gagal export: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal export: ${errMsg(e)}`) }
     finally { setPamaBusy(false) }
   }
   return (
@@ -1030,7 +1030,7 @@ export function SugFuiPage() {
         else g.push({ key, rows: [row] })
       })
       setGroups(g)
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
     finally { setLoading(false) }
   }
   useEffect(() => { load() }, [])
@@ -1078,7 +1078,7 @@ export function SuggestModal({ row, onClose }: { row: LabRow; onClose: () => voi
       setMsg('')
       await addSuggest({ lab_no: String(row.lab_no), suggestion: text, pic: pic || undefined })
       setDone(true)
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const inp = 'w-full rounded-lg border px-3 py-2'
   return (
@@ -1137,13 +1137,13 @@ export function SugReportPage() {
       })
       setRows(r.data); setTotal(r.total); setPage(r.page)
       if (sug) setSug(null)
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   useEffect(() => { load(1) }, [])
   const pages = Math.max(1, Math.ceil(total / 20))
   const openHist = async (lab: string) => {
     try { setHist({ lab, data: (await fetchSuggestHistory(lab)).data }) }
-    catch (e) { setMsg(`gagal: ${String(e)}`) }
+    catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const fmtDT = (v?: string | null) => {
     if (!v) return ''

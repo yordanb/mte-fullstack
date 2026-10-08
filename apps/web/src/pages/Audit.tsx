@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchAudit, todayLocal, type AuditRow } from '../api/client'
+import { fetchAudit, todayLocal, errMsg, type AuditRow } from '../api/client'
 
 export default function AuditPage() {
   const d1 = todayLocal()
@@ -28,7 +28,7 @@ export default function AuditPage() {
         page: p, page_size: 20,
       })
       setRows(r.data); setTotal(r.total); setPage(r.page)
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   useEffect(() => { load(1) }, [])
   const pages = Math.max(1, Math.ceil(total / 20))

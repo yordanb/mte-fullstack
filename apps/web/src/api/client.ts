@@ -2,6 +2,14 @@ import axios from 'axios'
 
 export const api = axios.create({ baseURL: '/api' })
 
+/** Ambil pesan {detail} FastAPI agar error 400/422 terbaca manusia. */
+export function errMsg(e: unknown): string {
+  const d = (e as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
+  if (Array.isArray(d)) return d.map((x) => (x as { msg?: string })?.msg ?? JSON.stringify(x)).join('; ')
+  if (typeof d === 'string' && d) return d
+  return String(e)
+}
+
 /** Tanggal lokal (YYYY-MM-DD) — JANGAN pakai toISOString (UTC, bisa beda hari). */
 export function todayLocal(daysAgo = 0) {
   const d = new Date()

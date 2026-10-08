@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { fetchUsers, createUser, patchUser, deleteUser, fetchPerms, setPerm, fetchMe, type PermRow } from '../api/client'
+import { fetchUsers, createUser, patchUser, deleteUser, fetchPerms, setPerm, fetchMe, errMsg, type PermRow } from '../api/client'
 
 const ROLES = ['admin', 'inputer', 'viewer']
 const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'equipment', 'fui', 'sugfui', 'fureport', 'vessel', 'import']
@@ -21,12 +21,12 @@ export default function UsersPage() {
       setMsg('')
       setUsers(await fetchUsers())
       setPerms(await fetchPerms())
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   useEffect(() => { load() }, [])
   const add = async () => {
     try { await createUser(nu); setNu({ username: '', password: '', role: 'inputer' }); load() }
-    catch (e) { setMsg(`gagal: ${String(e)}`) }
+    catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const saveEdit = async () => {
     if (!er) return
@@ -36,11 +36,11 @@ export default function UsersPage() {
         password: er.password || undefined,
       })
       setEr(null); load()
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const del = async (u: string) => {
     if (!confirm(`Hapus user ${u}?`)) return
-    try { await deleteUser(u); load() } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    try { await deleteUser(u); load() } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const toggle = async (row: PermRow, key: keyof Omit<PermRow, 'role' | 'menu'>, v: boolean) => {
     const next = { ...row, [key]: v }
@@ -52,7 +52,7 @@ export default function UsersPage() {
       await setPerm(next)
       setPerms((p) => p.map((x) => (x.role === row.role && x.menu === row.menu ? next : x)))
       await fetchMe()
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const inp = 'rounded-lg border px-3 py-2'
   return (

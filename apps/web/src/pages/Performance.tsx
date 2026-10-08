@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import ReactApexChart from 'react-apexcharts'
-import { fetchDbrStats, fetchDbrCodes, todayLocal, type DbrStats } from '../api/client'
+import { fetchDbrStats, fetchDbrCodes, todayLocal, errMsg, type DbrStats } from '../api/client'
 
 const PERF_COLORS = ['#465fff', '#9cb878', '#e6a23c', '#e26d5c', '#7b7fd4', '#4fb0c6', '#8a8a8a']
 const PERF_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
@@ -39,7 +39,7 @@ export default function PerformancePage() {
         exclude_continue: noCont,
       })
       setSt(r)
-    } catch (e) { setMsg(`gagal: ${String(e)}`) }
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   useEffect(() => { load(); fetchDbrCodes().then(setCodes).catch(() => null) }, [])
   // pivot series -> [{period, total, TL: n, ...}], top 6 prefix + Lainnya
