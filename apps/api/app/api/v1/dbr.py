@@ -21,15 +21,35 @@ def _upsert_sql() -> str:
             f"VALUES ({', '.join(':' + c for c in cols)}) "
             f"ON CONFLICT (date, cn, start_breakdown) DO UPDATE SET {sets}")
 
+def _header_idx(ws):
+    """Index header yang toleran spasi ekstra ('DATE ' -> 'DATE').
+    Gagal-cepat bila ada kolom wajib hilang (sebelumnya KeyError per baris)."""
+    header = list(next(ws.iter_rows(min_row=HEADER_ROW, max_row=HEADER_ROW, values_only=True)))
+    idx = {}
+    for i, h in enumerate(header):
+        if h is None:
+            continue
+        key = str(h).strip()
+        if key and key not in idx:
+            idx[key] = i
+    missing = [h for h in HEADER_MAP if h not in idx]
+    if missing:
+        raise ValueError(f"Header hilang: {missing}")
+    return idx
+
+
+def _open_sheet(content: bytes):
+    wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    if SHEET not in wb.sheetnames:
+        raise ValueError(f"Sheet {SHEET} tidak ditemukan, ada: {wb.sheetnames}")
+    return wb[SHEET]
+
+
 async def _run(import_id: str, content: bytes):
     async with SessionLocal() as db:
         try:
-            wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
-            if SHEET not in wb.sheetnames:
-                raise ValueError(f"Sheet {SHEET} tidak ditemukan")
-            ws = wb[SHEET]
-            header = list(next(ws.iter_rows(min_row=HEADER_ROW, max_row=HEADER_ROW, values_only=True)))
-            idx = {h: i for i, h in enumerate(header) if h}
+            ws = _open_sheet(content)
+            idx = _header_idx(ws)
             rows, errors, n = [], [], 0
             for rno, r in enumerate(ws.iter_rows(min_row=DATA_START_ROW, values_only=True), start=DATA_START_ROW):
                 if all(v is None for v in r):
@@ -78,6 +98,10 @@ async def upload_dbr(bg: BackgroundTasks, file: UploadFile = File(...),
     content = await file.read()
     if len(content) > settings.max_upload_mb * 1024 * 1024:
         raise HTTPException(413, "File terlalu besar")
+    try:
+        _header_idx(_open_sheet(content))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     res = await db.execute(text(
         "INSERT INTO imports(filename,sheet,status,total_rows,uploaded_by) "
         "VALUES (:fn,'DBR','PROCESSING',0,:u) RETURNING id"),

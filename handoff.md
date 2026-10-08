@@ -192,4 +192,41 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   CONTINUE client-side (tidak dikirim ke server, sama seperti web) +
   paginasi server page_size 20 + tanggal tampil `fmtDdbr`. Default 30 hari
   terakhir. `analyze` bersih, 8 test lolos, APK debug terbuild.
-- **M4 BERIKUTNYA (belum dikerjakan)**: Performance (grafik + Pareto fl_chart).
+- **M4 SELESAI (2026-10-08, Performance)**: kartu ringkasan (total, unit,
+  hari, rata-rata) + grafik frekuensi stacked-bar per prefix top 6 +
+  Lainnya + tooltip total (fl_chart, ganti ApexCharts) + 4 Pareto
+  (Trouble/Section/Code/CN) + filter tanggal/granularitas/prefix/code +
+  Kecualikan CONTINUE default true + label jumlah baris dikecualikan.
+  Default 90 hari mingguan. `fl_chart` dipatok **0.69.2** (1.1.0 tidak
+  kompatibel dengan Flutter 3.32.5). `analyze` bersih, 12 test lolos,
+  APK debug terbuild.
+- **M5 SELESAI (2026-10-08, Equipment)**: cari CN/type (uppercase) +
+  filter kategori/aktif + sort header server (tanda panah, default cn asc) +
+  tambah unit (CN + kategori wajib, 409 bila duplikat) + ubah 11 field +
+  aktif + detail penuh (18 field + Komponen/Serial specs) + paginasi 20 +
+  baris nonaktif redup. Tombol tambah/ubah gated `equipment.add/edit`.
+  `analyze` bersih, 15 test lolos, APK debug terbuild.
+- **Fix backend import (2026-10-08, di luar milestone mobile)**: header
+  Excel kini di-strip + validasi fail-fast 400 (`Header hilang`/`Sheet
+  tidak ditemukan) di `dbr.py`/`imports.py` — menutup kasus DBR
+  `ok=0 fail=148` akibat header `DATE` tidak persis. Perlu
+  `docker compose up -d --build api` di VPS.
+- **M6 SELESAI (2026-10-08, FUI)**: dossier per CN (info equipment +
+  10 DBR USM tanpa CONTINUE server-side + 10 oil per component) + Suggestion
+  (kategori default MOBILE, grup vessel/unit, tombol Suggest bila bukan
+  viewer, form saran+PIC) + Report Follow Up (filter kategori/cari/status
+  Sudah-Belum, badge, saran terakhir, Riwayat per lab, paginasi 20).
+  Tabel oil bersama (sel merah bila grade bukan N). Export PDF diskip
+  (disembunyikan di web). `analyze` bersih, 18 test lolos, APK terbuild.
+- **M7 SELESAI (2026-10-08, Update Data + Users + Audit + Profil)**:
+  Update Data 2 tile (oli Dry-run/Commit + DBR Upload, file_picker .xlsx,
+  polling 2 dtk, dry-run tampil ok/fail + 10 error + preview, gate
+  `import.view/add`); Users admin (tambah/ubah role+password/hapus +
+  matriks izin inputer/viewer × 10 menu, tulis-butuh-lihat, refreshMe);
+  Audit admin (filter 7 hari/username/path + badge status + paginasi);
+  Profil (avatar ?token= + inisial fallback, ganti foto, ganti password);
+  Notifikasi (5 import + 5 aktivitas, lonceng di AppBar).
+  `file_picker` v11 API `FilePicker.pickFiles` (tanpa `.platform`).
+  `analyze` bersih, 22 test lolos, APK terbuild.
+- **SEMUA MILESTONE MOBILE SELESAI.** Sisa: uji E2E vs produksi + build
+  release (keystore) bila diperlukan.

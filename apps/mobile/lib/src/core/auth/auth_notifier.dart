@@ -106,6 +106,20 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  /// Muat ulang sesi dari GET /v1/users/me (dipakai setelah ubah izin).
+  Future<void> refreshMe() async {
+    try {
+      final me = await _api.me();
+      await _store.saveSession(role: me.role, permissions: me.permissions);
+      state = state.copyWith(
+        username: me.username,
+        role: me.role,
+        permissions: Permissions.fromJson(me.permissions),
+      );
+      ref.invalidate(permissionsProvider);
+    } catch (_) {}
+  }
+
   /// Dipanggil saat API mengembalikan 401 final (refresh gagal).
   Future<void> forceLogout() async {
     await _store.clearAll();

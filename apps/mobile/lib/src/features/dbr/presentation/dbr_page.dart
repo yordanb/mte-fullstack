@@ -4,38 +4,8 @@ import 'package:mte_data_center/src/core/utils/date_fmt.dart';
 import 'package:mte_data_center/src/core/widgets/app_scaffold.dart';
 import 'package:mte_data_center/src/core/widgets/error_view.dart';
 
-import '../domain/dbr_models.dart';
 import 'dbr_providers.dart';
-
-/// Kolom tampil DBR_COLS web (Pages.tsx:247-254).
-const _cols = [
-  ('date', 'DATE'),
-  ('cn', 'C/N'),
-  ('section', 'SECTION'),
-  ('trouble', 'Trouble'),
-  ('code', 'Code'),
-  ('hm_start', 'HM Start'),
-  ('loc', 'LOC'),
-  ('start_breakdown', 'Start BD'),
-  ('action', 'Action'),
-  ('mechanic', 'Mechanic'),
-  ('gl', 'GL'),
-];
-
-String _cell(DbrRow r, String key) => switch (key) {
-      'date' => fmtDdbr(r.date),
-      'cn' => r.cn,
-      'section' => r.section ?? '',
-      'trouble' => r.trouble ?? '',
-      'code' => r.code ?? '',
-      'hm_start' => r.hmStart ?? '',
-      'loc' => r.loc ?? '',
-      'start_breakdown' => r.startBreakdown ?? '',
-      'action' => r.action ?? '',
-      'mechanic' => r.mechanic ?? '',
-      'gl' => r.gl ?? '',
-      _ => '',
-    };
+import 'dbr_table.dart';
 
 /// DBR Breakdown: filter tanggal/CN/code + sembunyikan CONTINUE
 /// (client-side) + paginasi server. Meniru DbrPage web.
@@ -181,33 +151,7 @@ class _DbrPageState extends ConsumerState<DbrPage> {
                           ref.invalidate(dbrRecordsProvider);
                           await ref.read(dbrRecordsProvider.future);
                         },
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: SingleChildScrollView(
-                            child: DataTable(
-                              columns: [
-                                for (final c in _cols) DataColumn(label: Text(c.$2)),
-                              ],
-                              rows: [
-                                for (final r in shown)
-                                  DataRow(
-                                    color: r.isContinue
-                                        ? WidgetStatePropertyAll(
-                                            Theme.of(context)
-                                                .colorScheme
-                                                .surfaceContainerHighest
-                                                .withValues(alpha: 0.5),
-                                          )
-                                        : null,
-                                    cells: [
-                                      for (final c in _cols)
-                                        DataCell(Text(_cell(r, c.$1))),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        child: DbrTable(rows: shown),
                       ),
                     ),
                     if (shown.isEmpty)

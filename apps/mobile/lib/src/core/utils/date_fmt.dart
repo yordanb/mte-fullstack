@@ -39,6 +39,14 @@ String fmtDdbr(String? v) {
   return '${d.day} ${_idMonths[d.month - 1]} ${d.year % 100}';
 }
 
+/// Performance: granularitas month -> "Jul 26", selain itu "12 Jul 26".
+String fmtPeriod(String? v, String granularity) {
+  final d = _parseLocal(v);
+  if (d == null) return v ?? '';
+  if (granularity == 'month') return '${_idMonths[d.month - 1]} ${d.year % 100}';
+  return fmtDdbr(v);
+}
+
 /// Log/notifikasi/last update: dd/MM/yyyy HH:mm (web Pages.tsx fmtDT).
 String fmtDT(String? v) {
   final d = _parseLocal(v);

@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mte_data_center/src/core/auth/auth_notifier.dart';
-import 'package:mte_data_center/src/core/auth/token_storage.dart';
 import 'package:mte_data_center/src/core/network/dio_client.dart' show apiMessage;
 import 'package:mte_data_center/src/core/utils/date_fmt.dart';
 
@@ -60,10 +59,7 @@ class ActivityFilterNotifier extends Notifier<ActivityFilter> {
 final activityFilterProvider =
     NotifierProvider<ActivityFilterNotifier, ActivityFilter>(ActivityFilterNotifier.new);
 
-/// Token akses saat ini untuk URL foto ?token=.
-final accessTokenProvider = FutureProvider<String?>((ref) async {
-  return ref.watch(tokenStorageProvider).readAccess();
-});
+/// Token akses: pindah ke core (token_storage.accessTokenProvider).
 
 Future<T> _guard<T>(Ref ref, Future<T> Function() fn) async {
   try {

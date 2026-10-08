@@ -15,6 +15,7 @@ class DbrApi {
     String? dateTo,
     String? cn,
     String? code,
+    bool excludeContinue = false,
     int page = 1,
     int pageSize = 20,
   }) async {
@@ -23,6 +24,7 @@ class DbrApi {
       if (dateTo != null && dateTo.isNotEmpty) 'date_to': dateTo,
       if (cn != null && cn.isNotEmpty) 'cn': cn,
       if (code != null && code.isNotEmpty) 'code': code,
+      if (excludeContinue) 'exclude_continue': true,
       'page': page,
       'page_size': pageSize,
     });

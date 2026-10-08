@@ -54,3 +54,8 @@ class TokenStorage {
 }
 
 final tokenStorageProvider = Provider<TokenStorage>((ref) => TokenStorage());
+
+/// Token akses saat ini (untuk URL ?token= pada foto/avatar).
+final accessTokenProvider = FutureProvider<String?>((ref) async {
+  return ref.watch(tokenStorageProvider).readAccess();
+});

@@ -13,19 +13,35 @@ router = APIRouter(prefix="/v1/imports", tags=["imports"])
 ALL_COLS = list(HEADER_MAP.values())  # 116 kolom, urutan sesuai HEADER_MAP
 BATCH = 2000  # upsert per batch agar 36rb baris tidak 36rb round-trip
 
-def _read_full(content: bytes):
-    wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
-    if SHEET not in wb.sheetnames:
-        raise HTTPException(400, f"Sheet {SHEET} tidak ditemukan, ada: {wb.sheetnames}")
-    ws = wb[SHEET]
+def _header_idx(ws):
+    """Index header yang toleran spasi ekstra. Dipakai dry-run dan commit."""
     header = list(next(ws.iter_rows(min_row=HEADER_ROW, max_row=HEADER_ROW, values_only=True)))
-    idx = {h: i for i, h in enumerate(header) if h}
+    idx = {}
+    for i, h in enumerate(header):
+        if h is None:
+            continue
+        key = str(h).strip()
+        if key and key not in idx:
+            idx[key] = i
     unknown = [h for h in idx if h not in HEADER_MAP]
     if unknown:
         raise HTTPException(400, f"Header tak dikenal: {unknown}")
     missing = [h for h in HEADER_MAP if h not in idx]
     if missing:
         raise HTTPException(400, f"Header hilang: {missing}")
+    return idx
+
+
+def _open_sheet(content: bytes):
+    wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    if SHEET not in wb.sheetnames:
+        raise HTTPException(400, f"Sheet {SHEET} tidak ditemukan, ada: {wb.sheetnames}")
+    return wb[SHEET]
+
+
+def _read_full(content: bytes):
+    ws = _open_sheet(content)
+    idx = _header_idx(ws)
     rows, errors = [], []
     for rno, r in enumerate(ws.iter_rows(min_row=DATA_START_ROW, values_only=True), start=DATA_START_ROW):
         if all(v is None for v in r):
@@ -59,10 +75,8 @@ async def _run_commit(import_id: str, content: bytes):
     """Background job penuh: parse (progres per 5000 baris) + upsert batch 2000."""
     async with SessionLocal() as db:
         try:
-            wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
-            ws = wb[SHEET]
-            header = list(next(ws.iter_rows(min_row=HEADER_ROW, max_row=HEADER_ROW, values_only=True)))
-            idx = {h: i for i, h in enumerate(header) if h}
+            ws = _open_sheet(content)
+            idx = _header_idx(ws)
             rows, errors, n = [], [], 0
             for rno, r in enumerate(ws.iter_rows(min_row=DATA_START_ROW, values_only=True), start=DATA_START_ROW):
                 if all(v is None for v in r):
@@ -130,7 +144,9 @@ async def upload_excel(
         return {"total": len(rows) + len(errors), "ok": len(rows), "fail": len(errors),
                 "errors": errors[:50],
                 "preview": [{k: rows[0][k] for k in ("lab_no", "vesselid", "unit_id", "sample_date", "condition")} ] if rows else []}
-    # commit: langsung 202, parse + upsert semua di background agar progres terpantau
+    # commit: validasi header dulu agar gagal-cepat (400), bukan ok=0/fail=N.
+    # Langsung 202, parse + upsert semua di background agar progres terpantau
+    _header_idx(_open_sheet(content))
     res = await db.execute(text(
         "INSERT INTO imports(filename,status,total_rows,ok_rows,fail_rows,processed_rows,uploaded_by) "
         "VALUES (:fn,'PROCESSING',0,0,0,0,:u) RETURNING id"),

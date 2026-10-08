@@ -49,6 +49,11 @@ class AppScaffold extends ConsumerWidget {
         title: Text(title),
         actions: [
           IconButton(
+            tooltip: 'Notifikasi',
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () => context.push('/notifications'),
+          ),
+          IconButton(
             tooltip: theme == ThemeMode.dark ? 'Mode terang' : 'Mode gelap',
             icon: Icon(theme == ThemeMode.dark ? Icons.light_mode : Icons.dark_mode),
             onPressed: () => ref
