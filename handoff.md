@@ -236,3 +236,6 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   kategori, ringkasan (total, hari aktif, foto, hari tersibuk), mini grafik
   per hari, foto cover + expand foto per kegiatan, tombol Cetak/PDF.
   Izin ikut `activity.view`. `tsc` + `vite build` lolos.
+  Revisi: infografis horizontal ala template (kapsul hari 7 warna di rel
+  panah + kartu selang-seling atas/bawah + konektor lengkung + klik kartu
+  lompat ke detail).
