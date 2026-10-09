@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { can, fetchNotifications, changePassword, uploadAvatar, avatarUrl, type Notif } from '../api/client'
 
-const MENU = [
+const MENU: { key: string; label: string; perm?: string; admin?: boolean }[] = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'dbr', label: 'DBR Breakdown' },
   { key: 'performance', label: 'Performance' },
   { key: 'activity', label: 'Activity' },
+  { key: 'timeline', label: 'Timeline Mingguan', perm: 'activity' },
   { key: 'equipment', label: 'Equipment' },
   { key: 'fui', label: 'FUI' },
   { key: 'sugfui', label: 'Suggestion FUI' },
@@ -28,6 +29,9 @@ const ICONS: Record<string, ReactNode> = {
   ),
   activity: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+  ),
+  timeline: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2.5" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /></svg>
   ),
   equipment: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.3 7 12 12l8.7-5M12 22V12" /></svg>
@@ -286,9 +290,9 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
           </div>
           <nav className="flex flex-col gap-1">
             <p className="mb-4 text-xs uppercase text-gray-400">Menu</p>
-            {MENU.filter((m) => 'admin' in m
+            {MENU.filter((m) => 'admin' in m && m.admin
               ? localStorage.getItem('mte_role') === 'admin'
-              : can(m.key, 'view')).map((m) => (
+              : can(m.perm ?? m.key, 'view')).map((m) => (
               <button key={m.key} onClick={() => setPage(m.key)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-theme-sm ${page === m.key ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-100'}`}>
                 <span className="shrink-0">{ICONS[m.key]}</span>

@@ -4,6 +4,7 @@ import LoginPage from './pages/Login'
 import { Dashboard, ImportPage, DbrPage, EquipmentPage, ActivityPage, FuiPage, SugFuiPage, SugReportPage } from './pages/Pages'
 import UsersPage from './pages/Users'
 import AuditPage from './pages/Audit'
+import TimelinePage from './pages/Timeline'
 import { fetchMe, can } from './api/client'
 
 // ApexCharts berat (~700KB): muat hanya saat menu Performance dibuka.
@@ -53,6 +54,7 @@ export default function App() {
       {page === 'sugfui' && can('sugfui', 'view') && <SugFuiPage />}
       {page === 'fureport' && can('fureport', 'view') && <SugReportPage />}
       {page === 'activity' && <ActivityPage />}
+      {page === 'timeline' && can('activity', 'view') && <TimelinePage />}
       {page === 'import' && <ImportPage />}
       {page === 'users' && me.role === 'admin' && <UsersPage />}
       {page === 'audit' && me.role === 'admin' && <AuditPage />}

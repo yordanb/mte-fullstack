@@ -230,3 +230,9 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   `analyze` bersih, 22 test lolos, APK terbuild.
 - **SEMUA MILESTONE MOBILE SELESAI.** Sisa: uji E2E vs produksi + build
   release (keystore) bila diperlukan.
+- **Web Timeline Mingguan (2026-10-09, branch web/activity-timeline)**:
+  menu baru `apps/web/src/pages/Timeline.tsx` — timeline Activity per
+  rentang tanggal (maks 31 hari, default 7 hari terakhir) + filter crew/
+  kategori, ringkasan (total, hari aktif, foto, hari tersibuk), mini grafik
+  per hari, foto cover + expand foto per kegiatan, tombol Cetak/PDF.
+  Izin ikut `activity.view`. `tsc` + `vite build` lolos.
