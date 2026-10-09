@@ -303,7 +303,7 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
       <div className="flex flex-1 flex-col">
         <header className="flex items-center gap-2 border-b border-gray-200 bg-white px-6 py-4 print:hidden dark:border-gray-800 dark:bg-gray-900">
           <button onClick={() => setOpen(!open)} className="rounded-lg border px-3 py-1 text-gray-500">☰</button>
-          <h1 className="text-theme-xl font-semibold">Monitoring Oil Lab</h1>
+          <h1 className="text-theme-xl font-semibold">{MENU.find((m) => m.key === page)?.label ?? 'MTE Data Center'}</h1>
           <div className="ml-auto flex items-center gap-2">
             <DarkToggle />
             <NotifBell setPage={setPage} />

@@ -111,10 +111,6 @@ export default function TimelinePage() {
   const finp = 'rounded-lg border px-3 py-2'
   return (
     <div className="flex flex-col gap-4">
-      <div className="print:hidden">
-        <h2 className="text-theme-xl font-semibold">Timeline Mingguan</h2>
-        <p className="text-theme-sm text-gray-500">Laporan presentasi management: kegiatan per tanggal + foto</p>
-      </div>
       {/* Toolbar 1 baris: filter + ringkasan kompak */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border bg-white px-4 py-3 print:hidden">
         <input type="date" className={finp} value={df} max={dt} onChange={(e) => setDf(e.target.value)} />
