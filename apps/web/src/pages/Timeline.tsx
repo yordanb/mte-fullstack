@@ -10,6 +10,10 @@ const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 
 const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 const MAX_DAYS = 31
 
+// Palet kapsul hari ala template referensi (merah, nila, kuning, biru,
+// oranye, ungu, hijau) — dipakai berulang untuk rentang > 7 hari.
+const DAY_COLORS = ['#f0506e', '#5b5bd6', '#ffc531', '#1e88e5', '#ff8a3d', '#6a3fa0', '#8bc34a']
+
 const parseLocal = (iso: string) => {
   const [y, m, d] = iso.split('-').map(Number)
   return new Date(y, (m || 1) - 1, d || 1)
@@ -30,12 +34,24 @@ const fmtDay = (iso: string) => {
   const d = parseLocal(iso)
   return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
 }
-const fmtShort = (iso: string) => {
+const dayName = (iso: string) => DAYS[parseLocal(iso).getDay()]
+const dayNum = (iso: string) => {
   const d = parseLocal(iso)
   return `${d.getDate()}/${d.getMonth() + 1}`
 }
 
 type DayGroup = { date: string; items: Activity[] }
+
+// Konektor lengkung S dari kapsul ke kartu (warna ikut kapsul).
+function Curve({ color, flip }: { color: string; flip?: boolean }) {
+  return (
+    <svg viewBox="0 0 100 56" preserveAspectRatio="none" className="h-14 w-16"
+      style={flip ? { transform: 'scaleY(-1)' } : undefined}>
+      <path d="M50,56 C50,42 28,40 28,26 C28,12 50,12 50,0"
+        fill="none" stroke={color} strokeWidth={4} strokeLinecap="round" />
+    </svg>
+  )
+}
 
 export default function TimelinePage() {
   const [df, setDf] = useState(todayLocal(6))
@@ -78,9 +94,6 @@ export default function TimelinePage() {
   const all = days.flatMap((d) => d.items)
   const activeDays = days.filter((d) => d.items.length > 0).length
   const photoTotal = all.reduce((n, a) => n + (typeof a.photos === 'number' ? a.photos : 0), 0)
-  const maxN = Math.max(1, ...days.map((d) => d.items.length))
-  const busiest = days.reduce<DayGroup | null>(
-    (b, d) => (!b || d.items.length > b.items.length ? d : b), null)
 
   const togglePhotos = async (a: Activity) => {
     if (openId === a.id) { setOpenId(null); return }
@@ -91,17 +104,16 @@ export default function TimelinePage() {
     } catch (e) { setMsg(`gagal muat foto: ${String(e)}`) }
   }
 
+  const scrollToDay = (iso: string) => {
+    document.getElementById(`tl-day-${iso}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   const finp = 'rounded-lg border px-3 py-2'
   return (
     <div className="flex flex-col gap-4">
       <div className="print:hidden">
         <h2 className="text-theme-xl font-semibold">Timeline Mingguan</h2>
         <p className="text-theme-sm text-gray-500">Laporan presentasi management: kegiatan per tanggal + foto</p>
-      </div>
-      {/* Baris judul khusus cetak */}
-      <div className="hidden print:block">
-        <h2 className="text-xl font-bold">Laporan Mingguan Activity — {applied.crew || 'Semua Crew'}</h2>
-        <p className="text-sm text-gray-600">{fmtDay(applied.df)} – {fmtDay(applied.dt)}</p>
       </div>
       <div className="flex flex-wrap items-center gap-2 print:hidden">
         <input type="date" className={finp} value={df} max={dt} onChange={(e) => setDf(e.target.value)} />
@@ -123,7 +135,7 @@ export default function TimelinePage() {
           { label: 'Total kegiatan', value: all.length },
           { label: 'Hari aktif', value: `${activeDays} / ${days.length}` },
           { label: 'Total foto', value: photoTotal },
-          { label: 'Hari tersibuk', value: busiest && busiest.items.length > 0 ? `${fmtShort(busiest.date)} (${busiest.items.length})` : '-' },
+          { label: 'Crew', value: applied.crew || 'Semua' },
         ].map((c) => (
           <div key={c.label} className="rounded-2xl border bg-white p-5">
             <p className="text-theme-sm text-gray-500">{c.label}</p>
@@ -132,35 +144,79 @@ export default function TimelinePage() {
         ))}
       </div>
 
-      {/* Mini grafik per hari */}
+      {/* Infografis Weekly Timeline ala template */}
       {days.length > 0 && (
-        <div className="rounded-2xl border bg-white p-5">
-          <h3 className="font-semibold">Kegiatan per hari</h3>
-          <div className="mt-3 flex h-32 items-end gap-1">
-            {days.map((d) => (
-              <div key={d.date} className="flex min-w-0 flex-1 flex-col items-center gap-1" title={`${fmtDay(d.date)}: ${d.items.length}`}>
-                <span className="text-theme-xs font-semibold">{d.items.length > 0 ? d.items.length : ''}</span>
-                <div
-                  className="w-full max-w-8 rounded-t bg-brand-500"
-                  style={{ height: `${Math.max(d.items.length > 0 ? 8 : 2, (d.items.length / maxN) * 100)}%` }}
-                />
-                <span className="text-theme-xs text-gray-500">{fmtShort(d.date)}</span>
-              </div>
-            ))}
+        <div className="overflow-x-auto rounded-2xl border bg-white p-6">
+          <h2 className="text-center text-2xl font-bold">
+            Weekly Timeline <span className="font-normal text-gray-500">— {applied.crew || 'Semua Crew'}</span>
+          </h2>
+          <p className="mt-1 text-center text-theme-sm text-gray-500">
+            {fmtDay(applied.df)} – {fmtDay(applied.dt)}
+          </p>
+          <div className="relative mt-8 min-w-[900px]">
+            {/* Rel abu-abu + panah kiri kanan, sejajar tengah kapsul */}
+            <div className="absolute right-0 left-0 z-0 flex items-center" style={{ top: 228 }}>
+              <span className="h-0 w-0 shrink-0 border-y-8 border-r-[14px] border-y-transparent border-r-gray-300" />
+              <div className="h-3 flex-1 bg-gray-300" />
+              <span className="h-0 w-0 shrink-0 border-y-8 border-l-[14px] border-y-transparent border-l-gray-300" />
+            </div>
+            <div className="relative z-10 flex">
+              {days.map((d, i) => {
+                const color = DAY_COLORS[i % DAY_COLORS.length]
+                const above = i % 2 === 0
+                const card = (
+                  <div className="flex h-40 flex-col items-center justify-end overflow-hidden px-2 text-center">
+                    {d.items.length === 0 ? (
+                      <p className="text-theme-sm text-gray-400">Tidak ada kegiatan</p>
+                    ) : (
+                      <button className="w-full" onClick={() => scrollToDay(d.date)} title="Lihat detail">
+                        <p className="text-theme-sm font-bold">{d.items.length} kegiatan</p>
+                        {d.items.slice(0, 2).map((a) => (
+                          <p key={a.id} className="mt-1 line-clamp-2 text-theme-xs text-gray-600">{a.title}</p>
+                        ))}
+                        {d.items.length > 2 && (
+                          <p className="text-theme-xs text-gray-400">+{d.items.length - 2} lainnya</p>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )
+                const capsule = (
+                  <div className="flex justify-center">
+                    <span
+                      className="rounded-full px-6 py-2 font-bold whitespace-nowrap text-white"
+                      style={{ backgroundColor: color, printColorAdjust: 'exact' }}>
+                      {dayName(d.date)}
+                      <span className="ml-2 text-theme-xs font-normal opacity-90">{dayNum(d.date)}</span>
+                    </span>
+                  </div>
+                )
+                return (
+                  <div key={d.date} className="flex min-w-0 flex-1 flex-col items-center">
+                    {above ? card : <div className="h-40" />}
+                    {above
+                      ? <Curve color={color} />
+                      : <div className="flex h-14 items-center"><span className="size-2 rounded-full" style={{ backgroundColor: color }} /></div>}
+                    {capsule}
+                    {above
+                      ? <div className="flex h-14 items-center"><span className="size-2 rounded-full" style={{ backgroundColor: color }} /></div>
+                      : <Curve color={color} flip />}
+                    {above ? <div className="h-40" /> : card}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Timeline */}
-      <div className="relative ml-2 flex flex-col gap-6 border-l-2 border-brand-200 pl-6">
+      {/* Detail per tanggal */}
+      <div className="flex flex-col gap-6">
         {days.map((d) => (
-          <div key={d.date} className="relative">
-            <span className={`absolute -left-[34px] top-1 flex size-4 items-center justify-center rounded-full ${d.items.length > 0 ? 'bg-brand-500' : 'border-2 border-gray-300 bg-white'}`}>
-              {d.items.length > 0 && <span className="size-1.5 rounded-full bg-white" />}
-            </span>
+          <div key={d.date} id={`tl-day-${d.date}`} className="scroll-mt-4">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">{fmtDay(d.date)}</h3>
-              <span className={`rounded-full px-2 py-0.5 text-theme-xs ${d.items.length > 0 ? 'bg-brand-50 text-brand-600' : 'bg-gray-100 text-gray-400'}`}>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-theme-xs text-gray-600">
                 {d.items.length} kegiatan
               </span>
             </div>
