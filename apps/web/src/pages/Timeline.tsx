@@ -115,7 +115,8 @@ export default function TimelinePage() {
         <h2 className="text-theme-xl font-semibold">Timeline Mingguan</h2>
         <p className="text-theme-sm text-gray-500">Laporan presentasi management: kegiatan per tanggal + foto</p>
       </div>
-      <div className="flex flex-wrap items-center gap-2 print:hidden">
+      {/* Toolbar 1 baris: filter + ringkasan kompak */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border bg-white px-4 py-3 print:hidden">
         <input type="date" className={finp} value={df} max={dt} onChange={(e) => setDf(e.target.value)} />
         <span>–</span>
         <input type="date" className={finp} value={dt} min={df} onChange={(e) => setDt(e.target.value)} />
@@ -125,24 +126,23 @@ export default function TimelinePage() {
         <datalist id="tl-cat">{CATS.map((c) => (<option key={c} value={c} />))}</datalist>
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={apply}>Tampilkan</button>
         <button className="rounded-lg border px-4 py-2" onClick={() => window.print()}>Cetak / PDF</button>
+        <span className="hidden h-8 w-px bg-gray-200 xl:block" />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {[
+            { value: all.length, label: 'kegiatan' },
+            { value: `${activeDays}/${days.length}`, label: 'hari aktif' },
+            { value: photoTotal, label: 'foto' },
+            { value: applied.crew || 'Semua', label: 'crew' },
+          ].map((s) => (
+            <span key={s.label} className="whitespace-nowrap">
+              <span className="text-title-sm font-bold">{s.value}</span>
+              <span className="ml-1 text-theme-xs text-gray-500">{s.label}</span>
+            </span>
+          ))}
+        </div>
       </div>
       {msg && <p className="text-theme-sm text-red-600 print:hidden">{msg}</p>}
       {loading && <p className="text-theme-sm text-gray-500">Memuat timeline...</p>}
-
-      {/* Ringkasan */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        {[
-          { label: 'Total kegiatan', value: all.length },
-          { label: 'Hari aktif', value: `${activeDays} / ${days.length}` },
-          { label: 'Total foto', value: photoTotal },
-          { label: 'Crew', value: applied.crew || 'Semua' },
-        ].map((c) => (
-          <div key={c.label} className="rounded-2xl border bg-white p-5">
-            <p className="text-theme-sm text-gray-500">{c.label}</p>
-            <p className="mt-1 text-title-sm font-bold">{c.value}</p>
-          </div>
-        ))}
-      </div>
 
       {/* Infografis Weekly Timeline ala template */}
       {days.length > 0 && (
