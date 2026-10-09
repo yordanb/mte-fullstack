@@ -30,7 +30,6 @@ class PermActions {
 }
 
 /// Permissions dari GET /v1/users/me (handoff §4, 10 keys menu).
-/// `vessel` dialiaskan ke `dashboard` seperti web client.ts:62.
 class Permissions {
   final Map<String, PermActions> menus;
   const Permissions(this.menus);
@@ -50,8 +49,7 @@ class Permissions {
 
   bool can(String menu, String act, {required bool isAdmin}) {
     if (isAdmin) return true;
-    final m = menu == 'vessel' ? 'dashboard' : menu;
-    return menus[m]?.action(act) ?? false;
+    return menus[menu]?.action(act) ?? false;
   }
 
   Map<String, dynamic> toJson() => menus.map(

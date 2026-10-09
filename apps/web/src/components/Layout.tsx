@@ -6,7 +6,7 @@ const MENU: { key: string; label: string; perm?: string; admin?: boolean }[] = [
   { key: 'dbr', label: 'DBR Breakdown' },
   { key: 'performance', label: 'Performance' },
   { key: 'activity', label: 'Activity' },
-  { key: 'timeline', label: 'Timeline Mingguan', perm: 'activity' },
+  { key: 'timeline', label: 'Timeline Mingguan' },
   { key: 'equipment', label: 'Equipment' },
   { key: 'fui', label: 'FUI' },
   { key: 'sugfui', label: 'Suggestion FUI' },
@@ -44,9 +44,6 @@ const ICONS: Record<string, ReactNode> = {
   ),
   fureport: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><path d="M9 13h6M9 17h6" /></svg>
-  ),
-  vessel: (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="2.5" /><path d="M12 7.5V21M5 12H2a10 10 0 0 0 20 0h-3" /></svg>
   ),
   import: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>

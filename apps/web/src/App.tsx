@@ -54,7 +54,7 @@ export default function App() {
       {page === 'sugfui' && can('sugfui', 'view') && <SugFuiPage />}
       {page === 'fureport' && can('fureport', 'view') && <SugReportPage />}
       {page === 'activity' && <ActivityPage />}
-      {page === 'timeline' && can('activity', 'view') && <TimelinePage />}
+      {page === 'timeline' && can('timeline', 'view') && <TimelinePage />}
       {page === 'import' && <ImportPage />}
       {page === 'users' && me.role === 'admin' && <UsersPage />}
       {page === 'audit' && me.role === 'admin' && <AuditPage />}

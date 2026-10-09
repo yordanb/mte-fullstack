@@ -14,7 +14,7 @@ class AppUser {
 const userRoles = ['admin', 'inputer', 'viewer'];
 const permMenus = [
   'dashboard', 'dbr', 'performance', 'activity', 'equipment',
-  'fui', 'sugfui', 'fureport', 'vessel', 'import',
+  'fui', 'sugfui', 'fureport', 'timeline', 'import',
 ];
 
 class PermRow {

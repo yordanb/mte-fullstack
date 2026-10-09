@@ -52,7 +52,7 @@ Akun awal: `admin` (dibuat otomatis dari `ADMIN_USERNAME`/`ADMIN_PASSWORD` di `.
 ```
 
 Menu: `dashboard, dbr, performance, activity, equipment, fui, sugfui, fureport,
-vessel (ikut dashboard), import`. `admin` selalu penuh. Sembunyikan menu/tombol
+timeline, import`. `admin` selalu penuh. Sembunyikan menu/tombol
 tanpa izin (backend tetap menegakkan via 403).
 
 ## 5. Kontrak endpoint
@@ -239,3 +239,8 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   Revisi: infografis horizontal ala template (kapsul hari 7 warna di rel
   panah + kartu selang-seling atas/bawah + konektor lengkung + klik kartu
   lompat ke detail).
+- **Izin menu vessel -> timeline (2026-10-09, branch chore/menu-permissions)**:
+  `vessel` dihapus dari matriks, `timeline` ditambahkan (backend MENUS +
+  migrasi V18 + web Users/Layout/App + mobile permMenus; alias vessel
+  dihapus). Hak vessel lama diwariskan ke timeline via UPDATE. V18 harus
+  diterapkan manual di VPS (tanpa migration runner).

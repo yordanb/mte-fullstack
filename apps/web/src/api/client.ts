@@ -62,13 +62,12 @@ export async function login(username: string, password: string) {
 
 export type Perms = Record<string, { view: boolean; add: boolean; edit: boolean; delete: boolean }>
 
-/** Hak akses halaman/tombol. vessel ikut dashboard. admin selalu penuh. */
+/** Hak akses halaman/tombol. admin selalu penuh. */
 export function can(menu: string, act: 'view' | 'add' | 'edit' | 'delete'): boolean {
   if ((localStorage.getItem('mte_role') ?? '') === 'admin') return true
   try {
     const p = JSON.parse(localStorage.getItem('mte_perm') ?? '{}') as Perms
-    const m = menu === 'vessel' ? 'dashboard' : menu
-    return !!p[m]?.[act]
+    return !!p[menu]?.[act]
   } catch { return false }
 }
 
