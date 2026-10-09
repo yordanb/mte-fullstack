@@ -155,7 +155,7 @@ export default function TimelinePage() {
           </p>
           <div className="relative mt-8 min-w-[900px]">
             {/* Rel abu-abu + panah kiri kanan, sejajar tengah kapsul */}
-            <div className="absolute right-0 left-0 z-0 flex items-center" style={{ top: 228 }}>
+            <div className="absolute right-0 left-0 z-0 flex items-center" style={{ top: 359 }}>
               <span className="h-0 w-0 shrink-0 border-y-8 border-r-[14px] border-y-transparent border-r-gray-300" />
               <div className="h-3 flex-1 bg-gray-300" />
               <span className="h-0 w-0 shrink-0 border-y-8 border-l-[14px] border-y-transparent border-l-gray-300" />
@@ -164,19 +164,46 @@ export default function TimelinePage() {
               {days.map((d, i) => {
                 const color = DAY_COLORS[i % DAY_COLORS.length]
                 const above = i % 2 === 0
+                const withCover = d.items.find((a) => a.cover_id)
                 const card = (
-                  <div className="flex h-40 flex-col items-center justify-end overflow-hidden px-2 text-center">
+                  <div className="flex h-72 flex-col px-2">
                     {d.items.length === 0 ? (
-                      <p className="text-theme-sm text-gray-400">Tidak ada kegiatan</p>
+                      <p className="mt-6 text-center text-theme-sm text-gray-400">Tidak ada kegiatan</p>
                     ) : (
-                      <button className="w-full" onClick={() => scrollToDay(d.date)} title="Lihat detail">
-                        <p className="text-theme-sm font-bold">{d.items.length} kegiatan</p>
-                        {d.items.slice(0, 2).map((a) => (
-                          <p key={a.id} className="mt-1 line-clamp-2 text-theme-xs text-gray-600">{a.title}</p>
-                        ))}
-                        {d.items.length > 2 && (
-                          <p className="text-theme-xs text-gray-400">+{d.items.length - 2} lainnya</p>
+                      <button
+                        className="group flex w-full flex-1 flex-col overflow-hidden rounded-2xl border bg-white text-left shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-xl"
+                        onClick={() => scrollToDay(d.date)} title="Lihat detail">
+                        {withCover ? (
+                          <div className="relative h-36 shrink-0 overflow-hidden">
+                            <img src={activityPhotoUrl(withCover.id, withCover.cover_id!)} alt=""
+                              loading="lazy"
+                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+                            <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                            <span className="absolute bottom-1.5 left-2 rounded-full px-2 py-0.5 text-theme-xs font-bold text-white"
+                              style={{ backgroundColor: color }}>
+                              {d.items.length} kegiatan
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex h-36 shrink-0 flex-col items-center justify-center text-white"
+                            style={{ background: `linear-gradient(135deg, ${color}, ${color}99)`, printColorAdjust: 'exact' }}>
+                            <span className="text-3xl font-bold">{d.items.length}</span>
+                            <span className="text-theme-xs opacity-90">kegiatan</span>
+                          </div>
                         )}
+                        <div className="min-h-0 flex-1 overflow-hidden p-2">
+                          {d.items.slice(0, 2).map((a) => (
+                            <p key={a.id} className="line-clamp-2 text-theme-xs font-medium text-gray-800">
+                              {a.title}
+                              <span className="font-normal text-gray-500">
+                                {' — '}{[a.crew, a.cn].filter(Boolean).join(' • ')}
+                              </span>
+                            </p>
+                          ))}
+                          {d.items.length > 2 && (
+                            <p className="mt-0.5 text-theme-xs text-gray-400">+{d.items.length - 2} lainnya</p>
+                          )}
+                        </div>
                       </button>
                     )}
                   </div>
@@ -184,7 +211,7 @@ export default function TimelinePage() {
                 const capsule = (
                   <div className="flex justify-center">
                     <span
-                      className="rounded-full px-6 py-2 font-bold whitespace-nowrap text-white"
+                      className="rounded-full px-6 py-2 font-bold whitespace-nowrap text-white shadow-md"
                       style={{ backgroundColor: color, printColorAdjust: 'exact' }}>
                       {dayName(d.date)}
                       <span className="ml-2 text-theme-xs font-normal opacity-90">{dayNum(d.date)}</span>
@@ -193,7 +220,7 @@ export default function TimelinePage() {
                 )
                 return (
                   <div key={d.date} className="flex min-w-0 flex-1 flex-col items-center">
-                    {above ? card : <div className="h-40" />}
+                    {above ? card : <div className="h-72" />}
                     {above
                       ? <Curve color={color} />
                       : <div className="flex h-14 items-center"><span className="size-2 rounded-full" style={{ backgroundColor: color }} /></div>}
@@ -201,7 +228,7 @@ export default function TimelinePage() {
                     {above
                       ? <div className="flex h-14 items-center"><span className="size-2 rounded-full" style={{ backgroundColor: color }} /></div>
                       : <Curve color={color} flip />}
-                    {above ? <div className="h-40" /> : card}
+                    {above ? <div className="h-72" /> : card}
                   </div>
                 )
               })}
