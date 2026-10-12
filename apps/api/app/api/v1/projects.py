@@ -155,7 +155,7 @@ async def create_project(body: ProjectIn, db: AsyncSession = Depends(get_db),
         raise HTTPException(400, f"CN {cn} tidak ada di master equipment")
     res = await db.execute(text(
         "INSERT INTO projects(name,description,pic,cn,crew,target_date,created_by) "
-        "VALUES (:n,:d,:p,:c,:cw,:t,:u) RETURNING id"),
+        "VALUES (:n,:d,:p,:cn,:cw,:t,:u) RETURNING id"),
         {"n": body.name.strip(), "d": body.description,
          "p": (body.pic or "").strip() or None, "cn": cn,
          "cw": (body.crew or "").strip() or None,
