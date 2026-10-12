@@ -149,6 +149,89 @@ export async function fetchAudit(params: Record<string, string | number | undefi
   return r.data as { total: number; page: number; page_size: number; data: AuditRow[] }
 }
 
+export type ProjUpdate = {
+  id: string; date: string; progress: number; status: string; note?: string | null
+  created_by?: string | null; photos?: number; photo_list?: { id: string; orig_name?: string | null }[]
+}
+
+export type ProjStage = {
+  id: string; name: string; plan_start?: string | null; plan_end?: string | null
+  weight?: number | null; progress: number; derived: string
+  latest?: ProjUpdate | null; updates: ProjUpdate[]
+}
+
+export type Project = {
+  id: string; name: string; description?: string | null; pic?: string | null
+  cn?: string | null; crew?: string | null; target_date?: string | null
+  progress: number; derived: string; nstage: number; stages?: ProjStage[]
+}
+
+export async function fetchProjects(params: Record<string, string | number | undefined>) {
+  const r = await api.get('/v1/projects', { params })
+  return r.data as { total: number; page: number; page_size: number; data: Project[] }
+}
+
+export async function fetchProject(id: string) {
+  const r = await api.get(`/v1/projects/${id}`)
+  return r.data as Project
+}
+
+export async function createProject(body: Record<string, string | null>) {
+  const r = await api.post('/v1/projects', body)
+  return r.data
+}
+
+export async function patchProject(id: string, body: Record<string, string | null>) {
+  const r = await api.patch(`/v1/projects/${id}`, body)
+  return r.data
+}
+
+export async function deleteProject(id: string) {
+  const r = await api.delete(`/v1/projects/${id}`)
+  return r.data
+}
+
+export async function addStage(pid: string, body: Record<string, string | number | null>) {
+  const r = await api.post(`/v1/projects/${pid}/stages`, body)
+  return r.data
+}
+
+export async function patchStage(sid: string, body: Record<string, string | number | null>) {
+  const r = await api.patch(`/v1/projects/stages/${sid}`, body)
+  return r.data
+}
+
+export async function deleteStage(sid: string) {
+  const r = await api.delete(`/v1/projects/stages/${sid}`)
+  return r.data
+}
+
+export async function addProjectUpdate(sid: string, fd: FormData, onProgress?: (pct: number) => void) {
+  const r = await api.post(`/v1/projects/stages/${sid}/updates`, fd, {
+    onUploadProgress: (e) => { if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100)) },
+  })
+  return r.data
+}
+
+export async function patchProjectUpdate(uid: string, body: Record<string, string | number | null>) {
+  const r = await api.patch(`/v1/projects/updates/${uid}`, body)
+  return r.data
+}
+
+export async function deleteProjectUpdate(uid: string) {
+  const r = await api.delete(`/v1/projects/updates/${uid}`)
+  return r.data
+}
+
+export async function deleteProjectPhoto(uid: string, pid: string) {
+  const r = await api.delete(`/v1/projects/updates/${uid}/photos/${pid}`)
+  return r.data
+}
+
+export function projectPhotoUrl(uid: string, pid: string) {
+  return `/api/v1/projects/updates/${uid}/photos/${pid}?token=${localStorage.getItem('mte_token') ?? ''}`
+}
+
 export async function fetchResults(vesselid: string, unit_id?: string): Promise<LabRow[]> {
   const r = await api.get('/v1/results', { params: { vesselid, unit_id, limit: 20 } })
   return r.data.data

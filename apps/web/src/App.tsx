@@ -4,6 +4,7 @@ import LoginPage from './pages/Login'
 import { Dashboard, ImportPage, DbrPage, EquipmentPage, ActivityPage, FuiPage, SugFuiPage, SugReportPage } from './pages/Pages'
 import UsersPage from './pages/Users'
 import AuditPage from './pages/Audit'
+import ProjectPage from './pages/Project'
 import TimelinePage from './pages/Timeline'
 import { fetchMe, can } from './api/client'
 
@@ -53,6 +54,7 @@ export default function App() {
       {page === 'fui' && can('fui', 'view') && <FuiPage />}
       {page === 'sugfui' && can('sugfui', 'view') && <SugFuiPage />}
       {page === 'fureport' && can('fureport', 'view') && <SugReportPage />}
+      {page === 'project' && can('project', 'view') && <ProjectPage />}
       {page === 'activity' && <ActivityPage />}
       {page === 'timeline' && can('timeline', 'view') && <TimelinePage />}
       {page === 'import' && <ImportPage />}

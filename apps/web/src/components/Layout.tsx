@@ -11,6 +11,7 @@ const MENU: { key: string; label: string; perm?: string; admin?: boolean }[] = [
   { key: 'fui', label: 'FUI' },
   { key: 'sugfui', label: 'Suggestion FUI' },
   { key: 'fureport', label: 'Report Follow Up' },
+  { key: 'project', label: 'Project' },
   { key: 'import', label: 'Update Data' },
   { key: 'users', label: 'Users', admin: true },
   { key: 'audit', label: 'Audit Log', admin: true },
@@ -44,6 +45,9 @@ const ICONS: Record<string, ReactNode> = {
   ),
   fureport: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><path d="M9 13h6M9 17h6" /></svg>
+  ),
+  project: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
   ),
   import: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
