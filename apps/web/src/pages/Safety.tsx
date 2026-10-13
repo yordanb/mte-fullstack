@@ -102,30 +102,30 @@ export default function SafetyPage() {
       <div className="flex flex-wrap items-center gap-2">
         <input type="month" className="rounded-lg border px-3 py-2" value={ym}
           onChange={(e) => setYm(e.target.value)} />
+        <select className="rounded-lg border px-3 py-2" value={sec} onChange={(e) => setSec(e.target.value)}>
+          <option value="">Section: semua</option>
+          {sections.map((s) => (<option key={s} value={s}>{s}</option>))}
+        </select>
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => { loadCov(); loadRows(1) }}>Tampilkan</button>
+        <input className="w-48 rounded-lg border px-3 py-2" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari mekanik/pengawas/NRP" />
+        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => loadRows(1)}>Cari</button>
         {can('bomak', 'add') && (
           <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={syncing} onClick={doSync}>
             {syncing ? 'Menyinkron...' : 'Sync Sheets'}
           </button>
         )}
-        {lastSync && <span className="text-theme-sm text-gray-500">Sync terakhir: {lastSync}</span>}
         <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
         <span className={stat}><span className="text-gray-500">Section</span><b>{bySec.size}/{sections.length}</b></span>
         <span className={stat}><span className="text-gray-500">Respons</span><b>{total.toLocaleString('id-ID')}</b></span>
         <span className={stat}><span className="text-gray-500">P6 kosong</span><b>{(comp.p6_empty ?? 0).toLocaleString('id-ID')}</b></span>
         <span className={stat}><span className="text-gray-500">FU kosong</span><b>{(comp.fu_empty ?? 0).toLocaleString('id-ID')}</b></span>
       </div>
+      {lastSync && <p className="-mt-2 text-theme-xs text-gray-500">Sync terakhir: {lastSync}</p>}
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
       <div className="flex flex-wrap items-center gap-2">
-        <select className="rounded-lg border px-3 py-2" value={sec} onChange={(e) => setSec(e.target.value)}>
-          <option value="">Section: semua</option>
-          {sections.map((s) => (<option key={s} value={s}>{s}</option>))}
-        </select>
-        <input className="w-48 rounded-lg border px-3 py-2" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari mekanik/pengawas/NRP" />
         <label className="flex cursor-pointer items-center gap-1 rounded-lg border bg-white px-3 py-2">
           <input type="checkbox" checked={temuan} onChange={(e) => setTemuan(e.target.checked)} /> Ada temuan
         </label>
-        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => loadRows(1)}>Cari</button>
         <span className="text-theme-sm text-gray-500">Total {rtotal.toLocaleString('id-ID')}</span>
       </div>
       <div className="overflow-x-auto rounded-2xl border bg-white">
