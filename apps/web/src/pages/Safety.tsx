@@ -111,7 +111,7 @@ export default function SafetyPage() {
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => loadRows(1)}>Cari</button>
         {can('bomak', 'add') && (
           <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={syncing} onClick={doSync}>
-            {syncing ? 'Menyinkron...' : 'Sync Sheets'}
+            {syncing ? 'Menyinkron...' : 'Sync'}
           </button>
         )}
         <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
@@ -119,15 +119,12 @@ export default function SafetyPage() {
         <span className={stat}><span className="text-gray-500">Respons</span><b>{total.toLocaleString('id-ID')}</b></span>
         <span className={stat}><span className="text-gray-500">P6 kosong</span><b>{(comp.p6_empty ?? 0).toLocaleString('id-ID')}</b></span>
         <span className={stat}><span className="text-gray-500">FU kosong</span><b>{(comp.fu_empty ?? 0).toLocaleString('id-ID')}</b></span>
+        <label className="flex cursor-pointer items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm whitespace-nowrap">
+          <input type="checkbox" checked={temuan} onChange={(e) => setTemuan(e.target.checked)} /> Temuan
+        </label>
       </div>
       {lastSync && <p className="-mt-2 text-theme-xs text-gray-500">Sync terakhir: {lastSync}</p>}
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
-      <div className="flex flex-wrap items-center gap-2">
-        <label className="flex cursor-pointer items-center gap-1 rounded-lg border bg-white px-3 py-2">
-          <input type="checkbox" checked={temuan} onChange={(e) => setTemuan(e.target.checked)} /> Ada temuan
-        </label>
-        <span className="text-theme-sm text-gray-500">Total {rtotal.toLocaleString('id-ID')}</span>
-      </div>
       <div className="overflow-x-auto rounded-2xl border bg-white">
         <table className="w-full border-collapse text-center text-theme-sm">
           <thead className="bg-[#d6e4c9] font-semibold">
