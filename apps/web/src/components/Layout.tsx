@@ -1,21 +1,34 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { can, fetchNotifications, changePassword, uploadAvatar, avatarUrl, type Notif } from '../api/client'
 
-const MENU: { key: string; label: string; perm?: string; admin?: boolean }[] = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'dbr', label: 'DBR Breakdown' },
-  { key: 'performance', label: 'Performance' },
-  { key: 'activity', label: 'Activity' },
-  { key: 'timeline', label: 'Timeline Mingguan' },
-  { key: 'equipment', label: 'Equipment' },
-  { key: 'fui', label: 'FUI' },
-  { key: 'sugfui', label: 'Suggestion FUI' },
-  { key: 'fureport', label: 'Report Follow Up' },
-  { key: 'project', label: 'Project' },
-  { key: 'import', label: 'Update Data' },
-  { key: 'users', label: 'Users', admin: true },
-  { key: 'audit', label: 'Audit Log', admin: true },
+type MenuItem = { key: string; label: string; perm?: string; admin?: boolean }
+type MenuGroup = { title: string; items: MenuItem[] }
+
+const GROUPS: MenuGroup[] = [
+  { title: 'Monitoring', items: [
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'dbr', label: 'DBR Breakdown' },
+    { key: 'performance', label: 'Performance' },
+    { key: 'timeline', label: 'Timeline Mingguan' },
+  ] },
+  { title: 'Operasional', items: [
+    { key: 'activity', label: 'Activity' },
+    { key: 'equipment', label: 'Equipment' },
+    { key: 'project', label: 'Project' },
+    { key: 'import', label: 'Update Data' },
+  ] },
+  { title: 'Follow Up', items: [
+    { key: 'fui', label: 'FUI' },
+    { key: 'sugfui', label: 'Suggestion FUI' },
+    { key: 'fureport', label: 'Report Follow Up' },
+  ] },
+  { title: 'Administrasi', items: [
+    { key: 'users', label: 'Users', admin: true },
+    { key: 'audit', label: 'Audit Log', admin: true },
+  ] },
 ]
+
+const MENU: MenuItem[] = GROUPS.flatMap((g) => g.items)
 
 // Ikon menu gaya TailAdmin (stroke currentColor: aktif ikut warna brand).
 const ICONS: Record<string, ReactNode> = {
@@ -289,17 +302,27 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
             )}
             <span className="text-lg font-bold break-words text-brand-600">MTE Data Center</span>
           </div>
-          <nav className="flex flex-col gap-1">
-            <p className="mb-4 text-xs uppercase text-gray-400">Menu</p>
-            {MENU.filter((m) => 'admin' in m && m.admin
-              ? localStorage.getItem('mte_role') === 'admin'
-              : can(m.perm ?? m.key, 'view')).map((m) => (
-              <button key={m.key} onClick={() => setPage(m.key)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-theme-sm ${page === m.key ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-100'}`}>
-                <span className="shrink-0">{ICONS[m.key]}</span>
-                {m.label}
-              </button>
-            ))}
+          <nav className="flex flex-col gap-4 overflow-y-auto">
+            {GROUPS.map((g) => {
+              const items = g.items.filter((m) => 'admin' in m && m.admin
+                ? localStorage.getItem('mte_role') === 'admin'
+                : can(m.perm ?? m.key, 'view'))
+              if (items.length === 0) return null
+              return (
+                <div key={g.title}>
+                  <p className="mb-1 px-3 text-xs uppercase text-gray-400">{g.title}</p>
+                  <div className="flex flex-col gap-1">
+                    {items.map((m) => (
+                      <button key={m.key} onClick={() => setPage(m.key)}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-theme-sm ${page === m.key ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-100'}`}>
+                        <span className="shrink-0">{ICONS[m.key]}</span>
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
           </nav>
           <button onClick={onLogout} className="mt-auto mb-6 rounded-lg border px-3 py-2 text-theme-sm text-gray-600">Logout</button>
         </aside>
