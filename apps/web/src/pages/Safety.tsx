@@ -50,10 +50,11 @@ export default function SafetyPage() {
   const [page, setPage] = useState(1)
   const [sec, setSec] = useState('')
   const [q, setQ] = useState('')
-  const [temuan, setTemuan] = useState(false)
   const [msg, setMsg] = useState('')
+  const [copied, setCopied] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState('')
+  const [lastSyncDate, setLastSyncDate] = useState('')
 
   const loadCov = async () => {
     try {
@@ -72,7 +73,7 @@ export default function SafetyPage() {
       const dend = `${d1.getFullYear()}-${String(d1.getMonth() + 1).padStart(2, '0')}-${String(d1.getDate()).padStart(2, '0')}`
       const r = await fetchSafetyRecords({
         date_from: d0, date_to: dend, section: sec || undefined,
-        search: q || undefined, temuan: temuan || undefined, page: p, page_size: 20,
+        search: q || undefined, page: p, page_size: 20,
       })
       setRows(r.data); setRtotal(r.total); setPage(r.page)
     } catch (e) { setMsg(`gagal: ${String(e)}`) }
@@ -80,7 +81,10 @@ export default function SafetyPage() {
   const loadSync = async () => {
     try {
       const s = await fetchSafetyLatestSync() as { finished_at?: string; ok_rows?: number }
-      if (s.finished_at) setLastSync(`${fmtD(s.finished_at)} • ok ${s.ok_rows ?? '-'}`)
+      if (s.finished_at) {
+        setLastSync(`${fmtD(s.finished_at)} • ok ${s.ok_rows ?? '-'}`)
+        setLastSyncDate(s.finished_at.slice(0, 10))
+      }
     } catch { /* abaikan */ }
   }
   useEffect(() => { loadCov(); loadRows(1); loadSync() }, [ym])
@@ -92,6 +96,38 @@ export default function SafetyPage() {
       loadCov(); loadRows(1); loadSync()
     } catch (e) { setMsg(`gagal: ${String(e)}`) }
     finally { setSyncing(false) }
+  }
+  const copyWA = async () => {
+    if (rows.length === 0) { setMsg('Tidak ada data untuk disalin.'); return }
+    const dd = (v?: string | null) => {
+      if (!v) return ''
+      const d = new Date(v)
+      if (isNaN(d.getTime())) return String(v)
+      const p = (n: number) => String(n).padStart(2, '0')
+      return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${String(d.getFullYear()).slice(2)}`
+    }
+    const syncD = (() => {
+      const p = lastSyncDate.split('-')
+      return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : lastSyncDate
+    })()
+    const lines = [
+      `Data Bomak ${sec || 'semua'} :`,
+      ...rows.map((r) => `${(r.mekanik_nama ?? '-').trim()} - ${dd(r.submitted_at)}`),
+      `Last data update: ${syncD}`,
+    ]
+    const text = lines.join('\n')
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const ta = document.createElement('textarea')
+      ta.value = text
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2500)
   }
   const pages = Math.max(1, Math.ceil(rtotal / 20))
   const bySec = new Map(cov.map((c) => [c.section ?? '', c]))
@@ -119,9 +155,11 @@ export default function SafetyPage() {
         <span className={stat}><span className="text-gray-500">Respons</span><b>{total.toLocaleString('id-ID')}</b></span>
         <span className={stat}><span className="text-gray-500">P6 kosong</span><b>{(comp.p6_empty ?? 0).toLocaleString('id-ID')}</b></span>
         <span className={stat}><span className="text-gray-500">FU kosong</span><b>{(comp.fu_empty ?? 0).toLocaleString('id-ID')}</b></span>
-        <label className="flex cursor-pointer items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm whitespace-nowrap">
-          <input type="checkbox" checked={temuan} onChange={(e) => setTemuan(e.target.checked)} /> Temuan
-        </label>
+        <button onClick={copyWA} title="Salin untuk WA"
+          className="flex size-10 items-center justify-center rounded-full bg-[#25D366] text-white hover:brightness-95">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 1 1-4.1 14.9l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 0 1 12 4zm-3.2 3.9c-.2 0-.4 0-.6.2-.2.2-.8.8-.8 2s.8 2.3.9 2.5c.1.2 1.6 2.6 4 3.5 2 .8 2.4.6 2.9.6.4-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1 0-.1-.4-.2-.8-.4l-2-1c-.2-.1-.5 0-.6.2l-.7.9c-.1.2-.3.2-.5.1a7.4 7.4 0 0 1-2.2-1.4 8.3 8.3 0 0 1-1.5-1.9c-.2-.3 0-.5.1-.6l.5-.6c.1-.2.2-.4.1-.6L8.4 8.6c-.2-.4-.4-.7-.6-.7z" /></svg>
+        </button>
+        {copied && <span className="text-theme-sm text-green-700">Tersalin, siap paste di WA.</span>}
       </div>
       {lastSync && <p className="-mt-2 text-theme-xs text-gray-500">Sync terakhir: {lastSync}</p>}
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
