@@ -91,10 +91,6 @@ export default function SafetyPage() {
   const issueVals = COMP_LABELS.map((_, i) => comp[`x${i}`] ?? 0)
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-theme-xl font-semibold">Bomak R1BI — Safety 6 PAS</h2>
-        <p className="text-theme-sm text-gray-500">Cakupan section bulan berjalan + temuan ber-eviden</p>
-      </div>
       <div className="flex flex-wrap items-center gap-2">
         <input type="month" className="rounded-lg border px-3 py-2" value={ym}
           onChange={(e) => setYm(e.target.value)} />
