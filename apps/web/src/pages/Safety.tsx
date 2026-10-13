@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  fetchSafetyCoverage, fetchSafetyRecords, syncSafety, fetchSafetyLatestSync,
+  fetchSafetyCoverage, fetchSafetyRecords, fetchSafetyExport, syncSafety, fetchSafetyLatestSync,
   driveThumb, can, type SafetyCoverage, type SafetyRow,
 } from '../api/client'
 
@@ -98,36 +98,45 @@ export default function SafetyPage() {
     finally { setSyncing(false) }
   }
   const copyWA = async () => {
-    if (rows.length === 0) { setMsg('Tidak ada data untuk disalin.'); return }
-    const dd = (v?: string | null) => {
-      if (!v) return ''
-      const d = new Date(v)
-      if (isNaN(d.getTime())) return String(v)
-      const p = (n: number) => String(n).padStart(2, '0')
-      return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${String(d.getFullYear()).slice(2)}`
-    }
-    const syncD = (() => {
-      const p = lastSyncDate.split('-')
-      return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : lastSyncDate
-    })()
-    const lines = [
-      `Data Bomak ${sec || 'semua'} :`,
-      ...rows.map((r) => `${(r.mekanik_nama ?? '-').trim()} - ${dd(r.submitted_at)}`),
-      `Last data update: ${syncD}`,
-    ]
-    const text = lines.join('\n')
     try {
-      await navigator.clipboard.writeText(text)
-    } catch {
-      const ta = document.createElement('textarea')
-      ta.value = text
-      document.body.appendChild(ta)
-      ta.select()
-      document.execCommand('copy')
-      document.body.removeChild(ta)
-    }
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2500)
+      const [y, m] = ym.split('-').map(Number)
+      const d0 = `${y}-${String(m).padStart(2, '0')}-01`
+      const d1 = new Date(y, m, 0)
+      const dend = `${d1.getFullYear()}-${String(d1.getMonth() + 1).padStart(2, '0')}-${String(d1.getDate()).padStart(2, '0')}`
+      const ex = await fetchSafetyExport({
+        date_from: d0, date_to: dend, section: sec || undefined, search: q || undefined,
+      })
+      if (ex.data.length === 0) { setMsg('Tidak ada data untuk disalin.'); return }
+      const dd = (v?: string | null) => {
+        if (!v) return ''
+        const d = new Date(v)
+        if (isNaN(d.getTime())) return String(v)
+        const p = (n: number) => String(n).padStart(2, '0')
+        return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${String(d.getFullYear()).slice(2)}`
+      }
+      const syncD = (() => {
+        const p = lastSyncDate.split('-')
+        return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : lastSyncDate
+      })()
+      const lines = [
+        `Data Bomak ${sec || 'semua'} :`,
+        ...ex.data.map((r, i) => `${i + 1}. ${(r.mekanik_nama ?? '-').trim()} - ${dd(r.submitted_at)}`),
+        `Last data update: ${syncD}`,
+      ]
+      const text = lines.join('\n')
+      try {
+        await navigator.clipboard.writeText(text)
+      } catch {
+        const ta = document.createElement('textarea')
+        ta.value = text
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+      }
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch (e) { setMsg(`gagal: ${String(e)}`) }
   }
   const pages = Math.max(1, Math.ceil(rtotal / 20))
   const bySec = new Map(cov.map((c) => [c.section ?? '', c]))

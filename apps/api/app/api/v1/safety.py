@@ -131,3 +131,29 @@ async def records(date_from: datetime.date | None = None,
     ).mappings().all()
     return {"total": total, "page": page, "page_size": page_size,
             "data": [dict(r) for r in rows]}
+
+
+@router.get("/export")
+async def export_all(date_from: datetime.date | None = None,
+                     date_to: datetime.date | None = None,
+                     section: str | None = None,
+                     search: str | None = None,
+                     db: AsyncSession = Depends(get_db),
+                     user=Depends(get_current_user)):
+    """Semua baris sesuai filter (ringkas, maks 5000) untuk salin WA/export."""
+    conds, p = [], {}
+    if date_from:
+        conds.append("submitted_at >= :df"); p["df"] = _day_utc(date_from)
+    if date_to:
+        conds.append("submitted_at < :dt"); p["dt"] = _day_utc(date_to, end=True)
+    if section:
+        conds.append("section = :sec"); p["sec"] = section
+    if search:
+        conds.append("(mekanik_nama ILIKE :s OR pengawas_nama ILIKE :s "
+                     "OR mekanik_nrp ILIKE :s OR vlog_desc ILIKE :s)")
+        p["s"] = f"%{search}%"
+    where = f"WHERE {' AND '.join(conds)}" if conds else ""
+    rows = (await db.execute(text(
+        f"SELECT mekanik_nama, submitted_at FROM safety_pas {where} "
+        f"ORDER BY submitted_at DESC LIMIT 5000"), p)).mappings().all()
+    return {"total": len(rows), "data": [dict(r) for r in rows]}

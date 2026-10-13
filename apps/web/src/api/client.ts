@@ -266,6 +266,11 @@ export async function fetchSafetyRecords(params: Record<string, string | number 
   return r.data as { total: number; page: number; page_size: number; data: SafetyRow[] }
 }
 
+export async function fetchSafetyExport(params: Record<string, string | undefined>) {
+  const r = await api.get('/v1/safety/export', { params })
+  return r.data as { total: number; data: { mekanik_nama?: string | null; submitted_at: string }[] }
+}
+
 export async function syncSafety() {
   const r = await api.post('/v1/safety/sync')
   return r.data as { fetched: number; ok: number; fail: number; errors: { row: number; error: string }[] }
