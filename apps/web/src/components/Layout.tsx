@@ -303,16 +303,16 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
   const [logoIdx, setLogoIdx] = useState(0)
   const logoSrc = logoIdx < LOGOS.length ? LOGOS[logoIdx] : ''
   return (
-    <div className="flex h-screen bg-gray-50 font-outfit dark:bg-gray-900">
-      <aside className={`flex shrink-0 flex-col overflow-hidden border-gray-200 bg-white transition-all duration-200 print:hidden dark:border-gray-800 dark:bg-black ${open ? 'w-72 border-r px-5' : 'w-0 border-0'}`}>
-          <div className="flex w-72 items-center justify-start gap-3 pt-8 pb-7">
+    <div className="flex h-screen overflow-hidden bg-gray-50 font-outfit dark:bg-gray-900">
+      <aside className={`flex w-72 shrink-0 flex-col border-r border-gray-200 bg-white px-5 transition-[margin] duration-200 ease-in-out print:hidden dark:border-gray-800 dark:bg-black ${open ? 'ml-0' : '-ml-72'}`}>
+          <div className="flex items-center justify-start gap-3 pt-8 pb-7">
             {logoSrc && (
               <img src={logoSrc} alt="Logo MTE" className="h-10 w-auto shrink-0 object-contain sm:h-11"
                 onError={() => setLogoIdx((i) => i + 1)} />
             )}
             <span className="text-lg font-bold break-words text-brand-600">MTE Data Center</span>
           </div>
-          <nav className="flex w-72 flex-col gap-4 overflow-y-auto">
+          <nav className="flex flex-col gap-4 overflow-y-auto">
             {GROUPS.map((g) => {
               const items = g.items.filter((m) => 'admin' in m && m.admin
                 ? localStorage.getItem('mte_role') === 'admin'
@@ -346,7 +346,7 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
               )
             })}
           </nav>
-          <button onClick={onLogout} className="mt-auto mb-6 w-72 shrink-0 rounded-lg border px-3 py-2 text-theme-sm text-gray-600">Logout</button>
+          <button onClick={onLogout} className="mt-auto mb-6 rounded-lg border px-3 py-2 text-theme-sm text-gray-600">Logout</button>
       </aside>
       <div className="flex flex-1 flex-col">
         <header className="flex items-center gap-2 border-b border-gray-200 bg-white px-6 py-4 print:hidden dark:border-gray-800 dark:bg-gray-900">
