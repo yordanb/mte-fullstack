@@ -13,6 +13,7 @@ const GROUPS: MenuGroup[] = [
   ] },
   { title: 'Operasional', items: [
     { key: 'activity', label: 'Activity' },
+  { key: 'bomak', label: 'Bomak R1BI' },
     { key: 'equipment', label: 'Equipment' },
     { key: 'project', label: 'Project' },
     { key: 'import', label: 'Update Data' },
@@ -43,6 +44,9 @@ const ICONS: Record<string, ReactNode> = {
   ),
   activity: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+  ),
+  bomak: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" /></svg>
   ),
   timeline: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2.5" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /></svg>

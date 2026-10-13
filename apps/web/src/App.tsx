@@ -5,6 +5,7 @@ import { Dashboard, ImportPage, DbrPage, EquipmentPage, ActivityPage, FuiPage, S
 import UsersPage from './pages/Users'
 import AuditPage from './pages/Audit'
 import ProjectPage from './pages/Project'
+import SafetyPage from './pages/Safety'
 import TimelinePage from './pages/Timeline'
 import { fetchMe, can } from './api/client'
 
@@ -56,6 +57,7 @@ export default function App() {
       {page === 'fureport' && can('fureport', 'view') && <SugReportPage />}
       {page === 'project' && can('project', 'view') && <ProjectPage />}
       {page === 'activity' && <ActivityPage />}
+      {page === 'bomak' && can('bomak', 'view') && <SafetyPage />}
       {page === 'timeline' && can('timeline', 'view') && <TimelinePage />}
       {page === 'import' && <ImportPage />}
       {page === 'users' && me.role === 'admin' && <UsersPage />}

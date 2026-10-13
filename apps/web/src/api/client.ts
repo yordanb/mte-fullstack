@@ -232,6 +232,54 @@ export function projectPhotoUrl(uid: string, pid: string) {
   return `/api/v1/projects/updates/${uid}/photos/${pid}?token=${localStorage.getItem('mte_token') ?? ''}`
 }
 
+export type SafetyCoverage = {
+  section: string | null; n: number; mekanik: number; pengawas: number; hari: number; terakhir?: string | null
+}
+
+export type SafetyCompliance = {
+  total: number; x0: number; x1: number; x2: number; x3: number; x4: number; x5: number; x6: number
+  p6_empty: number; fu_empty: number
+}
+
+export type SafetyRow = {
+  id: number; submitted_at: string
+  pengawas_nama?: string | null; pengawas_nrp?: string | null
+  mekanik_nama?: string | null; mekanik_nrp?: string | null
+  grade?: string | null; section?: string | null
+  doc6pas_url?: string | null; doc6pas_file?: string | null
+  bisa6pas?: string | null; p1_doa?: string | null; p2_apd?: string | null
+  p2_stretch?: string | null; p3_housekeeping?: string | null
+  p3_doc?: string | null; p3_desc?: string | null
+  p4_alat?: string | null; p4_doc?: string | null; p4_desc?: string | null
+  p5_prosedur?: string | null; vlog_url?: string | null; vlog_file?: string | null
+  vlog_desc?: string | null; p6_tindakan?: string | null; p6_desc?: string | null
+  followup?: string | null; area_bomak?: string | null; job_desc?: string | null
+}
+
+export async function fetchSafetyCoverage(year: number, month: number) {
+  const r = await api.get('/v1/safety/coverage', { params: { year, month } })
+  return r.data as { year: number; month: number; coverage: SafetyCoverage[]; compliance: SafetyCompliance; sections: string[] }
+}
+
+export async function fetchSafetyRecords(params: Record<string, string | number | boolean | undefined>) {
+  const r = await api.get('/v1/safety/records', { params })
+  return r.data as { total: number; page: number; page_size: number; data: SafetyRow[] }
+}
+
+export async function syncSafety() {
+  const r = await api.post('/v1/safety/sync')
+  return r.data as { fetched: number; ok: number; fail: number; errors: { row: number; error: string }[] }
+}
+
+export async function fetchSafetyLatestSync() {
+  const r = await api.get('/v1/safety/latest-sync')
+  return r.data as { finished_at?: string; fetched?: number; ok_rows?: number; fail_rows?: number; synced_by?: string } | Record<string, never>
+}
+
+export function driveThumb(fileId: string, w = 400) {
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${w}`
+}
+
 export async function fetchResults(vesselid: string, unit_id?: string): Promise<LabRow[]> {
   const r = await api.get('/v1/results', { params: { vesselid, unit_id, limit: 20 } })
   return r.data.data
