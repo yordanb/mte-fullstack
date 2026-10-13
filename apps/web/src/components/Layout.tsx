@@ -290,6 +290,14 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
   // Autohide: sidebar menutup sendiri setiap pindah halaman.
   useEffect(() => { setOpen(false) }, [page])
   const go = (key: string) => { setPage(key); setOpen(false) }
+  // Grup kategori collapsible ala TailAdmin: grup berisi halaman aktif terbuka
+  // otomatis, judul grup lain tampil dan bisa diklik untuk buka/tutup.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  useEffect(() => {
+    const g = GROUPS.find((gr) => gr.items.some((m) => m.key === page))
+    if (g) setOpenGroups((p) => (p[g.title] ? p : { ...p, [g.title]: true }))
+  }, [page])
+  const toggleGroup = (t: string) => setOpenGroups((p) => ({ ...p, [t]: !p[t] }))
   // Logo kustom: apps/web/public/logo.png (prioritas) -> logo_mte.svg -> logo.svg bawaan.
   const LOGOS = ['/logo.png', '/logo_mte.svg', '/logo.svg']
   const [logoIdx, setLogoIdx] = useState(0)
@@ -312,9 +320,18 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
                 ? localStorage.getItem('mte_role') === 'admin'
                 : can(m.perm ?? m.key, 'view'))
               if (items.length === 0) return null
+              const openGroup = !!openGroups[g.title]
               return (
                 <div key={g.title}>
-                  <p className="mb-1 px-3 text-xs uppercase text-gray-400">{g.title}</p>
+                  <button onClick={() => toggleGroup(g.title)}
+                    className="flex w-full items-center justify-between px-3 py-1 text-xs uppercase text-gray-400 hover:text-gray-600">
+                    {g.title}
+                    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+                      className={`transition-transform ${openGroup ? 'rotate-180' : ''}`}>
+                      <path d="M4.8 7.4 10 12.6l5.2-5.2" />
+                    </svg>
+                  </button>
+                  {openGroup && (
                   <div className="flex flex-col gap-1">
                     {items.map((m) => (
                       <button key={m.key} onClick={() => go(m.key)}
@@ -324,6 +341,7 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
                       </button>
                     ))}
                   </div>
+                  )}
                 </div>
               )
             })}
