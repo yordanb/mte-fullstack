@@ -290,63 +290,63 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
   // Autohide: sidebar menutup sendiri setiap pindah halaman.
   useEffect(() => { setOpen(false) }, [page])
   const go = (key: string) => { setPage(key); setOpen(false) }
-  // Grup kategori collapsible ala TailAdmin: grup berisi halaman aktif terbuka
-  // otomatis, judul grup lain tampil dan bisa diklik untuk buka/tutup.
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
+  // Grup kategori akordeon ala TailAdmin: hanya satu grup terbuka; grup berisi
+  // halaman aktif terbuka otomatis, sisanya tertutup hemat ruang.
+  const [openGroup, setOpenGroup] = useState<string | null>(null)
   useEffect(() => {
     const g = GROUPS.find((gr) => gr.items.some((m) => m.key === page))
-    if (g) setOpenGroups((p) => (p[g.title] ? p : { ...p, [g.title]: true }))
+    if (g) setOpenGroup(g.title)
   }, [page])
-  const toggleGroup = (t: string) => setOpenGroups((p) => ({ ...p, [t]: !p[t] }))
+  const toggleGroup = (t: string) => setOpenGroup((cur) => (cur === t ? null : t))
   // Logo kustom: apps/web/public/logo.png (prioritas) -> logo_mte.svg -> logo.svg bawaan.
   const LOGOS = ['/logo.png', '/logo_mte.svg', '/logo.svg']
   const [logoIdx, setLogoIdx] = useState(0)
   const logoSrc = logoIdx < LOGOS.length ? LOGOS[logoIdx] : ''
   return (
     <div className="flex h-screen bg-gray-50 font-outfit dark:bg-gray-900">
-      {/* Backdrop transparan: klik di luar sidebar = tutup (autohide) */}
-      {open && <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-gray-200 bg-white px-5 transition-transform duration-200 print:hidden dark:border-gray-800 dark:bg-black ${open ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="flex items-center justify-start gap-3 pt-8 pb-7">
+      <aside className={`flex shrink-0 flex-col overflow-hidden border-gray-200 bg-white transition-all duration-200 print:hidden dark:border-gray-800 dark:bg-black ${open ? 'w-72 border-r px-5' : 'w-0 border-0'}`}>
+          <div className="flex w-72 items-center justify-start gap-3 pt-8 pb-7">
             {logoSrc && (
               <img src={logoSrc} alt="Logo MTE" className="h-10 w-auto shrink-0 object-contain sm:h-11"
                 onError={() => setLogoIdx((i) => i + 1)} />
             )}
             <span className="text-lg font-bold break-words text-brand-600">MTE Data Center</span>
           </div>
-          <nav className="flex flex-col gap-4 overflow-y-auto">
+          <nav className="flex w-72 flex-col gap-4 overflow-y-auto">
             {GROUPS.map((g) => {
               const items = g.items.filter((m) => 'admin' in m && m.admin
                 ? localStorage.getItem('mte_role') === 'admin'
                 : can(m.perm ?? m.key, 'view'))
               if (items.length === 0) return null
-              const openGroup = !!openGroups[g.title]
+              const isOpen = openGroup === g.title
               return (
                 <div key={g.title}>
                   <button onClick={() => toggleGroup(g.title)}
                     className="flex w-full items-center justify-between px-3 py-1 text-xs uppercase text-gray-400 hover:text-gray-600">
                     {g.title}
                     <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-                      className={`transition-transform ${openGroup ? 'rotate-180' : ''}`}>
+                      className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
                       <path d="M4.8 7.4 10 12.6l5.2-5.2" />
                     </svg>
                   </button>
-                  {openGroup && (
-                  <div className="flex flex-col gap-1">
-                    {items.map((m) => (
-                      <button key={m.key} onClick={() => go(m.key)}
-                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-theme-sm ${page === m.key ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-100'}`}>
-                        <span className="shrink-0">{ICONS[m.key]}</span>
-                        {m.label}
-                      </button>
-                    ))}
+                  <div className={`grid transition-all duration-200 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                    <div className="overflow-hidden">
+                      <div className="flex flex-col gap-1 pt-1">
+                        {items.map((m) => (
+                          <button key={m.key} onClick={() => go(m.key)}
+                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-theme-sm ${page === m.key ? 'bg-brand-50 text-brand-600' : 'text-gray-600 hover:bg-gray-100'}`}>
+                            <span className="shrink-0">{ICONS[m.key]}</span>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  )}
                 </div>
               )
             })}
           </nav>
-          <button onClick={onLogout} className="mt-auto mb-6 rounded-lg border px-3 py-2 text-theme-sm text-gray-600">Logout</button>
+          <button onClick={onLogout} className="mt-auto mb-6 w-72 shrink-0 rounded-lg border px-3 py-2 text-theme-sm text-gray-600">Logout</button>
       </aside>
       <div className="flex flex-1 flex-col">
         <header className="flex items-center gap-2 border-b border-gray-200 bg-white px-6 py-4 print:hidden dark:border-gray-800 dark:bg-gray-900">
