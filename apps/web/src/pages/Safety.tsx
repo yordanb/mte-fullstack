@@ -25,6 +25,13 @@ const fmtD = (v?: string | null) => {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
+// Nama >2 kata jadi 2 kata + 1 huruf (cth RAHMAT FITRIADI M)
+const shortName = (v?: string | null) => {
+  const parts = (v ?? '').split(/\s+/).filter(Boolean)
+  if (parts.length > 2) return `${parts[0]} ${parts[1]} ${parts[2][0]}`
+  return v ?? ''
+}
+
 const okBadge = (good: boolean, title: string, short: string) => (
   <span title={title} className={`rounded-full px-2 py-0.5 text-theme-xs ${good ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
     {good ? `✓${short}` : `!${short}`}
@@ -146,8 +153,8 @@ export default function SafetyPage() {
               return (
                 <tr key={r.id} className="border-t">
                   <td className="border px-2 py-2 whitespace-nowrap">{fmtD(r.submitted_at)}</td>
-                  <td className="border px-2 py-2 whitespace-nowrap">{r.pengawas_nama ?? '-'}<span className="block text-theme-xs text-gray-500">{r.pengawas_nrp}</span></td>
-                  <td className="border px-2 py-2 whitespace-nowrap">{r.mekanik_nama ?? '-'}<span className="block text-theme-xs text-gray-500">{r.mekanik_nrp}</span></td>
+                  <td className="border px-2 py-2 whitespace-nowrap" title={r.pengawas_nama ?? ''}>{shortName(r.pengawas_nama) || '-'}<span className="block text-theme-xs text-gray-500">{r.pengawas_nrp}</span></td>
+                  <td className="border px-2 py-2 whitespace-nowrap" title={r.mekanik_nama ?? ''}>{shortName(r.mekanik_nama) || '-'}<span className="block text-theme-xs text-gray-500">{r.mekanik_nrp}</span></td>
                   <td className="border px-2 py-2 whitespace-nowrap">{r.grade ?? '-'}</td>
                   <td className="border px-2 py-2 whitespace-nowrap">{r.section ?? '-'}</td>
                   <td className="border px-2 py-2">{okBadge(r.p1_doa === 'SUDAH', 'P1 doa', '1')}</td>
