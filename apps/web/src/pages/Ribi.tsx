@@ -133,22 +133,22 @@ export default function RibiView({ toggle }: { toggle?: ReactNode }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <input type="month" className="rounded-lg border px-3 py-2" value={ym}
+        <input type="month" className="w-full rounded-lg border px-3 py-2 sm:w-auto" value={ym}
           onChange={(e) => setYm(e.target.value)} />
-        <select className="rounded-lg border px-3 py-2" value={sec} onChange={(e) => setSec(e.target.value)}>
+        <select className="w-full rounded-lg border px-3 py-2 sm:w-auto" value={sec} onChange={(e) => setSec(e.target.value)}>
           <option value="">Section: semua</option>
           {sections.map((s) => (<option key={s} value={s}>{s}</option>))}
         </select>
-        <select className="rounded-lg border px-3 py-2" value={risk} onChange={(e) => setRisk(e.target.value)}>
+        <select className="w-full rounded-lg border px-3 py-2 sm:w-auto" value={risk} onChange={(e) => setRisk(e.target.value)}>
           <option value="">Risiko: semua</option>
           <option value="HIGH RISK">HIGH RISK</option>
           <option value="LOW RISK">LOW RISK</option>
         </select>
-        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => { loadCov(); loadRows(1) }}>Tampilkan</button>
-        <input className="w-48 rounded-lg border px-3 py-2" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama/NRP/staff" />
-        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => loadRows(1)}>Cari</button>
+        <button className="w-full rounded-lg bg-brand-500 px-4 py-2 text-white sm:w-auto" onClick={() => { loadCov(); loadRows(1) }}>Tampilkan</button>
+        <input className="w-full rounded-lg border px-3 py-2 sm:w-48" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari nama/NRP/staff" />
+        <button className="w-full rounded-lg bg-brand-500 px-4 py-2 text-white sm:w-auto" onClick={() => loadRows(1)}>Cari</button>
         {can('bomak', 'add') && (
-          <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={syncing} onClick={doSync}>
+          <button className="w-full rounded-lg border px-4 py-2 disabled:opacity-40 sm:w-auto" disabled={syncing} onClick={doSync}>
             {syncing ? 'Menyinkron...' : 'Sync'}
           </button>
         )}
@@ -166,46 +166,46 @@ export default function RibiView({ toggle }: { toggle?: ReactNode }) {
       {lastSync && <p className="-mt-2 text-theme-xs text-gray-500">Sync terakhir: {lastSync}</p>}
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
       <div className="overflow-x-auto rounded-2xl border bg-white">
-        <table className="w-full border-collapse text-center text-theme-sm">
+        <table className="w-full border-collapse text-center text-xs sm:text-theme-sm">
           <thead className="bg-[#d6e4c9] font-semibold">
             <tr>{['Tgl R1BI', 'Pekerja', 'Jabatan', 'Section', 'Staff', 'Risiko', 'Lokasi / Job', 'Bahaya', 'Foto area', 'Foto JSA'].map((h) => (
-              <th key={h} className="border px-2 py-2 whitespace-nowrap">{h}</th>
+              <th key={h} className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{h}</th>
             ))}</tr>
           </thead>
           <tbody>
             {rows.map((r) => (
               <tr key={`${r.submitted_at}-${r.nrp}-${r.nama}`} className="border-t">
-                <td className="border px-2 py-2 whitespace-nowrap">{fmtTgl(String(r.tanggal ?? ''))}</td>
-                <td className="border px-2 py-2 whitespace-nowrap" title={String(r.nama ?? '')}>{shortNameOf(String(r.nama ?? '')) || '-'}<span className="block text-theme-xs text-gray-500">{r.nrp}</span></td>
-                <td className="border px-2 py-2 whitespace-nowrap">{r.jabatan ?? '-'}</td>
-                <td className="border px-2 py-2 whitespace-nowrap">{r.section ?? '-'}</td>
-                <td className="border px-2 py-2 whitespace-nowrap">{r.staff_ribi ?? '-'}</td>
-                <td className="border px-2 py-2">
+                <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{fmtTgl(String(r.tanggal ?? ''))}</td>
+                <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2" title={String(r.nama ?? '')}>{shortNameOf(String(r.nama ?? '')) || '-'}<span className="block text-theme-xs text-gray-500">{r.nrp}</span></td>
+                <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{r.jabatan ?? '-'}</td>
+                <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{r.section ?? '-'}</td>
+                <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{r.staff_ribi ?? '-'}</td>
+                <td className="border px-1 py-1 sm:px-2 sm:py-2">
                   <span className={`rounded-full px-2 py-0.5 text-theme-xs ${r.aktivitas === 'HIGH RISK' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                     {r.aktivitas ?? '-'}
                   </span>
                 </td>
-                <td className="border px-2 py-2 whitespace-nowrap">{[r.lokasi, r.job_desc].filter(Boolean).join(' / ') || '-'}</td>
-                <td className="max-w-48 truncate border px-2 py-2 text-left" title={String(r.bahaya_desc ?? '')}>{r.bahaya_desc ?? '-'}</td>
-                <td className="border px-2 py-2"><Thumb fid={String(r.foto_area_file ?? '')} label="foto area" /></td>
-                <td className="border px-2 py-2"><Thumb fid={String(r.foto_jsa_file ?? '')} label="foto JSA" /></td>
+                <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{[r.lokasi, r.job_desc].filter(Boolean).join(' / ') || '-'}</td>
+                <td className="max-w-32 truncate border px-1 py-1 text-left sm:max-w-48 sm:px-2 sm:py-2" title={String(r.bahaya_desc ?? '')}>{r.bahaya_desc ?? '-'}</td>
+                <td className="border px-1 py-1 sm:px-2 sm:py-2"><Thumb fid={String(r.foto_area_file ?? '')} label="foto area" /></td>
+                <td className="border px-1 py-1 sm:px-2 sm:py-2"><Thumb fid={String(r.foto_jsa_file ?? '')} label="foto JSA" /></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div className="flex items-center gap-2 text-theme-sm">
+      <div className="flex flex-wrap items-center gap-2 text-theme-sm">
         <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => loadRows(page - 1)}>‹ Prev</button>
         <span>Halaman {page} dari {Math.max(1, Math.ceil(rtotal / 20))}</span>
         <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= Math.ceil(rtotal / 20)} onClick={() => loadRows(page + 1)}>Next ›</button>
       </div>
-      <div className="rounded-2xl border bg-white p-5">
+      <div className="rounded-2xl border bg-white p-3 sm:p-5">
         <h3 className="font-semibold">Cakupan per section — siapa sudah muncul bulan ini</h3>
         <div className="mt-2 overflow-x-auto">
-          <table className="w-full border-collapse text-center text-theme-sm">
+          <table className="w-full border-collapse text-center text-xs sm:text-theme-sm">
             <thead className="bg-[#d6e4c9] font-semibold">
               <tr>{['Section', 'Respons', 'Pekerja', 'HIGH RISK', 'Hari aktif', 'Terakhir'].map((h) => (
-                <th key={h} className="border px-2 py-2 whitespace-nowrap">{h}</th>
+                <th key={h} className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{h}</th>
               ))}</tr>
             </thead>
             <tbody>
@@ -214,12 +214,12 @@ export default function RibiView({ toggle }: { toggle?: ReactNode }) {
                 const empty = !c || c.n === 0
                 return (
                   <tr key={s} className={`border-t ${empty ? 'bg-gray-100 text-gray-400' : ''}`}>
-                    <td className="border px-2 py-2 text-left font-medium">{s}{empty ? ' — belum ada data' : ''}</td>
-                    <td className="border px-2 py-2">{c?.n ?? 0}</td>
-                    <td className="border px-2 py-2">{c?.pekerja ?? 0}</td>
-                    <td className="border px-2 py-2">{c && c.high > 0 ? <b className="text-red-600">{c.high}</b> : (c?.high ?? 0)}</td>
-                    <td className="border px-2 py-2">{c?.hari ?? 0}</td>
-                    <td className="border px-2 py-2 whitespace-nowrap">{c?.terakhir ? fmtTgl(String(c.terakhir)) : '-'}</td>
+                    <td className="border px-1 py-1 text-left font-medium sm:px-2 sm:py-2">{s}{empty ? ' — belum ada data' : ''}</td>
+                    <td className="border px-1 py-1 sm:px-2 sm:py-2">{c?.n ?? 0}</td>
+                    <td className="border px-1 py-1 sm:px-2 sm:py-2">{c?.pekerja ?? 0}</td>
+                    <td className="border px-1 py-1 sm:px-2 sm:py-2">{c && c.high > 0 ? <b className="text-red-600">{c.high}</b> : (c?.high ?? 0)}</td>
+                    <td className="border px-1 py-1 sm:px-2 sm:py-2">{c?.hari ?? 0}</td>
+                    <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{c?.terakhir ? fmtTgl(String(c.terakhir)) : '-'}</td>
                   </tr>
                 )
               })}

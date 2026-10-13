@@ -154,17 +154,17 @@ export default function SafetyPage() {
     <div className="flex flex-col gap-4">
       {mode === 'r1bi' ? <RibiView toggle={modeToggle} /> : (<>
       <div className="flex flex-wrap items-center gap-2">
-        <input type="month" className="rounded-lg border px-3 py-2" value={ym}
+        <input type="month" className="w-full rounded-lg border px-3 py-2 sm:w-auto" value={ym}
           onChange={(e) => setYm(e.target.value)} />
-        <select className="rounded-lg border px-3 py-2" value={sec} onChange={(e) => setSec(e.target.value)}>
+        <select className="w-full rounded-lg border px-3 py-2 sm:w-auto" value={sec} onChange={(e) => setSec(e.target.value)}>
           <option value="">Section: semua</option>
           {sections.map((s) => (<option key={s} value={s}>{s}</option>))}
         </select>
-        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => { loadCov(); loadRows(1) }}>Tampilkan</button>
-        <input className="w-48 rounded-lg border px-3 py-2" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari mekanik/pengawas/NRP" />
-        <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => loadRows(1)}>Cari</button>
+        <button className="w-full rounded-lg bg-brand-500 px-4 py-2 text-white sm:w-auto" onClick={() => { loadCov(); loadRows(1) }}>Tampilkan</button>
+        <input className="w-full rounded-lg border px-3 py-2 sm:w-48" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari mekanik/pengawas/NRP" />
+        <button className="w-full rounded-lg bg-brand-500 px-4 py-2 text-white sm:w-auto" onClick={() => loadRows(1)}>Cari</button>
         {can('bomak', 'add') && (
-          <button className="rounded-lg border px-4 py-2 disabled:opacity-40" disabled={syncing} onClick={doSync}>
+          <button className="w-full rounded-lg border px-4 py-2 disabled:opacity-40 sm:w-auto" disabled={syncing} onClick={doSync}>
             {syncing ? 'Menyinkron...' : 'Sync'}
           </button>
         )}
@@ -183,10 +183,10 @@ export default function SafetyPage() {
       {lastSync && <p className="-mt-2 text-theme-xs text-gray-500">Sync terakhir: {lastSync}</p>}
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
       <div className="overflow-x-auto rounded-2xl border bg-white">
-        <table className="w-full border-collapse text-center text-theme-sm">
+        <table className="w-full border-collapse text-center text-xs sm:text-theme-sm">
           <thead className="bg-[#d6e4c9] font-semibold">
             <tr>{['Tanggal', 'Pengawas', 'Mekanik', 'Grade', 'Section', 'P1', 'P2', 'P3', 'P4', 'P5', 'Temuan', 'Vlog', 'Area / Job'].map((h) => (
-              <th key={h} className="border px-2 py-2 whitespace-nowrap">{h}</th>
+              <th key={h} className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{h}</th>
             ))}</tr>
           </thead>
           <tbody>
@@ -194,43 +194,43 @@ export default function SafetyPage() {
               const temuanTxt = [r.p3_desc, r.p4_desc, r.p6_desc, r.followup].filter(Boolean).join(' | ')
               return (
                 <tr key={r.id} className="border-t">
-                  <td className="border px-2 py-2 whitespace-nowrap">{fmtD(r.submitted_at)}</td>
-                  <td className="border px-2 py-2 whitespace-nowrap" title={r.pengawas_nama ?? ''}>{shortName(r.pengawas_nama) || '-'}<span className="block text-theme-xs text-gray-500">{r.pengawas_nrp}</span></td>
-                  <td className="border px-2 py-2 whitespace-nowrap" title={r.mekanik_nama ?? ''}>{shortName(r.mekanik_nama) || '-'}<span className="block text-theme-xs text-gray-500">{r.mekanik_nrp}</span></td>
-                  <td className="border px-2 py-2 whitespace-nowrap">{r.grade ?? '-'}</td>
-                  <td className="border px-2 py-2 whitespace-nowrap">{r.section ?? '-'}</td>
-                  <td className="border px-2 py-2">{okBadge(r.p1_doa === 'SUDAH', 'P1 doa', '1')}</td>
-                  <td className="border px-2 py-2">{okBadge(r.p2_apd === 'SIAP' && r.p2_stretch === 'SIAP', 'P2 APD+stretching', '2')}</td>
-                  <td className="border px-2 py-2">{okBadge((r.p3_housekeeping ?? '').startsWith('SESUAI'), 'P3 housekeeping', '3')}</td>
-                  <td className="border px-2 py-2">{okBadge(r.p4_alat === 'SUDAH SESUAI', 'P4 alat', '4')}</td>
-                  <td className="border px-2 py-2">{okBadge(r.p5_prosedur === 'SUDAH SESUAI PROSEDUR', 'P5 prosedur', '5')}</td>
-                  <td className="max-w-48 truncate border px-2 py-2 text-left" title={temuanTxt}>{temuanTxt || '-'}</td>
-                  <td className="border px-2 py-2">
+                  <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{fmtD(r.submitted_at)}</td>
+                  <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2" title={r.pengawas_nama ?? ''}>{shortName(r.pengawas_nama) || '-'}<span className="block text-theme-xs text-gray-500">{r.pengawas_nrp}</span></td>
+                  <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2" title={r.mekanik_nama ?? ''}>{shortName(r.mekanik_nama) || '-'}<span className="block text-theme-xs text-gray-500">{r.mekanik_nrp}</span></td>
+                  <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{r.grade ?? '-'}</td>
+                  <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{r.section ?? '-'}</td>
+                  <td className="border px-1 py-1 sm:px-2 sm:py-2">{okBadge(r.p1_doa === 'SUDAH', 'P1 doa', '1')}</td>
+                  <td className="border px-1 py-1 sm:px-2 sm:py-2">{okBadge(r.p2_apd === 'SIAP' && r.p2_stretch === 'SIAP', 'P2 APD+stretching', '2')}</td>
+                  <td className="border px-1 py-1 sm:px-2 sm:py-2">{okBadge((r.p3_housekeeping ?? '').startsWith('SESUAI'), 'P3 housekeeping', '3')}</td>
+                  <td className="border px-1 py-1 sm:px-2 sm:py-2">{okBadge(r.p4_alat === 'SUDAH SESUAI', 'P4 alat', '4')}</td>
+                  <td className="border px-1 py-1 sm:px-2 sm:py-2">{okBadge(r.p5_prosedur === 'SUDAH SESUAI PROSEDUR', 'P5 prosedur', '5')}</td>
+                  <td className="max-w-32 truncate border px-1 py-1 text-left sm:max-w-48 sm:px-2 sm:py-2" title={temuanTxt}>{temuanTxt || '-'}</td>
+                  <td className="border px-1 py-1 sm:px-2 sm:py-2">
                     <div className="flex items-center justify-center gap-1">
                       <Thumb fid={r.vlog_file} label={r.vlog_desc ?? 'vlog'} />
                       {r.vlog_url && <a href={r.vlog_url} target="_blank" rel="noreferrer" className="underline">buka</a>}
                     </div>
-                    {r.vlog_desc && <p className="max-w-48 truncate text-left text-theme-xs text-gray-500" title={r.vlog_desc}>{r.vlog_desc}</p>}
+                    {r.vlog_desc && <p className="max-w-32 truncate text-left text-theme-xs text-gray-500 sm:max-w-48" title={r.vlog_desc}>{r.vlog_desc}</p>}
                   </td>
-                  <td className="border px-2 py-2 whitespace-nowrap">{[r.area_bomak, r.job_desc].filter(Boolean).join(' / ') || '-'}</td>
+                  <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{[r.area_bomak, r.job_desc].filter(Boolean).join(' / ') || '-'}</td>
                 </tr>
               )
             })}
           </tbody>
         </table>
       </div>
-      <div className="flex items-center gap-2 text-theme-sm">
+      <div className="flex flex-wrap items-center gap-2 text-theme-sm">
         <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => loadRows(page - 1)}>‹ Prev</button>
         <span>Halaman {page} dari {Math.max(1, Math.ceil(rtotal / 20))}</span>
         <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= Math.ceil(rtotal / 20)} onClick={() => loadRows(page + 1)}>Next ›</button>
       </div>
-      <div className="rounded-2xl border bg-white p-5">
+      <div className="rounded-2xl border bg-white p-3 sm:p-5">
         <h3 className="font-semibold">Cakupan per section — siapa sudah muncul bulan ini</h3>
         <div className="mt-2 overflow-x-auto">
-          <table className="w-full border-collapse text-center text-theme-sm">
+          <table className="w-full border-collapse text-center text-xs sm:text-theme-sm">
             <thead className="bg-[#d6e4c9] font-semibold">
               <tr>{['Section', 'Respons', 'Mekanik', 'Pengawas', 'Hari aktif', 'Terakhir'].map((h) => (
-                <th key={h} className="border px-2 py-2 whitespace-nowrap">{h}</th>
+                <th key={h} className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{h}</th>
               ))}</tr>
             </thead>
             <tbody>
@@ -239,12 +239,12 @@ export default function SafetyPage() {
                 const empty = !c || c.n === 0
                 return (
                   <tr key={s} className={`border-t ${empty ? 'bg-gray-100 text-gray-400' : ''}`}>
-                    <td className="border px-2 py-2 text-left font-medium">{s}{empty ? ' — belum ada data' : ''}</td>
-                    <td className="border px-2 py-2">{c?.n ?? 0}</td>
-                    <td className="border px-2 py-2">{c?.mekanik ?? 0}</td>
-                    <td className="border px-2 py-2">{c?.pengawas ?? 0}</td>
-                    <td className="border px-2 py-2">{c?.hari ?? 0}</td>
-                    <td className="border px-2 py-2 whitespace-nowrap">{c?.terakhir ? fmtD(c.terakhir) : '-'}</td>
+                    <td className="border px-1 py-1 text-left font-medium sm:px-2 sm:py-2">{s}{empty ? ' — belum ada data' : ''}</td>
+                    <td className="border px-1 py-1 sm:px-2 sm:py-2">{c?.n ?? 0}</td>
+                    <td className="border px-1 py-1 sm:px-2 sm:py-2">{c?.mekanik ?? 0}</td>
+                    <td className="border px-1 py-1 sm:px-2 sm:py-2">{c?.pengawas ?? 0}</td>
+                    <td className="border px-1 py-1 sm:px-2 sm:py-2">{c?.hari ?? 0}</td>
+                    <td className="border px-1 py-1 whitespace-nowrap sm:px-2 sm:py-2">{c?.terakhir ? fmtD(c.terakhir) : '-'}</td>
                   </tr>
                 )
               })}
