@@ -125,42 +125,6 @@ export default function SafetyPage() {
           <p className="mt-1 text-title-sm font-bold">{(comp.fu_empty ?? 0).toLocaleString('id-ID')}</p>
         </div>
       </div>
-      <div className="rounded-2xl border bg-white p-5">
-        <h3 className="font-semibold">Cakupan per section — siapa sudah muncul bulan ini</h3>
-        <div className="mt-2 overflow-x-auto">
-          <table className="w-full border-collapse text-center text-theme-sm">
-            <thead className="bg-[#d6e4c9] font-semibold">
-              <tr>{['Section', 'Respons', 'Mekanik', 'Pengawas', 'Hari aktif', 'Terakhir'].map((h) => (
-                <th key={h} className="border px-2 py-2 whitespace-nowrap">{h}</th>
-              ))}</tr>
-            </thead>
-            <tbody>
-              {sections.map((s) => {
-                const c = bySec.get(s)
-                const empty = !c || c.n === 0
-                return (
-                  <tr key={s} className={`border-t ${empty ? 'bg-gray-100 text-gray-400' : ''}`}>
-                    <td className="border px-2 py-2 text-left font-medium">{s}{empty ? ' — belum ada data' : ''}</td>
-                    <td className="border px-2 py-2">{c?.n ?? 0}</td>
-                    <td className="border px-2 py-2">{c?.mekanik ?? 0}</td>
-                    <td className="border px-2 py-2">{c?.pengawas ?? 0}</td>
-                    <td className="border px-2 py-2">{c?.hari ?? 0}</td>
-                    <td className="border px-2 py-2 whitespace-nowrap">{c?.terakhir ? fmtD(c.terakhir) : '-'}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-        <h3 className="mt-4 font-semibold">Pengecualian per poin (perlu perhatian)</h3>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {COMP_LABELS.map((l, i) => (
-            <span key={l} className={`rounded-full px-3 py-1 text-theme-sm ${(issueVals[i] ?? 0) > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-              {l}: {issueVals[i] ?? 0}
-            </span>
-          ))}
-        </div>
-      </div>
       <div className="flex flex-wrap items-center gap-2">
         <select className="rounded-lg border px-3 py-2" value={sec} onChange={(e) => setSec(e.target.value)}>
           <option value="">Section: semua</option>
@@ -214,6 +178,42 @@ export default function SafetyPage() {
         <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1} onClick={() => loadRows(page - 1)}>‹ Prev</button>
         <span>Halaman {page} dari {Math.max(1, Math.ceil(rtotal / 20))}</span>
         <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= Math.ceil(rtotal / 20)} onClick={() => loadRows(page + 1)}>Next ›</button>
+      </div>
+      <div className="rounded-2xl border bg-white p-5">
+        <h3 className="font-semibold">Cakupan per section — siapa sudah muncul bulan ini</h3>
+        <div className="mt-2 overflow-x-auto">
+          <table className="w-full border-collapse text-center text-theme-sm">
+            <thead className="bg-[#d6e4c9] font-semibold">
+              <tr>{['Section', 'Respons', 'Mekanik', 'Pengawas', 'Hari aktif', 'Terakhir'].map((h) => (
+                <th key={h} className="border px-2 py-2 whitespace-nowrap">{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {sections.map((s) => {
+                const c = bySec.get(s)
+                const empty = !c || c.n === 0
+                return (
+                  <tr key={s} className={`border-t ${empty ? 'bg-gray-100 text-gray-400' : ''}`}>
+                    <td className="border px-2 py-2 text-left font-medium">{s}{empty ? ' — belum ada data' : ''}</td>
+                    <td className="border px-2 py-2">{c?.n ?? 0}</td>
+                    <td className="border px-2 py-2">{c?.mekanik ?? 0}</td>
+                    <td className="border px-2 py-2">{c?.pengawas ?? 0}</td>
+                    <td className="border px-2 py-2">{c?.hari ?? 0}</td>
+                    <td className="border px-2 py-2 whitespace-nowrap">{c?.terakhir ? fmtD(c.terakhir) : '-'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <h3 className="mt-4 font-semibold">Pengecualian per poin (perlu perhatian)</h3>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {COMP_LABELS.map((l, i) => (
+            <span key={l} className={`rounded-full px-3 py-1 text-theme-sm ${(issueVals[i] ?? 0) > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+              {l}: {issueVals[i] ?? 0}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   )
