@@ -41,8 +41,8 @@ async def coverage(year: int | None = None, month: int | None = None,
     now = datetime.datetime.now(SITE_OFF)
     year = year or now.year
     month = month or now.month
-    p = {"df": datetime.date(year, month, 1), "dt": datetime.date(
-        year + (1 if month == 12 else 0), 1 if month == 12 else month + 1)}
+    y2, m2 = (year + 1, 1) if month == 12 else (year, month + 1)
+    p = {"df": datetime.date(year, month, 1), "dt": datetime.date(y2, m2, 1)}
     w = "tanggal >= :df AND tanggal < :dt"
     rows = (await db.execute(text(
         "SELECT section, count(*) AS n, "
