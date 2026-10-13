@@ -96,6 +96,7 @@ export default function SafetyPage() {
   const pages = Math.max(1, Math.ceil(rtotal / 20))
   const bySec = new Map(cov.map((c) => [c.section ?? '', c]))
   const issueVals = COMP_LABELS.map((_, i) => comp[`x${i}`] ?? 0)
+  const stat = 'flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm whitespace-nowrap'
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -108,26 +109,13 @@ export default function SafetyPage() {
           </button>
         )}
         {lastSync && <span className="text-theme-sm text-gray-500">Sync terakhir: {lastSync}</span>}
+        <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
+        <span className={stat}><span className="text-gray-500">Section</span><b>{bySec.size}/{sections.length}</b></span>
+        <span className={stat}><span className="text-gray-500">Respons</span><b>{total.toLocaleString('id-ID')}</b></span>
+        <span className={stat}><span className="text-gray-500">P6 kosong</span><b>{(comp.p6_empty ?? 0).toLocaleString('id-ID')}</b></span>
+        <span className={stat}><span className="text-gray-500">FU kosong</span><b>{(comp.fu_empty ?? 0).toLocaleString('id-ID')}</b></span>
       </div>
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <div className="rounded-2xl border bg-white p-5">
-          <p className="text-theme-sm text-gray-500">Section ada data</p>
-          <p className="mt-1 text-title-sm font-bold">{bySec.size}/{sections.length}</p>
-        </div>
-        <div className="rounded-2xl border bg-white p-5">
-          <p className="text-theme-sm text-gray-500">Total respons</p>
-          <p className="mt-1 text-title-sm font-bold">{total.toLocaleString('id-ID')}</p>
-        </div>
-        <div className="rounded-2xl border bg-white p-5">
-          <p className="text-theme-sm text-gray-500">P6 kosong (tanpa tindak lanjut)</p>
-          <p className="mt-1 text-title-sm font-bold">{(comp.p6_empty ?? 0).toLocaleString('id-ID')}</p>
-        </div>
-        <div className="rounded-2xl border bg-white p-5">
-          <p className="text-theme-sm text-gray-500">Follow-up kosong</p>
-          <p className="mt-1 text-title-sm font-bold">{(comp.fu_empty ?? 0).toLocaleString('id-ID')}</p>
-        </div>
-      </div>
       <div className="flex flex-wrap items-center gap-2">
         <select className="rounded-lg border px-3 py-2" value={sec} onChange={(e) => setSec(e.target.value)}>
           <option value="">Section: semua</option>
