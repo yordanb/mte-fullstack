@@ -27,7 +27,7 @@ File `~$*` (lock Excel) diabaikan git (lihat `.gitignore`).
 | **Performance** | Dashboard frekuensi breakdown: filter tanggal + granularitas Harian/Mingguan/Bulanan + prefix + code + checkbox *Kecualikan CONTINUE* (default on — grafik menghitung **kejadian**, bukan hari downtime). Grafik batang-tumpuk 6 prefix teratas + garis total, 3 Pareto (Top 10 Trouble/Section/Code), 4 kartu ringkasan. |
 | **Equipment** | Master 330 unit: tabel Code Number, Unit Type, Product, Operasional (+kategori, model, lokasi, status, aktif), filter kategori/aktif, ikon mata (popup detail lengkap + serial komponen), Ubah via modal, + Tambah Unit. Baris nonaktif abu-abu. |
 | **Update Data** | Kartu gaya SAP Fiori: *Report Analisa Oli* (Dry-run + Commit + progress 2 tahap) dan *DBR Breakdown* (Upload + progress). |
-| **Bomak R1BI** | Safety 6 PAS dari Google Sheets (tombol Sync + cron): cakupan section bulan berjalan, pengecualian per poin, tabel + thumbnail eviden Drive. |
+| **Bomak R1BI** | Safety 6 PAS + R1BI dari Google Sheets (switch tampilan, tombol Sync + cron per sumber): cakupan section bulan berjalan, pengecualian per poin / sorot HIGH RISK, tabel + thumbnail eviden Drive, salin WA. |
 
 Perilaku sesi: **auto-logout setelah 30 menit tanpa aktivitas** (mouse/klik/ketik/sentuh)
 dan logout otomatis saat server menolak token (401) — tidak ada lagi error 401
@@ -129,6 +129,7 @@ Menu **Bomak R1BI** membaca tabel `safety_pas` yang diisi via `POST /v1/safety/s
 
 ```cron
 0 5 * * * curl -s -X POST http://localhost:8802/v1/auth/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"ADMIN_PASS"}' | python3 -c "import sys,json,urllib.request; t=json.load(sys.stdin)['access_token']; r=urllib.request.Request('http://localhost:8802/v1/safety/sync', headers={'Authorization':'Bearer '+t}, method='POST'); print(urllib.request.urlopen(r, timeout=300).read().decode())"
+15 5 * * * curl -s -X POST http://localhost:8802/v1/auth/login -H 'Content-Type: application/json' -d '{"username":"admin","password":"ADMIN_PASS"}' | python3 -c "import sys,json,urllib.request; t=json.load(sys.stdin)['access_token']; r=urllib.request.Request('http://localhost:8802/v1/r1bi/sync', headers={'Authorization':'Bearer '+t}, method='POST'); print(urllib.request.urlopen(r, timeout=600).read().decode())"
 ```
 
 ## Troubleshooting

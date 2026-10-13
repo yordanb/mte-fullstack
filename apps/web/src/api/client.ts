@@ -285,6 +285,31 @@ export function driveThumb(fileId: string, w = 400) {
   return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${w}`
 }
 
+export async function fetchRibiCoverage(year: number, month: number) {
+  const r = await api.get('/v1/r1bi/coverage', { params: { year, month } })
+  return r.data as { year: number; month: number; coverage: { section: string | null; n: number; pekerja: number; high: number; hari: number; terakhir?: string | null }[]; compliance: { total: number; high: number }; sections: string[] }
+}
+
+export async function fetchRibiRecords(params: Record<string, string | number | undefined>) {
+  const r = await api.get('/v1/r1bi/records', { params })
+  return r.data as { total: number; page: number; page_size: number; data: Record<string, string | number | null>[] }
+}
+
+export async function syncRibi() {
+  const r = await api.post('/v1/r1bi/sync')
+  return r.data as { fetched: number; ok: number; fail: number; errors: { row: number; error: string }[] }
+}
+
+export async function fetchRibiLatestSync() {
+  const r = await api.get('/v1/r1bi/latest-sync')
+  return r.data as { finished_at?: string; ok_rows?: number } | Record<string, never>
+}
+
+export async function fetchRibiExport(params: Record<string, string | undefined>) {
+  const r = await api.get('/v1/r1bi/export', { params })
+  return r.data as { total: number; data: { nama?: string | null; tanggal: string }[] }
+}
+
 export async function fetchResults(vesselid: string, unit_id?: string): Promise<LabRow[]> {
   const r = await api.get('/v1/results', { params: { vesselid, unit_id, limit: 20 } })
   return r.data.data

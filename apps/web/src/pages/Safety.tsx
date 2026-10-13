@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import RibiView from './Ribi'
 import {
   fetchSafetyCoverage, fetchSafetyRecords, fetchSafetyExport, syncSafety, fetchSafetyLatestSync,
   driveThumb, can, type SafetyCoverage, type SafetyRow,
@@ -39,6 +40,7 @@ const okBadge = (good: boolean, title: string, short: string) => (
 )
 
 export default function SafetyPage() {
+  const [mode, setMode] = useState<'bomak' | 'r1bi'>('bomak')
   const now = new Date()
   const [ym, setYm] = useState(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`)
   const [cov, setCov] = useState<SafetyCoverage[]>([])
@@ -144,6 +146,11 @@ export default function SafetyPage() {
   const stat = 'flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-theme-sm whitespace-nowrap'
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex rounded-lg border p-1 self-start">
+        <button className={`rounded-md px-4 py-1 ${mode === 'bomak' ? 'bg-brand-500 text-white' : ''}`} onClick={() => setMode('bomak')}>Bomak</button>
+        <button className={`rounded-md px-4 py-1 ${mode === 'r1bi' ? 'bg-brand-500 text-white' : ''}`} onClick={() => setMode('r1bi')}>R1BI</button>
+      </div>
+      {mode === 'r1bi' ? <RibiView /> : (<>
       <div className="flex flex-wrap items-center gap-2">
         <input type="month" className="rounded-lg border px-3 py-2" value={ym}
           onChange={(e) => setYm(e.target.value)} />
@@ -250,6 +257,7 @@ export default function SafetyPage() {
           ))}
         </div>
       </div>
+      </>)}
     </div>
   )
 }
