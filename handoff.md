@@ -230,7 +230,7 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   `analyze` bersih, 22 test lolos, APK terbuild.
 - **SEMUA MILESTONE MOBILE SELESAI (M1–M7).** Sisa: uji E2E vs produksi +
   build release (keystore) bila diperlukan.
-- **Mobile Safety Bomak+R1BI (2026-10-14, branch mobile/safety-bomak-r1bi)**:
+- **Mobile Safety Bomak+R1BI (2026-10-14, sudah merge ke main)**:
   halaman `/bomak` + menu drawer (gate `bomak.view`): switch Bomak/R1BI,
   navigasi bulan, filter section/risiko/cari, Sync (timeout 10 mnt,
   `bomak.add`), salin WA via clipboard (format persis web), tabel 13/10
