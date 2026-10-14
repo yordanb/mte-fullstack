@@ -171,8 +171,6 @@ export default function SafetyPage() {
         <span className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
         <span className={stat}><span className="text-gray-500">Section</span><b>{bySec.size}/{sections.length}</b></span>
         <span className={stat}><span className="text-gray-500">Respons</span><b>{total.toLocaleString('id-ID')}</b></span>
-        <span className={stat}><span className="text-gray-500">P6 kosong</span><b>{(comp.p6_empty ?? 0).toLocaleString('id-ID')}</b></span>
-        <span className={stat}><span className="text-gray-500">FU kosong</span><b>{(comp.fu_empty ?? 0).toLocaleString('id-ID')}</b></span>
         <button onClick={copyWA} title="Salin untuk WA"
           className="flex size-10 items-center justify-center rounded-full bg-[#25D366] text-white hover:brightness-95">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 2a8 8 0 1 1-4.1 14.9l-.3-.2-2.9.8.8-2.8-.2-.3A8 8 0 0 1 12 4zm-3.2 3.9c-.2 0-.4 0-.6.2-.2.2-.8.8-.8 2s.8 2.3.9 2.5c.1.2 1.6 2.6 4 3.5 2 .8 2.4.6 2.9.6.4-.1 1.4-.6 1.6-1.1.2-.6.2-1 .1-1.1 0-.1-.4-.2-.8-.4l-2-1c-.2-.1-.5 0-.6.2l-.7.9c-.1.2-.3.2-.5.1a7.4 7.4 0 0 1-2.2-1.4 8.3 8.3 0 0 1-1.5-1.9c-.2-.3 0-.5.1-.6l.5-.6c.1-.2.2-.4.1-.6L8.4 8.6c-.2-.4-.4-.7-.6-.7z" /></svg>
