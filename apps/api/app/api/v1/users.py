@@ -271,6 +271,7 @@ async def set_perm(body: PermIn, db: AsyncSession = Depends(get_db),
 async def audit_logs(date_from: datetime.date | None = None,
                      date_to: datetime.date | None = None,
                      username: str | None = None,
+                     exclude_username: str | None = None,
                      path: str | None = None,
                      page: int = Query(1, ge=1),
                      page_size: int = Query(20, ge=1, le=100),
@@ -285,6 +286,8 @@ async def audit_logs(date_from: datetime.date | None = None,
         conds.append("created_at <= :dt"); p["dt"] = _dt.datetime.combine(date_to, _dt.time.max)
     if username:
         conds.append("username ILIKE :un"); p["un"] = f"%{username}%"
+    if exclude_username:
+        conds.append("username NOT ILIKE :exun"); p["exun"] = f"%{exclude_username}%"
     if path:
         conds.append("path ILIKE :pa"); p["pa"] = f"%{path}%"
     where = f"WHERE {' AND '.join(conds)}" if conds else ""

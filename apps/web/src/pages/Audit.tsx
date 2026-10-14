@@ -14,7 +14,6 @@ export default function AuditPage() {
   const [page, setPage] = useState(1)
   const [msg, setMsg] = useState('')
   const [hideAdmin, setHideAdmin] = useState(false)
-  const shown = hideAdmin ? rows.filter((r) => (r.username ?? '').toLowerCase() !== 'admin') : rows
   const fmtDT = (v?: string) => {
     if (!v) return ''
     const d = new Date(v)
@@ -22,12 +21,13 @@ export default function AuditPage() {
     const p = (n: number) => String(n).padStart(2, '0')
     return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`
   }
-  const load = async (p = 1) => {
+  const load = async (p = 1, hide = hideAdmin) => {
     try {
       setMsg('')
       const r = await fetchAudit({
         date_from: df || undefined, date_to: dt || undefined,
         username: uname || undefined, path: path || undefined,
+        exclude_username: hide ? 'admin' : undefined,
         page: p, page_size: 20,
       })
       setRows(r.data); setTotal(r.total); setPage(r.page)
@@ -50,7 +50,7 @@ export default function AuditPage() {
         <input className="w-40 rounded-lg border px-3 py-2" value={path} onChange={(e) => setPath(e.target.value)} placeholder="Path cth /v1/dbr" />
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => load(1)}>Tampilkan</button>
         <label className="flex cursor-pointer items-center gap-1 rounded-lg border bg-white px-3 py-2">
-          <input type="checkbox" checked={hideAdmin} onChange={(e) => setHideAdmin(e.target.checked)} />
+          <input type="checkbox" checked={hideAdmin} onChange={(e) => { const v = e.target.checked; setHideAdmin(v); load(1, v) }} />
           Sembunyikan admin
         </label>
         <span className="text-theme-sm text-gray-500">Total {total.toLocaleString('id-ID')}</span>
@@ -66,7 +66,7 @@ export default function AuditPage() {
             </tr>
           </thead>
           <tbody className="text-center">
-            {shown.map((r) => (
+            {rows.map((r) => (
               <tr key={r.id} className="border-t">
                 <td className="border px-2 py-2 whitespace-nowrap">{fmtDT(r.created_at)}</td>
                 <td className="border px-2 py-2 whitespace-nowrap">{r.username ?? '-'}</td>
