@@ -3,6 +3,7 @@ import {
   fetchActivitiesByDate, fetchActivity, activityPhotoUrl, todayLocal,
   type Activity,
 } from '../api/client'
+import { DatePicker } from '../components/DatePicker'
 
 const CREWS = ['Pumping', 'Lighting', 'Mobile', 'Grader', 'PCH']
 const CATS = ['Proker', 'FUI', 'USM', 'SCM']
@@ -113,9 +114,9 @@ export default function TimelinePage() {
     <div className="flex flex-col gap-4">
       {/* Toolbar 1 baris: filter + ringkasan kompak */}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border bg-white px-4 py-3 print:hidden">
-        <input type="date" className={finp} value={df} max={dt} onChange={(e) => setDf(e.target.value)} />
+        <DatePicker value={df} max={dt} onChange={(v) => setDf(v)} />
         <span>–</span>
-        <input type="date" className={finp} value={dt} min={df} onChange={(e) => setDt(e.target.value)} />
+        <DatePicker value={dt} min={df} onChange={(v) => setDt(v)} />
         <input className={`${finp} w-32`} list="tl-crew" value={crew} onChange={(e) => setCrew(e.target.value)} placeholder="Crew: semua" />
         <input className={`${finp} w-32`} list="tl-cat" value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Kategori" />
         <datalist id="tl-crew">{CREWS.map((c) => (<option key={c} value={c} />))}</datalist>

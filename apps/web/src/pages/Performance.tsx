@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import ReactApexChart from 'react-apexcharts'
 import { fetchDbrStats, fetchDbrCodes, todayLocal, errMsg, type DbrStats } from '../api/client'
+import { DatePicker } from '../components/DatePicker'
 
 const PERF_COLORS = ['#465fff', '#9cb878', '#e6a23c', '#e26d5c', '#7b7fd4', '#4fb0c6', '#8a8a8a']
 const PERF_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
@@ -114,9 +115,9 @@ export default function PerformancePage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <input type="date" className="rounded-lg border px-3 py-2" value={df} max={dt} onChange={(e) => setDf(e.target.value)} />
+        <DatePicker value={df} max={dt} onChange={(v) => setDf(v)} />
         <span>–</span>
-        <input type="date" className="rounded-lg border px-3 py-2" value={dt} min={df} onChange={(e) => setDt(e.target.value)} />
+        <DatePicker value={dt} min={df} onChange={(v) => setDt(v)} />
         <select className="rounded-lg border px-3 py-2" value={gran} onChange={(e) => setGran(e.target.value)}>
           <option value="day">Harian</option>
           <option value="week">Mingguan</option>
