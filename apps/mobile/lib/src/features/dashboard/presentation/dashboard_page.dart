@@ -87,6 +87,7 @@ class DashboardPage extends ConsumerWidget {
                             sample: fmtDate(r.sampleDate),
                             taken: fmtDate(r.dateTaken),
                             condition: r.condition ?? '-',
+                            redParams: r.redParams,
                           )),
                   ],
                 );
@@ -202,6 +203,7 @@ class _RowCard extends StatelessWidget {
   final String sample;
   final String taken;
   final String condition;
+  final List<(String, String)> redParams;
 
   const _RowCard({
     required this.vessel,
@@ -211,15 +213,27 @@ class _RowCard extends StatelessWidget {
     required this.sample,
     required this.taken,
     required this.condition,
+    this.redParams = const [],
   });
 
   @override
   Widget build(BuildContext context) {
     final isNormal = condition == 'NORMAL';
+    const red = TextStyle(color: Colors.red, fontWeight: FontWeight.bold);
     return Card(
       child: ListTile(
         title: Text('$vessel • $unit'),
-        subtitle: Text('$labNo\nSampl $sample • Analisys $taken'),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('$labNo\nSampl $sample • Analisys $taken'),
+            if (redParams.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(redParams.map((e) => e.$1).join(' - '), style: red),
+              Text(redParams.map((e) => e.$2).join(' - '), style: red),
+            ],
+          ],
+        ),
         isThreeLine: true,
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

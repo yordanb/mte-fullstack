@@ -5,6 +5,7 @@ import 'package:mte_data_center/src/core/network/dio_client.dart';
 
 /// Satu baris dashboard: 43 kolom SELECT latest-per-unit (results.py:66-74).
 /// Semua nullable karena sel impor bisa NULL (ND/`-`).
+/// vals/grades dipakai menandai parameter merah (grade bukan N).
 class LabRow {
   final String labNo;
   final String vesselId;
@@ -13,6 +14,8 @@ class LabRow {
   final String? sampleDate;
   final String? dateTaken;
   final String? condition;
+  final Map<String, String> vals;
+  final Map<String, String> grades;
 
   const LabRow({
     required this.labNo,
@@ -22,17 +25,53 @@ class LabRow {
     this.sampleDate,
     this.dateTaken,
     this.condition,
+    this.vals = const {},
+    this.grades = const {},
   });
 
-  factory LabRow.fromJson(Map<String, dynamic> j) => LabRow(
-        labNo: '${j['lab_no'] ?? ''}',
-        vesselId: '${j['vesselid'] ?? ''}',
-        unitId: '${j['unit_id'] ?? ''}',
-        model: j['model']?.toString(),
-        sampleDate: j['sample_date']?.toString(),
-        dateTaken: j['date_taken']?.toString(),
-        condition: j['condition']?.toString(),
-      );
+  /// Urutan + label parameter (sama seperti tabel FUI/VesselTable web).
+  static const params = [
+    'visc', 'fuel', 'soot', 'oxi', 'nitr', 'water', 'tbn',
+    'si', 'fe', 'cu', 'al', 'cr', 'pb', 'na',
+  ];
+  static const paramLabels = [
+    'VISC', 'FUEL', 'SOOT', 'OXI', 'NITR', 'WTR', 'TBN',
+    'Si', 'Fe', 'Cu', 'Al', 'Cr', 'Pb', 'Na',
+  ];
+
+  bool badGrade(String p) {
+    final g = grades[p];
+    return g != null && g.isNotEmpty && g != 'N';
+  }
+
+  /// Parameter merah [(label, nilai)] untuk kartu dashboard,
+  /// cth [(OXI, 39.5)] atau [(OXI, 39.5), (TBN, 5.0), (WTR, 10.0)].
+  List<(String, String)> get redParams => [
+        for (var i = 0; i < params.length; i++)
+          if (badGrade(params[i]))
+            (paramLabels[i], vals[params[i]] ?? '-'),
+      ];
+
+  factory LabRow.fromJson(Map<String, dynamic> j) {
+    final vals = <String, String>{};
+    final grades = <String, String>{};
+    for (final p in params) {
+      if (j[p] != null) vals[p] = '${j[p]}';
+      final g = j['grade_$p'];
+      if (g != null) grades[p] = '$g';
+    }
+    return LabRow(
+      labNo: '${j['lab_no'] ?? ''}',
+      vesselId: '${j['vesselid'] ?? ''}',
+      unitId: '${j['unit_id'] ?? ''}',
+      model: j['model']?.toString(),
+      sampleDate: j['sample_date']?.toString(),
+      dateTaken: j['date_taken']?.toString(),
+      condition: j['condition']?.toString(),
+      vals: vals,
+      grades: grades,
+    );
+  }
 }
 
 /// Label last update dari GET /v1/imports/latest (imports.py:143-152).
