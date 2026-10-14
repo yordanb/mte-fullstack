@@ -70,6 +70,29 @@ async def by_date(date: datetime.date,
     return {"date": str(date), "data": [dict(r) for r in rows]}
 
 
+@router.get("/filters")
+async def filter_options(year: int | None = Query(None, ge=2000, le=2100),
+                         month: int | None = Query(None, ge=1, le=12),
+                         db: AsyncSession = Depends(get_db),
+                         user=Depends(get_current_user)):
+    """Opsi Crew & Kategori yang ada di data (untuk dropdown filter)."""
+    conds, p = [], {}
+    if year and month:
+        conds.append("date_trunc('month', date) = make_date(:y, :m, 1)")
+        p["y"], p["m"] = year, month
+    crew_conds = conds + ["crew IS NOT NULL", "TRIM(crew) <> ''"]
+    cat_conds = conds + ["category IS NOT NULL", "TRIM(category) <> ''"]
+    crews = (await db.execute(text(
+        "SELECT DISTINCT crew FROM activities "
+        f"WHERE {' AND '.join(crew_conds)} "
+        "ORDER BY 1"), p)).scalars().all()
+    cats = (await db.execute(text(
+        "SELECT DISTINCT category FROM activities "
+        f"WHERE {' AND '.join(cat_conds)} "
+        "ORDER BY 1"), p)).scalars().all()
+    return {"crews": list(crews), "categories": list(cats)}
+
+
 @router.get("/{aid}")
 async def detail(aid: str, db: AsyncSession = Depends(get_db),
                  user=Depends(get_current_user)):

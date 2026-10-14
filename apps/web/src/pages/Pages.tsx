@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, canWrite, todayLocal, errMsg, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, canWrite, todayLocal, errMsg, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -574,6 +574,8 @@ export function ActivityPage() {
   const [recap, setRecap] = useState<Activity[]>([])
   const [fCrew, setFCrew] = useState('')
   const [fCat, setFCat] = useState('')
+  const [crewOpts, setCrewOpts] = useState<string[]>([])
+  const [catOpts, setCatOpts] = useState<string[]>([])
   const [detail, setDetail] = useState<Activity | null>(null)
   const [form, setForm] = useState<{ initial: Activity | null } | null>(null)
   const [msg, setMsg] = useState('')
@@ -590,7 +592,19 @@ export function ActivityPage() {
   const loadRecap = async (y: number, m: number, cw = fCrew, ct = fCat) => {
     try { setRecap(await fetchActivityRecap(y, m, cw || undefined, ct || undefined)) } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
-  useEffect(() => { loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m) }, [ym])
+  const loadOpts = async (y: number, m: number) => {
+    try {
+      const r = await fetchActivityFilters(y, m)
+      const merge = (base: string[], extra: string[]) => [...new Set([...base, ...extra.filter(Boolean)])]
+      const co = merge(ACT_CREWS, r.crews)
+      const ao = merge(ACT_CATS, r.categories)
+      setCrewOpts(co)
+      setCatOpts(ao)
+      if (fCrew && !co.includes(fCrew)) setFCrew('')
+      if (fCat && !ao.includes(fCat)) setFCat('')
+    } catch { /* abaikan, daftar bawaan tetap dipakai */ }
+  }
+  useEffect(() => { loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m); loadOpts(ym.y, ym.m) }, [ym])
   useEffect(() => { loadDay(sel) }, [sel])
   // Jumlah di kalender mengikuti filter crew/kategori yang aktif (debounce ketikan).
   useEffect(() => {
@@ -625,7 +639,7 @@ export function ActivityPage() {
   const openDetail = async (id: string) => {
     try { setDetail(await fetchActivity(id)) } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
-  const afterSave = () => { setForm(null); loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m); loadDay(sel) }
+  const afterSave = () => { setForm(null); loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m); loadOpts(ym.y, ym.m); loadDay(sel) }
   const shown = items.filter(match)
   const finp = 'rounded-lg border px-3 py-2'
   return (
@@ -635,10 +649,14 @@ export function ActivityPage() {
           <button className={`rounded-md px-4 py-1 ${tab === 'cal' ? 'bg-brand-500 text-white' : ''}`} onClick={() => setTab('cal')}>Kalender</button>
           <button className={`rounded-md px-4 py-1 ${tab === 'recap' ? 'bg-brand-500 text-white' : ''}`} onClick={() => { setTab('recap'); loadRecap(ym.y, ym.m) }}>Rekap</button>
         </div>
-        <input className={`${finp} w-28`} list="act-crew-list" value={fCrew} onChange={(e) => setFCrew(e.target.value)} placeholder="Crew: semua" />
-        <input className={`${finp} w-28`} list="act-cat-list" value={fCat} onChange={(e) => setFCat(e.target.value)} placeholder="Kategori: semua" />
-        <datalist id="act-crew-list">{ACT_CREWS.map((c) => (<option key={c} value={c} />))}</datalist>
-        <datalist id="act-cat-list">{ACT_CATS.map((c) => (<option key={c} value={c} />))}</datalist>
+        <select className={`${finp} w-28`} value={fCrew} onChange={(e) => setFCrew(e.target.value)}>
+          <option value="">Crew: semua</option>
+          {crewOpts.map((c) => (<option key={c} value={c}>{c}</option>))}
+        </select>
+        <select className={`${finp} w-28`} value={fCat} onChange={(e) => setFCat(e.target.value)}>
+          <option value="">Kategori: semua</option>
+          {catOpts.map((c) => (<option key={c} value={c}>{c}</option>))}
+        </select>
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={applyFilter}>Tampilkan</button>
       </div>
       {tab === 'cal' ? (

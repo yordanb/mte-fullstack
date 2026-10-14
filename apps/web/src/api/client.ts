@@ -506,6 +506,11 @@ export async function fetchActivityRecap(year: number, month: number, crew?: str
   return r.data.data as Activity[]
 }
 
+export async function fetchActivityFilters(year?: number, month?: number) {
+  const r = await api.get('/v1/activities/filters', { params: { year, month } })
+  return r.data as { crews: string[]; categories: string[] }
+}
+
 export async function fetchActivitiesByDate(date: string) {
   const r = await api.get('/v1/activities', { params: { date } })
   return r.data.data as Activity[]
