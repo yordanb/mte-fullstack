@@ -14,6 +14,7 @@ class LabRow {
   final String? sampleDate;
   final String? dateTaken;
   final String? condition;
+  final String? unitTime;
   final Map<String, String> vals;
   final Map<String, String> grades;
 
@@ -25,6 +26,7 @@ class LabRow {
     this.sampleDate,
     this.dateTaken,
     this.condition,
+    this.unitTime,
     this.vals = const {},
     this.grades = const {},
   });
@@ -68,6 +70,7 @@ class LabRow {
       sampleDate: j['sample_date']?.toString(),
       dateTaken: j['date_taken']?.toString(),
       condition: j['condition']?.toString(),
+      unitTime: j['unit_time']?.toString(),
       vals: vals,
       grades: grades,
     );

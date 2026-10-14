@@ -54,5 +54,14 @@ void main() {
     final clean =
         LabRow.fromJson({'lab_no': 'X', 'vesselid': 'V', 'unit_id': 'U'});
     expect(clean.redParams, isEmpty);
+    expect(clean.unitTime, isNull);
+
+    final withHm = LabRow.fromJson({
+      'lab_no': 'X',
+      'vesselid': 'V',
+      'unit_id': 'U',
+      'unit_time': 23429,
+    });
+    expect(withHm.unitTime, '23429');
   });
 }

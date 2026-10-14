@@ -88,6 +88,7 @@ class DashboardPage extends ConsumerWidget {
                             taken: fmtDate(r.dateTaken),
                             condition: r.condition ?? '-',
                             redParams: r.redParams,
+                            hm: r.unitTime,
                           )),
                   ],
                 );
@@ -204,6 +205,7 @@ class _RowCard extends StatelessWidget {
   final String taken;
   final String condition;
   final List<(String, String)> redParams;
+  final String? hm;
 
   const _RowCard({
     required this.vessel,
@@ -214,6 +216,7 @@ class _RowCard extends StatelessWidget {
     required this.taken,
     required this.condition,
     this.redParams = const [],
+    this.hm,
   });
 
   @override
@@ -226,7 +229,7 @@ class _RowCard extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Sample $sample'),
+            Text('Sample $sample${(hm ?? '').isNotEmpty ? ' - HM $hm' : ''}'),
             if (redParams.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(redParams.map((e) => e.$1).join(' - '), style: red),
