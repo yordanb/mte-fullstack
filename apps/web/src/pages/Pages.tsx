@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from 'react'
 import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, canWrite, todayLocal, errMsg, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
+import { DatePicker } from '../components/DatePicker'
 import { VesselTable } from '../components/Widgets'
 
 export function Dashboard() {
@@ -287,9 +288,9 @@ export function DbrPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <input type="date" className="rounded-lg border px-3 py-2" value={df} max={dt} onChange={(e) => setDf(e.target.value)} />
+        <DatePicker value={df} max={dt} onChange={(v) => setDf(v)} />
         <span>–</span>
-        <input type="date" className="rounded-lg border px-3 py-2" value={dt} min={df} onChange={(e) => setDt(e.target.value)} />
+        <DatePicker value={dt} min={df} onChange={(v) => setDt(v)} />
         <input className="w-28 rounded-lg border px-3 py-2" value={cn} onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="C/N cth TL960" />
         <select className="rounded-lg border px-3 py-2" value={code} onChange={(e) => setCode(e.target.value)}>
           <option value="">Code: semua</option>
