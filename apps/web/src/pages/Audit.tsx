@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchAudit, todayLocal, errMsg, type AuditRow } from '../api/client'
+import { DatePicker } from '../components/DatePicker'
 
 export default function AuditPage() {
   const d1 = todayLocal()
@@ -12,6 +13,8 @@ export default function AuditPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [msg, setMsg] = useState('')
+  const [hideAdmin, setHideAdmin] = useState(false)
+  const shown = hideAdmin ? rows.filter((r) => (r.username ?? '').toLowerCase() !== 'admin') : rows
   const fmtDT = (v?: string) => {
     if (!v) return ''
     const d = new Date(v)
@@ -40,12 +43,16 @@ export default function AuditPage() {
     <div className="flex flex-col gap-4">
       <h2 className="text-theme-xl font-semibold">Audit Log</h2>
       <div className="flex flex-wrap items-center gap-2">
-        <input type="date" className="rounded-lg border px-3 py-2" value={df} max={dt} onChange={(e) => setDf(e.target.value)} />
+        <DatePicker value={df} max={dt} onChange={(v) => setDf(v)} />
         <span>–</span>
-        <input type="date" className="rounded-lg border px-3 py-2" value={dt} min={df} onChange={(e) => setDt(e.target.value)} />
+        <DatePicker value={dt} min={df} onChange={(v) => setDt(v)} />
         <input className="w-32 rounded-lg border px-3 py-2" value={uname} onChange={(e) => setUname(e.target.value)} placeholder="Username" />
         <input className="w-40 rounded-lg border px-3 py-2" value={path} onChange={(e) => setPath(e.target.value)} placeholder="Path cth /v1/dbr" />
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => load(1)}>Tampilkan</button>
+        <label className="flex cursor-pointer items-center gap-1 rounded-lg border bg-white px-3 py-2">
+          <input type="checkbox" checked={hideAdmin} onChange={(e) => setHideAdmin(e.target.checked)} />
+          Sembunyikan admin
+        </label>
         <span className="text-theme-sm text-gray-500">Total {total.toLocaleString('id-ID')}</span>
       </div>
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
@@ -59,7 +66,7 @@ export default function AuditPage() {
             </tr>
           </thead>
           <tbody className="text-center">
-            {rows.map((r) => (
+            {shown.map((r) => (
               <tr key={r.id} className="border-t">
                 <td className="border px-2 py-2 whitespace-nowrap">{fmtDT(r.created_at)}</td>
                 <td className="border px-2 py-2 whitespace-nowrap">{r.username ?? '-'}</td>
