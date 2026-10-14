@@ -592,6 +592,11 @@ export function ActivityPage() {
   }
   useEffect(() => { loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m) }, [ym])
   useEffect(() => { loadDay(sel) }, [sel])
+  // Jumlah di kalender mengikuti filter crew/kategori yang aktif (debounce ketikan).
+  useEffect(() => {
+    const t = setTimeout(() => { loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m) }, 500)
+    return () => clearTimeout(t)
+  }, [fCrew, fCat])
   const applyFilter = () => { loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m) }
   const match = (a: Activity) =>
     (!fCrew || (a.crew ?? '').toLowerCase().includes(fCrew.toLowerCase())) &&
@@ -644,6 +649,11 @@ export function ActivityPage() {
           <h3 className="font-semibold">{ACT_MONTHS[ym.m - 1]} {ym.y}</h3>
           <button className="rounded-lg border px-3 py-1" onClick={() => shift(1)}>›</button>
         </div>
+        {(fCrew || fCat) && (
+          <p className="mt-1 text-center text-theme-xs text-gray-500">
+            Jumlah sesuai filter{[fCrew && ` crew: ${fCrew}`, fCat && ` kategori: ${fCat}`].filter(Boolean).join(',')}
+          </p>
+        )}
         <div className="mt-3 grid grid-cols-7 text-center text-theme-sm font-semibold text-gray-500">
           {['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'].map((d) => (<div key={d} className="py-1">{d}</div>))}
         </div>
