@@ -20,9 +20,9 @@ void main() {
     expect(r.errors.first.row, 2);
   });
 
-  test('perm matrix: 10 menu dikenal', () {
-    expect(permMenus.length, 10);
-    expect(permMenus, contains('import'));
+  test('perm matrix: 12 menu aktual backend', () {
+    expect(permMenus.length, 12);
+    expect(permMenus, containsAll(['import', 'timeline', 'project', 'bomak']));
   });
 
   test('perm toggle butuh view bila tulis (aturan server)', () {

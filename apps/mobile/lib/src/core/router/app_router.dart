@@ -16,6 +16,7 @@ import 'package:mte_data_center/src/features/fui/presentation/suggestion_page.da
 import 'package:mte_data_center/src/features/profile/presentation/notifications_page.dart';
 import 'package:mte_data_center/src/features/profile/presentation/profile_page.dart';
 import 'package:mte_data_center/src/features/equipment/presentation/equipment_detail_page.dart';
+import 'package:mte_data_center/src/features/safety/presentation/safety_page.dart';
 import 'package:mte_data_center/src/features/update_data/presentation/update_data_page.dart';
 import 'package:mte_data_center/src/features/users/presentation/audit_page.dart';
 import 'package:mte_data_center/src/features/users/presentation/users_page.dart';
@@ -85,6 +86,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/activity/:id/edit',
           builder: (c, s) => ActivityFormPage(id: s.pathParameters['id']!)),
+      GoRoute(path: '/bomak', builder: (c, s) => const SafetyPage()),
       GoRoute(path: '/update-data', builder: (c, s) => const UpdateDataPage()),
       GoRoute(path: '/users', builder: (c, s) => const UsersPage()),
       GoRoute(path: '/audit', builder: (c, s) => const AuditPage()),

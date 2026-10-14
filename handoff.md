@@ -228,8 +228,20 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   Notifikasi (5 import + 5 aktivitas, lonceng di AppBar).
   `file_picker` v11 API `FilePicker.pickFiles` (tanpa `.platform`).
   `analyze` bersih, 22 test lolos, APK terbuild.
-- **SEMUA MILESTONE MOBILE SELESAI.** Sisa: uji E2E vs produksi + build
-  release (keystore) bila diperlukan.
+- **SEMUA MILESTONE MOBILE SELESAI (M1–M7).** Sisa: uji E2E vs produksi +
+  build release (keystore) bila diperlukan.
+- **Mobile Safety Bomak+R1BI (2026-10-14, branch mobile/safety-bomak-r1bi)**:
+  halaman `/bomak` + menu drawer (gate `bomak.view`): switch Bomak/R1BI,
+  navigasi bulan, filter section/risiko/cari, Sync (timeout 10 mnt,
+  `bomak.add`), salin WA via clipboard (format persis web), tabel 13/10
+  kolom + badge P1-P5/HIGH RISK + thumb Drive, cakupan per section,
+  pengecualian 7 poin, paginasi 20. `permMenus` mobile jadi 12 aktual.
+  `analyze` bersih, 28 test lolos, APK terbuild.
+- **Catatan migrasi ganda V18**: `V18__projects.sql` (tab sebelah) vs
+  `V18__timeline_menu.sql` (sesi ini) — urutan alfabet menaruh projects
+  dulu; state akhir CHECK dari V19 mencakup semuanya. Jangan
+  terapkan-ulang V18 timeline di VPS bila V19 sudah masuk (ALTER akan
+  gagal bila baris project/bomak sudah ada).
 - **Web Timeline Mingguan (2026-10-09, branch web/activity-timeline)**:
   menu baru `apps/web/src/pages/Timeline.tsx` — timeline Activity per
   rentang tanggal (maks 31 hari, default 7 hari terakhir) + filter crew/
