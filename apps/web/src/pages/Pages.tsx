@@ -560,7 +560,7 @@ function EqDetail({ row, onClose }: { row: Equipment; onClose: () => void }) {
 
 const ACT_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
 const ACT_CREWS = ['Pumping', 'Lighting', 'Mobile', 'Grader', 'PCH']
-const ACT_CATS = ['Proker', 'FUI', 'USM', 'SCM']
+const ACT_CATS = ['Proker', 'FUI', 'USM', 'SCM', 'Daily Check Dragflow', 'Washing PLTS', 'Daily Check Waterfill']
 const iso = (y: number, m: number, d: number) =>
   `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 
