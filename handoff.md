@@ -236,7 +236,7 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   (nama + nilai, merah, ` - `-separated, urutan VISC..Na) di bawah info
   lab. `LabRow` diperluas dengan vals/grades dari 43 kolom API
   (sebelumnya tidak dibawa). `analyze` bersih, 29 test lolos, APK terbuild.
-- **Koreksi kartu dashboard (2026-10-14, branch mobile/dashboard-card-cleanup)**:
+- **Koreksi kartu dashboard (2026-10-14, sudah merge ke main)**:
   nomor lab + tanggal analysis dihapus; hanya `Sample dd/MM/yyyy`.
   halaman `/bomak` + menu drawer (gate `bomak.view`): switch Bomak/R1BI,
   navigasi bulan, filter section/risiko/cari, Sync (timeout 10 mnt,
