@@ -231,7 +231,7 @@ profil (avatar + ganti password) + dark mode + notifikasi.
 - **SEMUA MILESTONE MOBILE SELESAI (M1–M7).** Sisa: uji E2E vs produksi +
   build release (keystore) bila diperlukan.
 - **Mobile Safety Bomak+R1BI (2026-10-14, sudah merge ke main)**:
-- **Dashboard parameter merah (2026-10-14, branch mobile/dashboard-red-params)**:
+- **Dashboard parameter merah (2026-10-14, sudah merge ke main)**:
   kartu dashboard kini menampilkan parameter ber-grade bukan-N
   (nama + nilai, merah, ` - `-separated, urutan VISC..Na) di bawah info
   lab. `LabRow` diperluas dengan vals/grades dari 43 kolom API
