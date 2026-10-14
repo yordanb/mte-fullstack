@@ -226,7 +226,7 @@ class _RowCard extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('$labNo\nSampl $sample • Analisys $taken'),
+            Text('Sample $sample'),
             if (redParams.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(redParams.map((e) => e.$1).join(' - '), style: red),
