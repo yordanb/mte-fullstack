@@ -132,6 +132,7 @@ function GroupRow({ group, period, onChanged, onDragEnd }: {
   const [showAddPump, setShowAddPump] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
   const [pumpQ, setPumpQ] = useState('')
   const [pumpResults, setPumpResults] = useState<{ cn: string; unit_type: string | null; aktif: boolean }[]>([])
 
@@ -155,27 +156,54 @@ function GroupRow({ group, period, onChanged, onDragEnd }: {
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-theme-sm font-bold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
               {group.group_no}
             </span>
-            <span className="min-w-0">
+            <span className="min-w-0 flex-1">
               <span className="block truncate text-theme-sm font-semibold">{sumpClean || '(tanpa sump)'}</span>
               <span className="block truncate text-theme-xs text-gray-400">{group.system_type}</span>
             </span>
+            {canEdit() && (
+              <div className="relative shrink-0">
+                <button className="flex h-6 w-6 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-white/10"
+                  onClick={() => { setShowMenu(!showMenu); setConfirmDel(false) }} title="Pengaturan">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                  </svg>
+                </button>
+                {showMenu && (
+                  <>
+                    <button className="fixed inset-0 z-10 cursor-default" onClick={(e) => { e.stopPropagation(); setShowMenu(false) }} />
+                    <div className="absolute right-0 top-7 z-20 w-28 rounded-lg border bg-white py-1 shadow-lg dark:border-gray-600 dark:bg-gray-800">
+                      <button className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-theme-xs hover:bg-gray-50 dark:hover:bg-white/5"
+                        onClick={() => { setShowMenu(false); setShowEdit(true) }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                        Ubah
+                      </button>
+                      {confirmDel ? (
+                        <div className="flex items-center gap-1 px-3 py-1.5">
+                          <span className="text-theme-xs text-red-500">Yakin?</span>
+                          <button className="rounded bg-red-500 px-1.5 py-0.5 text-theme-xs text-white"
+                            onClick={async () => { setShowMenu(false); await deleteStagingGroup(group.id); onChanged() }}>Ya</button>
+                          <button className="rounded border px-1.5 py-0.5 text-theme-xs"
+                            onClick={() => setConfirmDel(false)}>Tidak</button>
+                        </div>
+                      ) : (
+                        <button className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-theme-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          onClick={() => setConfirmDel(true)}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                          Hapus
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
-          {canEdit() && (
-            <div className="mt-1.5 flex items-center gap-1">
-              <button className="rounded border px-1.5 py-0.5 text-theme-xs text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5"
-                onClick={() => setShowEdit(true)}>Ubah</button>
-              {confirmDel ? (
-                <span className="flex items-center gap-0.5">
-                  <button className="rounded bg-red-500 px-1.5 py-0.5 text-theme-xs text-white"
-                    onClick={async () => { await deleteStagingGroup(group.id); onChanged() }}>Hapus</button>
-                  <button className="rounded border px-1.5 py-0.5 text-theme-xs" onClick={() => setConfirmDel(false)}>×</button>
-                </span>
-              ) : (
-                <button className="rounded border px-1.5 py-0.5 text-theme-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                  onClick={() => setConfirmDel(true)}>Hapus</button>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Pump chain (horizontal, scrollable) */}
@@ -505,10 +533,6 @@ export default function StagingPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-theme-xl font-semibold">Staging Pump Configuration</h2>
-        <p className="text-theme-sm text-gray-500">Kelola untaian staging pump per bulan — drag pump untuk reorder atau pindah grup</p>
-      </div>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
