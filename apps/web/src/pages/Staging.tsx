@@ -74,7 +74,7 @@ function HPipe({ color = '#94a3b8' }: { color?: string }) {
 
 // ─── Sortable Pump Card (horizontal) ─────────────────────
 
-function SortablePump({ pump, groupId }: { pump: StagingPump; groupId: number }) {
+function SortablePump({ pump, groupId, onChanged }: { pump: StagingPump; groupId: number; onChanged: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: pump.id })
   const rc = roleColor(pump.role_order)
   const style = {
@@ -103,10 +103,16 @@ function SortablePump({ pump, groupId }: { pump: StagingPump; groupId: number })
         </div>
         {/* Delete */}
         {canEdit() && (
-          <div className="absolute -right-1.5 -top-1.5">
+          <div className="absolute -right-1.5 -top-1.5 z-20">
             {confirmDel ? (
-              <button className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow"
-                onClick={(e) => { e.stopPropagation(); deleteStagingPump(pump.id) }} title="Konfirmasi hapus">✕</button>
+              <div className="flex items-center gap-0.5">
+                <button className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white shadow"
+                  onClick={async (e) => { e.stopPropagation(); try { await deleteStagingPump(pump.id) } catch { /* ignore */ } onChanged() }} title="Konfirmasi hapus">✕</button>
+                <button className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-gray-400 shadow border"
+                  onClick={(e) => { e.stopPropagation(); setConfirmDel(false) }} title="Batal">
+                  <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 2l4 4M6 2l-4 4" /></svg>
+                </button>
+              </div>
             ) : (
               <button className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-gray-300 shadow border hover:text-red-500"
                 onClick={(e) => { e.stopPropagation(); setConfirmDel(true) }} title="Hapus pump">
@@ -115,8 +121,8 @@ function SortablePump({ pump, groupId }: { pump: StagingPump; groupId: number })
             )}
           </div>
         )}
-        {/* Cancel delete on outside click */}
-        {confirmDel && <button className="fixed inset-0 z-0 cursor-default" onClick={(e) => { e.stopPropagation(); setConfirmDel(false) }} />}
+        {/* Click outside to cancel confirm */}
+        {confirmDel && <div className="fixed inset-0 z-10 cursor-default" onClick={(e) => { e.stopPropagation(); setConfirmDel(false) }} />}
       </div>
     </div>
   )
@@ -215,7 +221,7 @@ function GroupRow({ group, period, onChanged, isDropTarget }: {
           <SortableContext items={itemIds} strategy={horizontalListSortingStrategy}>
             {pumps.map((p, idx) => (
               <div key={p.id} className="flex shrink-0 items-center">
-                <SortablePump pump={p} groupId={group.id} />
+                <SortablePump pump={p} groupId={group.id} onChanged={onChanged} />
                 {idx < pumps.length - 1 && <HPipe color={roleColor(p.role_order).pipe} />}
               </div>
             ))}
