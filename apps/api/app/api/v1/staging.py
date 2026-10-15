@@ -62,6 +62,12 @@ class CopyReq(BaseModel):
     to_period: str
 
 
+class MoveReq(BaseModel):
+    pump_id: int
+    to_group_id: int
+    to_role_order: int
+
+
 # ─── Group CRUD ───────────────────────────────────────────
 
 @router.get("/groups")
@@ -307,7 +313,53 @@ async def reorder_pumps(body: ReorderReq,
     return {"ok": True}
 
 
-@router.post("/copy", dependencies=[Depends(require_role("inputer", "admin"))])
+@router.post("/move", dependencies=[Depends(require_role("inputer", "admin"))])
+async def move_pump(body: MoveReq, db: AsyncSession = Depends(get_db),
+                    user=Depends(get_current_user)):
+    """Pindahkan pump ke grup lain dengan role_order tertentu."""
+    cur = (await db.execute(text("SELECT * FROM staging_pump_items WHERE id=:pid"),
+                            {"pid": body.pump_id})).mappings().first()
+    if not cur:
+        raise HTTPException(404, "Pump item tidak ditemukan")
+    old_gid = cur["group_id"]
+    old_role = cur["role_order"]
+    p = cur["period"]
+    if old_gid == body.to_group_id and old_role == body.to_role_order:
+        return {"ok": False, "detail": "Tidak ada perubahan"}
+    # Cek duplikat CN di grup tujuan
+    dup = (await db.execute(text(
+        "SELECT 1 FROM staging_pump_items WHERE group_id=:gid AND period=:p AND pump_cn=:cn AND id<>:pid"),
+        {"gid": body.to_group_id, "p": p, "cn": cur["pump_cn"], "pid": body.pump_id})).scalar()
+    if dup:
+        raise HTTPException(409, f"Pump {cur['pump_cn']} sudah ada di grup tujuan")
+    # Tutup gap di grup sumber
+    await db.execute(text(
+        "UPDATE staging_pump_items SET role_order = role_order - 1 "
+        "WHERE group_id=:gid AND period=:p AND role_order > :r"),
+        {"gid": old_gid, "p": p, "r": old_role})
+    # Geser di grup tujuan
+    await db.execute(text(
+        "UPDATE staging_pump_items SET role_order = role_order + 1 "
+        "WHERE group_id=:gid AND period=:p AND role_order >= :r"),
+        {"gid": body.to_group_id, "p": p, "r": body.to_role_order})
+    # Pindahkan pump
+    await db.execute(text(
+        "UPDATE staging_pump_items SET group_id=:gid, role_order=:r WHERE id=:pid"),
+        {"gid": body.to_group_id, "r": body.to_role_order, "pid": body.pump_id})
+    # Log
+    old_grp = (await db.execute(text("SELECT group_no, system_type FROM staging_pump_groups WHERE id=:gid"),
+                                {"gid": old_gid})).mappings().first()
+    new_grp = (await db.execute(text("SELECT group_no, system_type FROM staging_pump_groups WHERE id=:gid"),
+                                {"gid": body.to_group_id})).mappings().first()
+    from_desc = f"Grup {old_grp['group_no']} ({old_grp['system_type']}) / {_role_label(old_role)}"
+    to_desc = f"Grup {new_grp['group_no']} ({new_grp['system_type']}) / {_role_label(body.to_role_order)}"
+    await db.execute(text("""
+        INSERT INTO staging_pump_changes(group_id, period, change_type, pump_cn, from_value, to_value, changed_by)
+        VALUES (:gid, :p, 'MOVE', :cn, :fv, :tv, :u)
+    """), {"gid": body.to_group_id, "p": p, "cn": cur["pump_cn"],
+           "fv": from_desc, "tv": to_desc, "u": user["username"]})
+    await db.commit()
+    return {"ok": True}
 async def copy_config(body: CopyReq, db: AsyncSession = Depends(get_db),
                       user=Depends(get_current_user)):
     """Copy konfigurasi dari satu periode ke periode lain."""

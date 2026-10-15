@@ -629,6 +629,10 @@ export async function reorderStagingPumps(body: { group_id: number; period: stri
   const r = await api.post('/v1/staging/reorder', body)
   return r.data
 }
+export async function moveStagingPump(pump_id: number, to_group_id: number, to_role_order: number) {
+  const r = await api.post('/v1/staging/move', { pump_id, to_group_id, to_role_order })
+  return r.data
+}
 export async function copyStagingConfig(from_period: string, to_period: string) {
   const r = await api.post('/v1/staging/copy', { from_period, to_period })
   return r.data
