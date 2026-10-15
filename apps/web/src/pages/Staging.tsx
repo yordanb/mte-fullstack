@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   DndContext, closestCorners, PointerSensor, KeyboardSensor,
   useSensor, useSensors, type DragEndEvent, type DragStartEvent,
-  DragOverlay,
+  type DragOverEvent, DragOverlay, useDroppable,
 } from '@dnd-kit/core'
 import {
   SortableContext, sortableKeyboardCoordinates, useSortable,
@@ -124,10 +124,11 @@ function SortablePump({ pump, groupId }: { pump: StagingPump; groupId: number })
 
 // ─── Group Row (horizontal pump chain) ───────────────────
 
-function GroupRow({ group, period, onChanged, onDragEnd }: {
+function GroupRow({ group, period, onChanged, isDropTarget }: {
   group: StagingGroup; period: string; onChanged: () => void
-  onDragEnd: (e: DragEndEvent) => void
+  isDropTarget: boolean
 }) {
+  const { setNodeRef } = useDroppable({ id: `group-${group.id}` })
   const [showAddPump, setShowAddPump] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
@@ -146,7 +147,7 @@ function GroupRow({ group, period, onChanged, onDragEnd }: {
   }, [])
 
   return (
-    <div className={`rounded-2xl border bg-white dark:border-gray-700 dark:bg-gray-900 ${group.is_active ? '' : 'opacity-50'}`}>
+    <div ref={setNodeRef} className={`rounded-2xl border bg-white transition-all dark:border-gray-700 dark:bg-gray-900 ${group.is_active ? '' : 'opacity-50'} ${isDropTarget ? 'border-emerald-400 ring-2 ring-emerald-300/50 dark:ring-emerald-500/30' : ''}`}>
       {/* Row: [group info | pump chain | add button] */}
       <div className="flex items-stretch">
         {/* Group info panel (left) */}
@@ -219,9 +220,9 @@ function GroupRow({ group, period, onChanged, onDragEnd }: {
               </div>
             ))}
           </SortableContext>
-          {/* Outlet pipe / add button */}
-          <div className="flex h-12 shrink-0 items-center pl-1" aria-hidden>
-            <div className="h-0.5 w-3 rounded-full bg-gray-300 dark:bg-gray-600" />
+          {/* Outlet pipe / add button — highlight saat drop target */}
+          <div className={`flex h-12 shrink-0 items-center pl-1 transition-colors ${isDropTarget ? 'animate-pulse' : ''}`} aria-hidden>
+            <div className={`h-0.5 w-3 rounded-full transition-colors ${isDropTarget ? 'bg-emerald-400' : 'bg-gray-300 dark:bg-gray-600'}`} />
           </div>
           {canEdit() && (
             <div className="ml-1 shrink-0">
@@ -255,7 +256,7 @@ function GroupRow({ group, period, onChanged, onDragEnd }: {
                   <button className="mt-0.5 text-theme-xs text-gray-500" onClick={() => { setShowAddPump(false); setPumpQ(''); setPumpResults([]) }}>Batal</button>
                 </div>
               ) : (
-                <button className="flex h-12 w-8 items-center justify-center rounded-xl border border-dashed text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5"
+                <button className={`flex h-12 w-8 items-center justify-center rounded-xl border border-dashed transition-all ${isDropTarget ? 'border-emerald-400 bg-emerald-50 text-emerald-500 animate-pulse dark:border-emerald-500 dark:bg-emerald-900/20 dark:text-emerald-400' : 'border-gray-300 text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}
                   onClick={() => setShowAddPump(true)} title="Tambah pump">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M7 2v10M2 7h10" /></svg>
                 </button>
@@ -461,6 +462,7 @@ export default function StagingPage() {
   const [showAdd, setShowAdd] = useState(false)
   const [showCopy, setShowCopy] = useState(false)
   const [activeId, setActiveId] = useState<number | null>(null)
+  const [overGroupId, setOverGroupId] = useState<number | null>(null)
 
   const load = async () => {
     try { setMsg(''); setLoading(true); setGroups((await fetchStagingGroups(period)).data) }
@@ -490,16 +492,37 @@ export default function StagingPage() {
 
   const handleDragStart = (e: DragStartEvent) => { setActiveId(e.active.id as number) }
 
+  const handleDragOver = (e: DragOverEvent) => {
+    const { over } = e
+    if (!over) { setOverGroupId(null); return }
+    const oid = over.id
+    // Pump id (number) → lookup group
+    if (typeof oid === 'number') {
+      const gid = pumpToGroup.get(oid)
+      setOverGroupId(gid ?? null)
+    } else if (typeof oid === 'string' && oid.startsWith('group-')) {
+      setOverGroupId(parseInt(oid.replace('group-', '')))
+    } else {
+      setOverGroupId(null)
+    }
+  }
+
   const handleDragEnd = async (e: DragEndEvent) => {
     setActiveId(null)
+    setOverGroupId(null)
     const { active, over } = e
     if (!over) return
     const activePumpId = active.id as number
-    const overId = over.id as number
+    const overId = over.id
     const fromGid = pumpToGroup.get(activePumpId)
-    // overId bisa pump id atau group id (droppable)
-    const toGid = pumpToGroup.get(overId) ?? (overId as number)
-    if (!fromGid) return
+    // Resolve target group: pump id → group, atau droppable "group-N"
+    let toGid: number | undefined
+    if (typeof overId === 'number') {
+      toGid = pumpToGroup.get(overId)
+    } else if (typeof overId === 'string' && overId.startsWith('group-')) {
+      toGid = parseInt(overId.replace('group-', ''))
+    }
+    if (!fromGid || toGid === undefined) return
 
     if (fromGid === toGid) {
       // Same group: reorder
@@ -573,10 +596,10 @@ export default function StagingPage() {
 
       {/* All groups — horizontal rows, single DndContext */}
       {!loading && groups.length > 0 && (
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
           <div className="flex flex-col gap-2">
             {groups.map((g) => (
-              <GroupRow key={g.id} group={g} period={period} onChanged={load} onDragEnd={handleDragEnd} />
+              <GroupRow key={g.id} group={g} period={period} onChanged={load} isDropTarget={overGroupId === g.id && pumpToGroup.get(activeId ?? -1) !== g.id} />
             ))}
           </div>
           <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
