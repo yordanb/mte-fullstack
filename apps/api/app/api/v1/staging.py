@@ -332,20 +332,27 @@ async def move_pump(body: MoveReq, db: AsyncSession = Depends(get_db),
         {"gid": body.to_group_id, "p": p, "cn": cur["pump_cn"], "pid": body.pump_id})).scalar()
     if dup:
         raise HTTPException(409, f"Pump {cur['pump_cn']} sudah ada di grup tujuan")
-    # Tutup gap di grup sumber
+    # 1. Pindahkan pump ke posisi sementara di akhir grup tujuan (hindari UNIQUE conflict)
+    max_role = (await db.execute(text(
+        "SELECT COALESCE(MAX(role_order), -1) + 1 FROM staging_pump_items WHERE group_id=:gid AND period=:p"),
+        {"gid": body.to_group_id, "p": p})).scalar()
+    await db.execute(text(
+        "UPDATE staging_pump_items SET group_id=:gid, role_order=:r WHERE id=:pid"),
+        {"gid": body.to_group_id, "r": max_role, "pid": body.pump_id})
+    # 2. Tutup gap di grup sumber (pump sudah tidak di sini, aman)
     await db.execute(text(
         "UPDATE staging_pump_items SET role_order = role_order - 1 "
         "WHERE group_id=:gid AND period=:p AND role_order > :r"),
         {"gid": old_gid, "p": p, "r": old_role})
-    # Geser di grup tujuan
+    # 3. Geser pump di grup tujuan untuk membuat ruang (exclude pump yang dipindah)
     await db.execute(text(
         "UPDATE staging_pump_items SET role_order = role_order + 1 "
-        "WHERE group_id=:gid AND period=:p AND role_order >= :r"),
-        {"gid": body.to_group_id, "p": p, "r": body.to_role_order})
-    # Pindahkan pump
+        "WHERE group_id=:gid AND period=:p AND role_order >= :r AND id<>:pid"),
+        {"gid": body.to_group_id, "p": p, "r": body.to_role_order, "pid": body.pump_id})
+    # 4. Set posisi final
     await db.execute(text(
-        "UPDATE staging_pump_items SET group_id=:gid, role_order=:r WHERE id=:pid"),
-        {"gid": body.to_group_id, "r": body.to_role_order, "pid": body.pump_id})
+        "UPDATE staging_pump_items SET role_order=:r WHERE id=:pid"),
+        {"r": body.to_role_order, "pid": body.pump_id})
     # Log
     old_grp = (await db.execute(text("SELECT group_no, system_type FROM staging_pump_groups WHERE id=:gid"),
                                 {"gid": old_gid})).mappings().first()
@@ -360,6 +367,9 @@ async def move_pump(body: MoveReq, db: AsyncSession = Depends(get_db),
            "fv": from_desc, "tv": to_desc, "u": user["username"]})
     await db.commit()
     return {"ok": True}
+
+
+@router.post("/copy", dependencies=[Depends(require_role("inputer", "admin"))])
 async def copy_config(body: CopyReq, db: AsyncSession = Depends(get_db),
                       user=Depends(get_current_user)):
     """Copy konfigurasi dari satu periode ke periode lain."""
