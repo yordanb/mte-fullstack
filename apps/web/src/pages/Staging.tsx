@@ -98,7 +98,6 @@ function SortablePump({ pump, groupId }: { pump: StagingPump; groupId: number })
         </button>
         {/* Content */}
         <div className="px-2 py-1.5">
-          <span className={`block text-theme-xs font-bold ${rc.text}`}>{pump.role_label}</span>
           <span className="block truncate text-theme-sm font-semibold text-gray-800 dark:text-gray-200">{pump.pump_cn}</span>
           {pump.unit_type && <span className="block truncate text-theme-xs text-gray-400">{pump.unit_type}</span>}
         </div>
@@ -591,7 +590,6 @@ export default function StagingPage() {
                   </svg>
                 </div>
                 <div className="bg-white px-2 py-1.5 dark:bg-gray-800">
-                  <span className={`block text-theme-xs font-bold ${roleColor(activePump.role_order).text}`}>{activePump.role_label}</span>
                   <span className="block truncate text-theme-sm font-semibold">{activePump.pump_cn}</span>
                   {activePump.unit_type && <span className="block truncate text-theme-xs text-gray-400">{activePump.unit_type}</span>}
                 </div>
