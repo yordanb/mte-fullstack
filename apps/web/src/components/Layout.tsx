@@ -15,6 +15,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'activity', label: 'Activity' },
   { key: 'bomak', label: 'Bomak R1BI' },
     { key: 'equipment', label: 'Equipment' },
+    { key: 'staging', label: 'Staging Pump' },
     { key: 'project', label: 'Project' },
     { key: 'import', label: 'Update Data' },
   ] },
@@ -53,6 +54,9 @@ const ICONS: Record<string, ReactNode> = {
   ),
   equipment: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><path d="M3.3 7 12 12l8.7-5M12 22V12" /></svg>
+  ),
+  staging: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h6m4 0h6" /><circle cx="7" cy="14" r="3" /><circle cx="17" cy="14" r="3" /><path d="M10 14l4-6" /><path d="M14 8h2v3" /></svg>
   ),
   fui: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="m9 14 2 2 4-4" /></svg>

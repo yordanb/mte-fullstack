@@ -12,6 +12,7 @@ from app.api.v1.projects import router as projects_router
 from app.api.v1.safety import router as safety_router
 from app.api.v1.r1bi import router as r1bi_router
 from app.api.v1.fui import router as fui_router
+from app.api.v1.staging import router as staging_router
 from app.core.config import settings
 from app.core.security import hash_pw
 from app.core.audit import write_log
@@ -88,3 +89,4 @@ app.include_router(projects_router)
 app.include_router(safety_router)
 app.include_router(r1bi_router)
 app.include_router(fui_router)
+app.include_router(staging_router)

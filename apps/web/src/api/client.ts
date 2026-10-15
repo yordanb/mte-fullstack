@@ -559,3 +559,85 @@ export async function addActivityPhotos(aid: string, files: File[], onProgress?:
 export function activityPhotoUrl(aid: string, pid: string) {
   return `/api/v1/activities/${aid}/photos/${pid}?token=${localStorage.getItem('mte_token') ?? ''}`
 }
+
+// ─── Staging Pump ──────────────────────────────────────────
+
+export type StagingPump = {
+  id: number
+  pump_cn: string
+  role_order: number
+  role_label: string
+  unit_type?: string | null
+  unit_model?: string | null
+}
+export type StagingGroup = {
+  id: number
+  group_no: number
+  sump_name?: string | null
+  system_type: string
+  is_active: boolean
+  pumps: StagingPump[]
+}
+export type StagingChange = {
+  id: number
+  group_id: number
+  period: string
+  change_type: string
+  pump_cn?: string | null
+  from_value?: string | null
+  to_value?: string | null
+  changed_by: string
+  changed_at: string
+  group_no?: number
+  sump_name?: string | null
+  system_type?: string
+}
+
+export async function fetchStagingGroups(period?: string): Promise<{ period: string; data: StagingGroup[] }> {
+  const r = await api.get('/v1/staging/groups', { params: { period } })
+  return r.data
+}
+export async function fetchStagingGroup(id: number, period?: string): Promise<StagingGroup & { changes: StagingChange[] }> {
+  const r = await api.get(`/v1/staging/groups/${id}`, { params: { period } })
+  return r.data
+}
+export async function createStagingGroup(body: { group_no: number; sump_name?: string; system_type: string; is_active?: boolean }) {
+  const r = await api.post('/v1/staging/groups', body)
+  return r.data
+}
+export async function patchStagingGroup(id: number, body: Record<string, unknown>) {
+  const r = await api.patch(`/v1/staging/groups/${id}`, body)
+  return r.data
+}
+export async function deleteStagingGroup(id: number) {
+  const r = await api.delete(`/v1/staging/groups/${id}`)
+  return r.data
+}
+export async function addStagingPump(gid: number, body: { pump_cn: string; role_order: number }, period?: string) {
+  const r = await api.post(`/v1/staging/groups/${gid}/pumps`, body, { params: { period } })
+  return r.data
+}
+export async function patchStagingPump(id: number, body: { pump_cn?: string; role_order?: number }) {
+  const r = await api.patch(`/v1/staging/pumps/${id}`, body)
+  return r.data
+}
+export async function deleteStagingPump(id: number) {
+  const r = await api.delete(`/v1/staging/pumps/${id}`)
+  return r.data
+}
+export async function reorderStagingPumps(body: { group_id: number; period: string; items: { id: number; role_order: number }[] }) {
+  const r = await api.post('/v1/staging/reorder', body)
+  return r.data
+}
+export async function copyStagingConfig(from_period: string, to_period: string) {
+  const r = await api.post('/v1/staging/copy', { from_period, to_period })
+  return r.data
+}
+export async function fetchStagingChanges(period?: string, group_id?: number): Promise<{ data: StagingChange[] }> {
+  const r = await api.get('/v1/staging/changes', { params: { period, group_id } })
+  return r.data
+}
+export async function searchStagingEquipment(q: string): Promise<{ data: { cn: string; unit_type: string | null; unit_model: string | null; aktif: boolean }[] }> {
+  const r = await api.get('/v1/staging/equipment', { params: { q } })
+  return r.data
+}

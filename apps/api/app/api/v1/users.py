@@ -12,7 +12,7 @@ from app.db.session import get_db
 router = APIRouter(prefix="/v1/users", tags=["users"])
 admin_router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
-MENUS = ("dashboard", "dbr", "performance", "activity", "equipment", "fui", "sugfui", "fureport", "timeline", "project", "bomak", "import")
+MENUS = ("dashboard", "dbr", "performance", "activity", "equipment", "fui", "sugfui", "fureport", "timeline", "project", "bomak", "staging", "import")
 ROLES = ("admin", "inputer", "viewer")
 
 
