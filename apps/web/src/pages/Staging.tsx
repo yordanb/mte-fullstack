@@ -85,7 +85,7 @@ function SortablePump({ pump, groupId, onChanged }: { pump: StagingPump; groupId
   const [confirmDel, setConfirmDel] = useState(false)
   return (
     <div ref={setNodeRef} style={style} className="flex shrink-0 items-center">
-      <div className={`relative w-32 rounded-xl border-2 ${rc.border} ${rc.bg} shadow-sm`}>
+      <div className={`relative w-24 rounded-xl border-2 ${rc.border} ${rc.bg} shadow-sm`}>
         {/* Drag handle top bar */}
         <button {...attributes} {...listeners}
           className={`flex w-full cursor-grab items-center justify-center rounded-t-[10px] ${rc.bg} py-0.5 active:cursor-grabbing`}
@@ -627,7 +627,7 @@ export default function StagingPage() {
           </div>
           <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
             {activePump ? (
-              <div className="w-32 rounded-xl border-2 shadow-2xl scale-105" style={{ borderColor: roleColor(activePump.role_order).pipe }}>
+              <div className="w-24 rounded-xl border-2 shadow-2xl scale-105" style={{ borderColor: roleColor(activePump.role_order).pipe }}>
                 <div className={`flex justify-center rounded-t-[10px] ${roleColor(activePump.role_order).bg} py-0.5`}>
                   <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className={roleColor(activePump.role_order).text}>
                     <circle cx="3" cy="3" r="0.8" /><circle cx="7" cy="3" r="0.8" />
