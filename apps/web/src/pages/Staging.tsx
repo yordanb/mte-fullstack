@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   DndContext, closestCorners, PointerSensor, KeyboardSensor,
   useSensor, useSensors, type DragEndEvent, type DragStartEvent,
@@ -12,7 +12,7 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   fetchStagingGroups, createStagingGroup, patchStagingGroup, deleteStagingGroup,
   addStagingPump, deleteStagingPump, reorderStagingPumps, moveStagingPump, copyStagingConfig,
-  fetchStagingChanges, searchStagingEquipment,
+  fetchStagingChanges,
   can, errMsg,
   type StagingGroup, type StagingPump, type StagingChange,
 } from '../api/client'
@@ -139,18 +139,34 @@ function GroupRow({ group, period, onChanged, isDropTarget }: {
   const [showEdit, setShowEdit] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
-  const [pumpQ, setPumpQ] = useState('')
-  const [pumpResults, setPumpResults] = useState<{ cn: string; unit_type: string | null; aktif: boolean }[]>([])
+  const [chainText, setChainText] = useState('')
+  const [chainBusy, setChainBusy] = useState(false)
+  const [chainError, setChainError] = useState('')
 
   const sumpClean = (group.sump_name || '').replace(/\n/g, ' ').trim()
   const pumps = group.pumps
   const itemIds = useMemo(() => pumps.map((p) => p.id), [pumps])
 
-  const searchPump = useCallback(async (q: string) => {
-    setPumpQ(q)
-    if (q.trim().length < 1) { setPumpResults([]); return }
-    try { setPumpResults((await searchStagingEquipment(q)).data) } catch { /* ignore */ }
-  }, [])
+  // Parse chain text → array CN
+  const parsedCNs = chainText.split('-').map(s => s.trim().toUpperCase().replace(/\s/g, '')).filter(Boolean)
+
+  const addChain = async () => {
+    if (parsedCNs.length === 0 || chainBusy) return
+    setChainBusy(true); setChainError('')
+    for (let i = 0; i < parsedCNs.length; i++) {
+      try {
+        await addStagingPump(group.id, { pump_cn: parsedCNs[i], role_order: pumps.length + i }, period)
+      } catch (e) {
+        setChainError(`Gagal: ${parsedCNs[i]} — ${errMsg(e)}`)
+        setChainBusy(false)
+        onChanged()
+        return
+      }
+    }
+    setChainBusy(false)
+    setShowAddPump(false); setChainText('')
+    onChanged()
+  }
 
   return (
     <div ref={setNodeRef} className={`rounded-2xl border bg-white transition-all dark:border-gray-700 dark:bg-gray-900 ${group.is_active ? '' : 'opacity-50'} ${isDropTarget ? 'border-emerald-400 ring-2 ring-emerald-300/50 dark:ring-emerald-500/30' : ''}`}>
@@ -233,33 +249,34 @@ function GroupRow({ group, period, onChanged, isDropTarget }: {
           {canEdit() && (
             <div className="ml-1 shrink-0">
               {showAddPump ? (
-                <div className="w-40 rounded-xl border p-1.5 dark:border-gray-600">
+                <div className="w-72 rounded-xl border p-2 dark:border-gray-600">
                   <input
-                    className="w-full rounded-lg border px-2 py-1 text-theme-xs"
-                    value={pumpQ}
-                    onChange={(e) => searchPump(e.target.value.toUpperCase().replace(' ', ''))}
-                    placeholder="CN cth WP676..."
+                    className="w-full rounded-lg border px-2 py-1.5 text-theme-sm font-mono"
+                    value={chainText}
+                    onChange={(e) => { setChainText(e.target.value.toUpperCase()); setChainError('') }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') addChain() }}
+                    placeholder="WP676 - WP498 - WP471 - WP821"
                     autoFocus
+                    disabled={chainBusy}
                   />
-                  {pumpResults.length > 0 && (
-                    <div className="mt-1 max-h-40 overflow-y-auto rounded-lg border dark:border-gray-600">
-                      {pumpResults.map((p) => (
-                        <button key={p.cn}
-                          className="flex w-full items-center gap-1 px-2 py-1 text-left text-theme-xs hover:bg-gray-50 dark:hover:bg-white/5"
-                          onClick={async () => {
-                            try {
-                              await addStagingPump(group.id, { pump_cn: p.cn, role_order: pumps.length }, period)
-                              setShowAddPump(false); setPumpQ(''); setPumpResults([]); onChanged()
-                            } catch (e) { alert(`gagal: ${errMsg(e)}`) }
-                          }}>
-                          <span className="font-medium">{p.cn}</span>
-                          {p.unit_type && <span className="text-gray-400">/ {p.unit_type}</span>}
-                          {!p.aktif && <span className="text-red-400">nonaktif</span>}
-                        </button>
+                  {/* Preview parsed chain */}
+                  {parsedCNs.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {parsedCNs.map((cn, i) => (
+                        <span key={i} className="flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-theme-xs font-medium dark:bg-gray-700">
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: roleColor(i).pipe }} />
+                          {cn}
+                        </span>
                       ))}
                     </div>
                   )}
-                  <button className="mt-0.5 text-theme-xs text-gray-500" onClick={() => { setShowAddPump(false); setPumpQ(''); setPumpResults([]) }}>Batal</button>
+                  {chainError && <p className="mt-1 text-theme-xs text-red-500">{chainError}</p>}
+                  <div className="mt-1.5 flex items-center justify-between">
+                    <span className="text-theme-xs text-gray-400">
+                      {chainBusy ? 'Menambah...' : `${parsedCNs.length} pump • Enter`}
+                    </span>
+                    <button className="text-theme-xs text-gray-500" onClick={() => { setShowAddPump(false); setChainText(''); setChainError('') }}>Batal</button>
+                  </div>
                 </div>
               ) : (
                 <button className={`flex h-12 w-8 items-center justify-center rounded-xl border border-dashed transition-all ${isDropTarget ? 'border-emerald-400 bg-emerald-50 text-emerald-500 animate-pulse dark:border-emerald-500 dark:bg-emerald-900/20 dark:text-emerald-400' : 'border-gray-300 text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5'}`}
