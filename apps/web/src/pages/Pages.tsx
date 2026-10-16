@@ -955,15 +955,14 @@ function ActForm({ date, initial, onClose, onSaved }: {
                 <label className="text-theme-sm">Kategori
                   <input className={`${inp} bg-gray-100 dark:bg-gray-800`} value="Daily Check Dragflow" readOnly />
                 </label>
-                <div className="text-theme-sm">
-                  <span className="block">Shift</span>
-                  <div className="mt-1 flex rounded-lg border p-1">
+                <label className="text-theme-sm">Shift
+                  <div className="flex rounded-lg border p-1">
                     <button type="button" className={`flex-1 rounded-md px-3 py-2 text-theme-sm ${shift === 1 ? 'bg-brand-500 text-white' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
                       onClick={() => setShift(1)}>Shift 1</button>
                     <button type="button" className={`flex-1 rounded-md px-3 py-2 text-theme-sm ${shift === 2 ? 'bg-brand-500 text-white' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
                       onClick={() => setShift(2)}>Shift 2</button>
                   </div>
-                </div>
+                </label>
               </div>
             </>
           ) : (
