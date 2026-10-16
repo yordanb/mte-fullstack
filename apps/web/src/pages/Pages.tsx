@@ -735,7 +735,7 @@ export function ActivityPage() {
       <div className="overflow-x-auto rounded-2xl border bg-white">
         <table className="w-full border-collapse text-center text-theme-sm">
           <thead className="bg-[#d6e4c9] font-semibold">
-            <tr>{['Tanggal', 'Judul', 'Crew', 'Kategori', 'CN', 'HM', 'Foto'].map((h) => (
+            <tr>{['Tanggal', 'Judul', 'Crew', 'Kategori', 'Shift', 'CN', 'HM', 'Foto'].map((h) => (
               <th key={h} className="border px-2 py-2 whitespace-nowrap">{h}</th>
             ))}</tr>
           </thead>
@@ -746,6 +746,7 @@ export function ActivityPage() {
                 <td className="border px-2 py-2 text-left"><button className="underline" onClick={() => openDetail(a.id)}>{a.title}</button></td>
                 <td className="border px-2 py-2 whitespace-nowrap">{a.crew ?? '-'}</td>
                 <td className="border px-2 py-2 whitespace-nowrap">{a.category ?? '-'}</td>
+                <td className="border px-2 py-2 whitespace-nowrap">{a.shift ? `S${a.shift}` : '-'}</td>
                 <td className="border px-2 py-2 whitespace-nowrap">{a.cn ?? '-'}</td>
                 <td className="border px-2 py-2 whitespace-nowrap">{a.hm ?? '-'}</td>
                 <td className="border px-2 py-2 whitespace-nowrap">{a.photos_count ?? 0}</td>
@@ -759,13 +760,13 @@ export function ActivityPage() {
       {tab === 'dcdragflow' && (() => {
         const daysIn = new Date(ym.y, ym.m, 0).getDate()
         const days = Array.from({ length: daysIn }, (_, i) => i + 1)
-        // Build lookup: key = `${ex}|${dateISO}` → hm
+        // Build lookup: key = `${ex}|${dateISO}|${shift}` → hm
         const dcMap = new Map<string, number | null>()
         dcData.forEach(a => {
           const d = String(a.date).slice(0, 10)
           DRAGFLOW_PAIRS.forEach(pair => {
             if (a.cn === pair.ex || a.cn === pair.wp) {
-              dcMap.set(`${pair.ex}|${d}`, a.hm ?? null)
+              dcMap.set(`${pair.ex}|${d}|${a.shift ?? 1}`, a.hm ?? null)
             }
           })
         })
@@ -796,10 +797,17 @@ export function ActivityPage() {
                       </td>
                       {days.map(d => {
                         const dateStr = iso(ym.y, ym.m, d)
-                        const hm = dcMap.get(`${pair.ex}|${dateStr}`)
+                        const hm1 = dcMap.get(`${pair.ex}|${dateStr}|1`)
+                        const hm2 = dcMap.get(`${pair.ex}|${dateStr}|2`)
+                        const hasData = hm1 != null || hm2 != null
                         return (
-                          <td key={d} className={`border px-1.5 py-1 text-center text-theme-xs ${hm != null ? 'font-medium text-gray-700 dark:text-gray-300' : 'text-gray-300 dark:text-gray-700'}`}>
-                            {hm != null ? hm : '·'}
+                          <td key={d} className={`border px-1 py-1 text-center text-theme-xs ${hasData ? 'font-medium text-gray-700 dark:text-gray-300' : 'text-gray-300 dark:text-gray-700'}`}>
+                            {hasData ? (
+                              <span className="flex flex-col gap-0.5">
+                                {hm1 != null && <span className="text-blue-600 dark:text-blue-400">{hm1}</span>}
+                                {hm2 != null && <span className="text-amber-600 dark:text-amber-400">{hm2}</span>}
+                              </span>
+                            ) : '·'}
                           </td>
                         )
                       })}
@@ -808,7 +816,12 @@ export function ActivityPage() {
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-theme-xs text-gray-400">Hourmeter dari aktivitas kategori "Daily Check Dragflow". Cocok berdasarkan CN EX atau WP.</p>
+            <div className="mt-2 flex items-center gap-4 text-theme-xs text-gray-400">
+              <span className="flex items-center gap-1"><span className="text-blue-600 dark:text-blue-400">●</span> Shift 1</span>
+              <span className="flex items-center gap-1"><span className="text-amber-600 dark:text-amber-400">●</span> Shift 2</span>
+              <span>·</span>
+              <span>HM dari aktivitas "Daily Check Dragflow"</span>
+            </div>
           </div>
         )
       })()}
@@ -852,7 +865,7 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
           <button className="rounded-lg border px-3 py-1" onClick={onClose}>Tutup</button>
         </div>
         <p className="mt-1 text-theme-sm text-gray-500">
-          {[row.date.split('-').reverse().join('/'), row.crew, row.category, row.cn, row.hm != null ? `HM ${row.hm}` : '', row.created_by ? `oleh ${row.created_by}` : ''].filter(Boolean).join(' • ')}
+          {[row.date.split('-').reverse().join('/'), row.crew, row.category, row.shift ? `Shift ${row.shift}` : '', row.cn, row.hm != null ? `HM ${row.hm}` : '', row.created_by ? `oleh ${row.created_by}` : ''].filter(Boolean).join(' • ')}
         </p>
         {row.description && <p className="mt-3 whitespace-pre-wrap text-theme-sm">{row.description}</p>}
         {(row.photos ?? []).length > 0 && (
@@ -893,6 +906,7 @@ function ActForm({ date, initial, onClose, onSaved }: {
   const [hm, setHm] = useState(initial?.hm != null ? String(initial.hm) : '')
   const [cn, setCn] = useState(initial?.cn ?? '')
   const [desc, setDesc] = useState(initial?.description ?? '')
+  const [shift, setShift] = useState<number | null>(initial?.shift ?? null)
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [pct, setPct] = useState(0)
@@ -905,7 +919,7 @@ function ActForm({ date, initial, onClose, onSaved }: {
       if (!crew.trim()) { setMsg('Crew wajib diisi.'); return }
       setBusy(true); setPct(0)
       if (initial) {
-        await patchActivity(initial.id, { date: d, title, category: category || null, crew: crew.trim(), cn: cn || null, hm: hm.trim() || null, description: desc || null })
+        await patchActivity(initial.id, { date: d, title, category: category || null, crew: crew.trim(), cn: cn || null, hm: hm.trim() || null, shift: shift != null ? String(shift) : null, description: desc || null })
         const el = document.getElementById('act-files-edit') as HTMLInputElement | null
         const extra = Array.from(el?.files ?? [])
         if (extra.length > 0) await addActivityPhotos(initial.id, extra, (p) => setPct(p))
@@ -917,6 +931,7 @@ function ActForm({ date, initial, onClose, onSaved }: {
         if (category) fd.append('category', category)
         if (cn) fd.append('cn', cn.toUpperCase())
         if (hm.trim()) fd.append('hm', hm.trim())
+        if (shift != null) fd.append('shift', String(shift))
         if (desc) fd.append('description', desc)
         files.forEach((f) => fd.append('files', f))
         await createActivity(fd, (p) => setPct(p))
@@ -931,14 +946,36 @@ function ActForm({ date, initial, onClose, onSaved }: {
         <div className="mt-3 flex flex-col gap-2">
           <label className="text-theme-sm">Tanggal<input type="date" className={inp} value={d} onChange={(e) => setD(e.target.value)} /></label>
           <label className="text-theme-sm">Judul<input className={inp} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="cth Perbaikan pompa WP855" /></label>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="text-theme-sm">Crew (wajib)
-              <input className={inp} list="act-crew-form" value={crew} onChange={(e) => setCrew(e.target.value)} placeholder="pilih / ketik manual" />
-            </label>
-            <label className="text-theme-sm">Kategori
-              <input className={inp} list="act-cat-form" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="pilih / ketik manual" />
-            </label>
-          </div>
+          {category === 'Daily Check Dragflow' ? (
+            <>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="text-theme-sm">Crew (wajib)
+                  <input className={inp} list="act-crew-form" value={crew} onChange={(e) => setCrew(e.target.value)} placeholder="pilih / ketik manual" />
+                </label>
+                <label className="text-theme-sm">Kategori
+                  <input className={`${inp} bg-gray-100 dark:bg-gray-800`} value="Daily Check Dragflow" readOnly />
+                </label>
+                <div className="text-theme-sm">
+                  <span className="block">Shift</span>
+                  <div className="mt-1 flex rounded-lg border p-1">
+                    <button type="button" className={`flex-1 rounded-md px-3 py-2 text-theme-sm ${shift === 1 ? 'bg-brand-500 text-white' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
+                      onClick={() => setShift(1)}>Shift 1</button>
+                    <button type="button" className={`flex-1 rounded-md px-3 py-2 text-theme-sm ${shift === 2 ? 'bg-brand-500 text-white' : 'hover:bg-gray-50 dark:hover:bg-white/5'}`}
+                      onClick={() => setShift(2)}>Shift 2</button>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-theme-sm">Crew (wajib)
+                <input className={inp} list="act-crew-form" value={crew} onChange={(e) => setCrew(e.target.value)} placeholder="pilih / ketik manual" />
+              </label>
+              <label className="text-theme-sm">Kategori
+                <input className={inp} list="act-cat-form" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="pilih / ketik manual" />
+              </label>
+            </div>
+          )}
           <datalist id="act-crew-form">{ACT_CREWS.map((c) => (<option key={c} value={c} />))}</datalist>
           <datalist id="act-cat-form">{ACT_CATS.map((c) => (<option key={c} value={c} />))}</datalist>
           <div className="grid grid-cols-2 gap-2">

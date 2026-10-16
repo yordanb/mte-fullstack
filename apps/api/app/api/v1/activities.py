@@ -116,6 +116,7 @@ async def create(date: datetime.date = Form(...),
                  crew: str | None = Form(None),
                  cn: str | None = Form(None),
                  hm: float | None = Form(None),
+                 shift: int | None = Form(None),
                  files: list[UploadFile] = File(default=[]),
                  db: AsyncSession = Depends(get_db),
                  user=Depends(get_current_user)):
@@ -131,10 +132,10 @@ async def create(date: datetime.date = Form(...),
         if not ok:
             raise HTTPException(400, f"CN {cn} tidak ada di master equipment")
     res = await db.execute(text(
-        "INSERT INTO activities(date,title,description,category,crew,cn,hm,created_by) "
-        "VALUES (:d,:t,:desc,:cat,:cw,:cn,:hm,:u) RETURNING id"),
+        "INSERT INTO activities(date,title,description,category,crew,cn,hm,shift,created_by) "
+        "VALUES (:d,:t,:desc,:cat,:cw,:cn,:hm,:sh,:u) RETURNING id"),
         {"d": date, "t": title, "desc": description, "cat": (category or "").strip() or None,
-         "cw": crew, "cn": cn, "hm": hm, "u": user["username"]})
+         "cw": crew, "cn": cn, "hm": hm, "sh": shift, "u": user["username"]})
     aid = str(res.scalar_one())
     await _save_files(db, aid, files)
     await db.commit()
@@ -189,7 +190,7 @@ async def add_photos(aid: str, files: list[UploadFile] = File(...),
 @router.patch("/{aid}", dependencies=[Depends(require_role("inputer", "admin"))])
 async def update(aid: str, body: dict, db: AsyncSession = Depends(get_db),
                  user=Depends(get_current_user)):
-    allowed = ("date", "title", "description", "category", "crew", "cn", "hm")
+    allowed = ("date", "title", "description", "category", "crew", "cn", "hm", "shift")
     sets, params = [], {"i": aid}
     for k in allowed:
         if k in body:
@@ -215,6 +216,14 @@ async def update(aid: str, body: dict, db: AsyncSession = Depends(get_db),
                         params[k] = float(body[k])
                     except (ValueError, TypeError):
                         raise HTTPException(400, "format hourmeter salah")
+            elif k == "shift":
+                if body[k] is None or (isinstance(body[k], str) and body[k].strip() == ""):
+                    params[k] = None
+                else:
+                    try:
+                        params[k] = int(body[k])
+                    except (ValueError, TypeError):
+                        raise HTTPException(400, "format shift salah (1 atau 2)")
             else:
                 params[k] = body[k]
             sets.append(f"{k}=:{k}")
