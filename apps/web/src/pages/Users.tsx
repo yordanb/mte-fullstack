@@ -44,10 +44,13 @@ export default function UsersPage() {
   }
   const toggle = async (row: PermRow, key: keyof Omit<PermRow, 'role' | 'menu'>, v: boolean) => {
     const next = { ...row, [key]: v }
-    if ((next.can_add || next.can_edit || next.can_delete) && !next.can_view) {
-      setMsg('Tulis butuh hak Lihat — centang Lihat dulu.');
-      return
+    // Saat uncheck can_view, auto-uncheck semua write permission
+    if (!next.can_view) {
+      next.can_add = false
+      next.can_edit = false
+      next.can_delete = false
     }
+    setMsg('')
     try {
       await setPerm(next)
       setPerms((p) => p.map((x) => (x.role === row.role && x.menu === row.menu ? next : x)))
