@@ -13,7 +13,7 @@ router = APIRouter(prefix="/v1/users", tags=["users"])
 admin_router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
 MENUS = ("dashboard", "dbr", "performance", "activity", "equipment", "fui", "sugfui", "fureport", "timeline", "project", "bomak", "staging", "import")
-ROLES = ("admin", "inputer", "viewer")
+ROLES = ("admin", "inputer", "mekanik", "viewer")
 
 
 async def _perms(db: AsyncSession, role: str) -> dict:
