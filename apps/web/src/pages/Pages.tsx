@@ -562,17 +562,27 @@ function EqDetail({ row, onClose }: { row: Equipment; onClose: () => void }) {
 const ACT_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
 const ACT_CREWS = ['Pumping', 'Lighting', 'Mobile', 'Grader', 'PCH']
 const ACT_CATS = ['Proker', 'FUI', 'USM', 'SCM', 'Daily Check Dragflow', 'Washing PLTS', 'Daily Check Waterfill']
+
+const DRAGFLOW_PAIRS = [
+  { ex: 'EX264', wp: 'WP792' },
+  { ex: 'EX326', wp: 'WP1080' },
+  { ex: 'EX312', wp: 'WP1081' },
+  { ex: 'EX265', wp: 'WP791' },
+  { ex: 'EX339', wp: 'WP1039' },
+  { ex: 'EX329', wp: 'WP1063' },
+]
 const iso = (y: number, m: number, d: number) =>
   `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 
 export function ActivityPage() {
   const now = new Date()
   const [ym, setYm] = useState({ y: now.getFullYear(), m: now.getMonth() + 1 })
-  const [tab, setTab] = useState<'cal' | 'recap'>('cal')
+  const [tab, setTab] = useState<'cal' | 'recap' | 'dcdragflow'>('cal')
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [sel, setSel] = useState(todayLocal())
   const [items, setItems] = useState<Activity[]>([])
   const [recap, setRecap] = useState<Activity[]>([])
+  const [dcData, setDcData] = useState<Activity[]>([])
   const [fCrew, setFCrew] = useState('')
   const [fCat, setFCat] = useState('')
   const [crewOpts, setCrewOpts] = useState<string[]>([])
@@ -593,6 +603,9 @@ export function ActivityPage() {
   const loadRecap = async (y: number, m: number, cw = fCrew, ct = fCat) => {
     try { setRecap(await fetchActivityRecap(y, m, cw || undefined, ct || undefined)) } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
+  const loadDC = async (y: number, m: number) => {
+    try { setDcData(await fetchActivityRecap(y, m, undefined, 'Daily Check Dragflow')) } catch { /* ignore */ }
+  }
   const loadOpts = async (y: number, m: number) => {
     try {
       const r = await fetchActivityFilters(y, m)
@@ -605,7 +618,7 @@ export function ActivityPage() {
       if (fCat && !ao.includes(fCat)) setFCat('')
     } catch { /* abaikan, daftar bawaan tetap dipakai */ }
   }
-  useEffect(() => { loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m); loadOpts(ym.y, ym.m) }, [ym])
+  useEffect(() => { loadMonth(ym.y, ym.m); loadRecap(ym.y, ym.m); loadDC(ym.y, ym.m); loadOpts(ym.y, ym.m) }, [ym])
   useEffect(() => { loadDay(sel) }, [sel])
   // Jumlah di kalender mengikuti filter crew/kategori yang aktif (debounce ketikan).
   useEffect(() => {
@@ -649,6 +662,7 @@ export function ActivityPage() {
         <div className="flex rounded-lg border p-1">
           <button className={`rounded-md px-4 py-1 ${tab === 'cal' ? 'bg-brand-500 text-white' : ''}`} onClick={() => setTab('cal')}>Kalender</button>
           <button className={`rounded-md px-4 py-1 ${tab === 'recap' ? 'bg-brand-500 text-white' : ''}`} onClick={() => { setTab('recap'); loadRecap(ym.y, ym.m) }}>Rekap</button>
+          <button className={`rounded-md px-4 py-1 ${tab === 'dcdragflow' ? 'bg-brand-500 text-white' : ''}`} onClick={() => { setTab('dcdragflow'); loadDC(ym.y, ym.m) }}>DC Dragflow</button>
         </div>
         <select className={`${finp} w-28`} value={fCrew} onChange={(e) => setFCrew(e.target.value)}>
           <option value="">Crew: semua</option>
@@ -741,6 +755,62 @@ export function ActivityPage() {
         {recap.length === 0 && <p className="p-4 text-theme-sm text-gray-500">Belum ada aktivitas untuk filter ini.</p>}
       </div>
       )}
+      {tab === 'dcdragflow' && (() => {
+        const daysIn = new Date(ym.y, ym.m, 0).getDate()
+        const days = Array.from({ length: daysIn }, (_, i) => i + 1)
+        // Build lookup: key = `${ex}|${dateISO}` → hm
+        const dcMap = new Map<string, number | null>()
+        dcData.forEach(a => {
+          const d = String(a.date).slice(0, 10)
+          DRAGFLOW_PAIRS.forEach(pair => {
+            if (a.cn === pair.ex || a.cn === pair.wp) {
+              dcMap.set(`${pair.ex}|${d}`, a.hm ?? null)
+            }
+          })
+        })
+        const todayDay = new Date().getDate()
+        const isCurMonth = new Date().getFullYear() === ym.y && new Date().getMonth() + 1 === ym.m
+        return (
+          <div className="rounded-2xl border bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+            <div className="mb-3 flex items-center justify-between">
+              <button className="rounded-lg border px-3 py-1" onClick={() => shift(-1)}>‹</button>
+              <h3 className="font-semibold">DC Dragflow — {ACT_MONTHS[ym.m - 1]} {ym.y}</h3>
+              <button className="rounded-lg border px-3 py-1" onClick={() => shift(1)}>›</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="border-collapse text-theme-sm">
+                <thead>
+                  <tr>
+                    <th className="sticky left-0 z-10 border bg-gray-100 px-3 py-2 text-left whitespace-nowrap dark:bg-gray-800">Unit</th>
+                    {days.map(d => (
+                      <th key={d} className={`border px-1.5 py-1 text-center text-theme-xs ${isCurMonth && d === todayDay ? 'bg-brand-100 dark:bg-brand-900/30' : 'bg-gray-50 dark:bg-gray-800'}`}>{d}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {DRAGFLOW_PAIRS.map(pair => (
+                    <tr key={pair.ex} className="hover:bg-gray-50 dark:hover:bg-white/5">
+                      <td className="sticky left-0 z-10 border bg-white px-3 py-1.5 font-medium whitespace-nowrap dark:bg-gray-900">
+                        {pair.ex} <span className="text-gray-400">-</span> {pair.wp}
+                      </td>
+                      {days.map(d => {
+                        const dateStr = iso(ym.y, ym.m, d)
+                        const hm = dcMap.get(`${pair.ex}|${dateStr}`)
+                        return (
+                          <td key={d} className={`border px-1.5 py-1 text-center text-theme-xs ${hm != null ? 'font-medium text-gray-700 dark:text-gray-300' : 'text-gray-300 dark:text-gray-700'}`}>
+                            {hm != null ? hm : '·'}
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-theme-xs text-gray-400">Hourmeter dari aktivitas kategori "Daily Check Dragflow". Cocok berdasarkan CN EX atau WP.</p>
+          </div>
+        )
+      })()}
       {detail && (
         <ActDetail
           row={detail}
