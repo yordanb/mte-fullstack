@@ -49,6 +49,31 @@ void main() {
     expect(u, endsWith('/v1/activities/aid/photos/pid?token=tok123'));
   });
 
+  test('shift field terparse dari JSON (V23)', () {
+    final a = Activity.fromJson({
+      'id': 's1',
+      'date': '2026-10-05',
+      'title': 'DC EX264',
+      'category': 'Daily Check Dragflow',
+      'cn': 'EX264',
+      'hm': 12500,
+      'shift': 1,
+    });
+    expect(a.shift, 1);
+    expect(a.hm, 12500.0);
+
+    final b = Activity.fromJson({
+      'id': 's2',
+      'date': '2026-10-05',
+      'title': 'DC EX326',
+      'shift': 2,
+    });
+    expect(b.shift, 2);
+
+    final c = Activity.fromJson({'id': 'x', 'date': '2026-10-05', 'title': 'T'});
+    expect(c.shift, isNull);
+  });
+
   test('kalender mulai Senin dan kelipatan 7', () {
     // Okt 2026: 1 Okt = Kamis -> lead 3, 31 hari -> 35 sel? 3+31=34 -> 35.
     final cells = buildCells(2026, 10);

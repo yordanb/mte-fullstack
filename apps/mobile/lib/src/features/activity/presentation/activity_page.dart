@@ -55,6 +55,8 @@ class _ActivityPageState extends ConsumerState<ActivityPage> {
   late final TextEditingController _crew;
   late final TextEditingController _cat;
 
+  /// Tab 0=Kalender, 1=Rekap, 2=DC Dragflow (sama seperti web 5357b3a).
+
   @override
   void initState() {
     super.initState();
@@ -83,7 +85,7 @@ class _ActivityPageState extends ConsumerState<ActivityPage> {
     return AppScaffold(
       title: 'Activity',
       actions: [
-        if (canAdd && _tab == 0)
+        if (canAdd && _tab != 1)
           IconButton(
             tooltip: 'Tambah',
             icon: const Icon(Icons.add),
@@ -104,6 +106,7 @@ class _ActivityPageState extends ConsumerState<ActivityPage> {
                     segments: const [
                       ButtonSegment(value: 0, label: Text('Kalender')),
                       ButtonSegment(value: 1, label: Text('Rekap')),
+                      ButtonSegment(value: 2, label: Text('DC Dragflow')),
                     ],
                     selected: {_tab},
                     onSelectionChanged: (s) => setState(() => _tab = s.first),
@@ -143,9 +146,11 @@ class _ActivityPageState extends ConsumerState<ActivityPage> {
             ),
           ),
           Expanded(
-            child: _tab == 0
-                ? _CalendarTab(ym: ym, ref: ref)
-                : const _RecapTab(),
+            child: switch (_tab) {
+              0 => _CalendarTab(ym: ym, ref: ref),
+              1 => const _RecapTab(),
+              _ => const _DcDragflowTab(),
+            },
           ),
         ],
       ),
@@ -387,6 +392,7 @@ class _RecapTab extends ConsumerWidget {
                   DataColumn(label: Text('Kategori')),
                   DataColumn(label: Text('CN')),
                   DataColumn(label: Text('HM')),
+                  DataColumn(label: Text('Shift')),
                   DataColumn(label: Text('Foto'), numeric: true),
                 ],
                 rows: [
@@ -406,6 +412,7 @@ class _RecapTab extends ConsumerWidget {
                         DataCell(Text(a.category ?? '-')),
                         DataCell(Text(a.cn ?? '-')),
                         DataCell(Text(a.hm != null ? '${a.hm}' : '-')),
+                        DataCell(Text(a.shift != null ? 'S${a.shift}' : '-')),
                         DataCell(Text('${a.photoCount}')),
                       ],
                     ),
@@ -420,6 +427,136 @@ class _RecapTab extends ConsumerWidget {
         message: e.toString(),
         onRetry: () => ref.invalidate(recapProvider),
       ),
+    );
+  }
+}
+
+/// Pasangan Excavator–Water Pump untuk Daily Check Dragflow (web Pages.tsx).
+const _dragflowPairs = [
+  ('EX264', 'WP792'),
+  ('EX326', 'WP1080'),
+  ('EX312', 'WP1081'),
+  ('EX265', 'WP791'),
+  ('EX339', 'WP1039'),
+  ('EX329', 'WP1063'),
+];
+
+/// Tab DC Dragflow: cross-tab unit × tanggal, HM per shift (web 5357b3a).
+/// S1 biru, S2 amber. Data dari recap kategori "Daily Check Dragflow".
+class _DcDragflowTab extends ConsumerWidget {
+  const _DcDragflowTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ym = ref.watch(activityMonthProvider);
+    final dcAsync = ref.watch(dcDragflowProvider);
+    final notifier = ref.read(activityMonthProvider.notifier);
+    final daysIn = DateTime(ym.year, ym.month + 1, 0).day;
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(dcDragflowProvider);
+        await ref.read(dcDragflowProvider.future);
+      },
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              OutlinedButton(onPressed: () => notifier.shift(-1), child: const Text('‹')),
+              Text('${_idMonthNames[ym.month - 1]} ${ym.year}',
+                  style: Theme.of(context).textTheme.titleMedium),
+              OutlinedButton(onPressed: () => notifier.shift(1), child: const Text('›')),
+            ],
+          ),
+          const SizedBox(height: 8),
+          dcAsync.when(
+            data: (dcData) {
+              // Build lookup: key = `${ex}|${dateISO}|${shift}` → hm
+              final dcMap = <String, double?>{};
+              for (final a in dcData) {
+                final d = a.date.length >= 10 ? a.date.substring(0, 10) : a.date;
+                final s = a.shift ?? 1;
+                for (final pair in _dragflowPairs) {
+                  if (a.cn == pair.$1 || a.cn == pair.$2) {
+                    dcMap['${pair.$1}|$d|$s'] = a.hm;
+                  }
+                }
+              }
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SingleChildScrollView(
+                  child: DataTable(
+                    columnSpacing: 6,
+                    columns: [
+                      const DataColumn(label: Text('Unit')),
+                      for (var d = 1; d <= daysIn; d++)
+                        DataColumn(label: Text('$d', style: const TextStyle(fontSize: 10))),
+                    ],
+                    rows: [
+                      for (final pair in _dragflowPairs)
+                        DataRow(cells: [
+                          DataCell(Text(pair.$1, style: const TextStyle(fontWeight: FontWeight.bold))),
+                          for (var d = 1; d <= daysIn; d++)
+                            DataCell(_DcCell(
+                              hm1: dcMap['${pair.$1}|${toApiDate(DateTime(ym.year, ym.month, d))}|1'],
+                              hm2: dcMap['${pair.$1}|${toApiDate(DateTime(ym.year, ym.month, d))}|2'],
+                            )),
+                        ]),
+                    ],
+                  ),
+                ),
+              );
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => ErrorView(
+              message: e.toString(),
+              onRetry: () => ref.invalidate(dcDragflowProvider),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Wrap(
+            spacing: 16,
+            children: [
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(width: 8, height: 8, child: ColoredBox(color: Colors.blue)),
+                SizedBox(width: 4),
+                Text('S1'),
+              ]),
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(width: 8, height: 8, child: ColoredBox(color: Colors.amber)),
+                SizedBox(width: 4),
+                Text('S2'),
+              ]),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sel HM di tabel DC Dragflow: tampilkan S1 (biru) / S2 (amber).
+class _DcCell extends StatelessWidget {
+  final double? hm1;
+  final double? hm2;
+  const _DcCell({this.hm1, this.hm2});
+
+  @override
+  Widget build(BuildContext context) {
+    if (hm1 == null && hm2 == null) return const Text('-', style: TextStyle(fontSize: 10));
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (hm1 != null)
+          Text('$hm1', style: const TextStyle(fontSize: 9, color: Colors.blue, fontWeight: FontWeight.bold)),
+        if (hm2 != null)
+          Text('$hm2', style: const TextStyle(fontSize: 9, color: Colors.amber, fontWeight: FontWeight.bold)),
+      ],
     );
   }
 }

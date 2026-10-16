@@ -231,12 +231,6 @@ class _BomakBody extends ConsumerWidget {
                     value:
                         '${c.coverage.where((e) => e.n > 0).length}/${c.sections.length}'),
                 StatChip(label: 'Respons', value: '${c.compliance.total}'),
-                StatChip(
-                    label: 'P6 kosong',
-                    value: '${c.compliance.p6Empty}'),
-                StatChip(
-                    label: 'FU kosong',
-                    value: '${c.compliance.fuEmpty}'),
               ],
             ),
             loading: () => const SizedBox.shrink(),

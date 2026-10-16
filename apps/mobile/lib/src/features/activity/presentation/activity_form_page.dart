@@ -14,8 +14,12 @@ import '../domain/activity_models.dart';
 import 'activity_providers.dart';
 
 /// Crew/kategori baku web (Pages.tsx:562-563). Bebas ketik manual.
+/// Ditambah 3 kategori baru (1a28f2f): Daily Check Dragflow, Washing PLTS, Daily Check Waterfill.
 const _crews = ['Pumping', 'Lighting', 'Mobile', 'Grader', 'PCH'];
-const _cats = ['Proker', 'FUI', 'USM', 'SCM'];
+const _cats = [
+  'Proker', 'FUI', 'USM', 'SCM',
+  'Daily Check Dragflow', 'Washing PLTS', 'Daily Check Waterfill',
+];
 
 /// Form tambah/ubah aktivitas + foto multi (progress bar + cegah
 /// double-submit). Tambah-foto saat ubah khusus admin, meniru ActForm web.
@@ -65,6 +69,7 @@ class _FormBodyState extends ConsumerState<_FormBody> {
   late final TextEditingController _cn;
   late final TextEditingController _hm;
   late final TextEditingController _desc;
+  int? _shift;
   final List<XFile> _picked = [];
   bool _busy = false;
   int _pct = 0;
@@ -83,6 +88,7 @@ class _FormBodyState extends ConsumerState<_FormBody> {
     _cn = TextEditingController(text: a?.cn ?? '');
     _hm = TextEditingController(text: a?.hm != null ? '${a!.hm}' : '');
     _desc = TextEditingController(text: a?.description ?? '');
+    _shift = a?.shift;
   }
 
   @override
@@ -143,6 +149,7 @@ class _FormBodyState extends ConsumerState<_FormBody> {
           'crew': _crew.text.trim(),
           'cn': _cn.text.trim().isEmpty ? null : _cn.text.trim().toUpperCase(),
           'hm': _hm.text.trim().isEmpty ? null : _hm.text.trim(),
+          'shift': _shift != null ? '$_shift' : null,
           'description': _desc.text.isEmpty ? null : _desc.text,
         });
         if (_picked.isNotEmpty) {
@@ -158,6 +165,7 @@ class _FormBodyState extends ConsumerState<_FormBody> {
           category: _cat.text.trim().isEmpty ? null : _cat.text.trim(),
           cn: _cn.text.trim().isEmpty ? null : _cn.text.trim(),
           hm: _hm.text.trim().isEmpty ? null : _hm.text.trim(),
+          shift: _shift,
           description: _desc.text.isEmpty ? null : _desc.text,
           filePaths: _picked.map((e) => e.path).toList(),
           onProgress: prog,
@@ -264,6 +272,29 @@ class _FormBodyState extends ConsumerState<_FormBody> {
             ],
           ),
           const SizedBox(height: 12),
+          // Shift toggle hanya untuk Daily Check Dragflow (sama seperti web e458e0b).
+          if (_cat.text == 'Daily Check Dragflow') ...[
+            Row(
+              children: [
+                const Text('Shift'),
+                const SizedBox(width: 12),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 1, label: Text('Shift 1')),
+                    ButtonSegment(value: 2, label: Text('Shift 2')),
+                  ],
+                  selected: _shift != null ? {_shift!} : {},
+                  onSelectionChanged: (s) => setState(() => _shift = s.first),
+                ),
+                if (_shift != null)
+                  TextButton(
+                    onPressed: () => setState(() => _shift = null),
+                    child: const Text('Hapus'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
           TextField(
             controller: _desc,
             maxLines: 4,

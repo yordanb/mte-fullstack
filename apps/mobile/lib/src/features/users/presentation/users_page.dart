@@ -141,20 +141,15 @@ class _UsersPageState extends ConsumerState<UsersPage> {
   }
 
   Future<void> _toggle(PermRow row, String key, bool v) async {
-    final next = switch (key) {
+    var next = switch (key) {
       'can_add' => row.copyWith(canAdd: v),
       'can_edit' => row.copyWith(canEdit: v),
       'can_delete' => row.copyWith(canDelete: v),
       _ => row.copyWith(canView: v),
     };
-    if ((next.canAdd || next.canEdit || next.canDelete) && !next.canView) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Tulis butuh hak Lihat — centang Lihat dulu.')),
-        );
-      }
-      return;
+    // Saat uncheck can_view, auto-uncheck semua write permission (samakan web ca75ff0).
+    if (!next.canView) {
+      next = next.copyWith(canAdd: false, canEdit: false, canDelete: false);
     }
     try {
       await ref.read(usersApiProvider).setPerm(next);
@@ -295,7 +290,7 @@ class _PermsSection extends ConsumerWidget {
       data: (perms) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final role in ['inputer', 'viewer'])
+          for (final role in ['inputer', 'mekanik', 'viewer'])
             _PermTable(role: role, perms: perms, onToggle: onToggle),
         ],
       ),

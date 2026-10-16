@@ -238,6 +238,12 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   (sebelumnya tidak dibawa). `analyze` bersih, 29 test lolos, APK terbuild.
 - **Koreksi kartu dashboard (2026-10-14, sudah merge ke main)**:
   nomor lab + tanggal analysis dihapus; hanya `Sample dd/MM/yyyy`.
+- **Paritas web 14-16 Okt (2026-10-16, branch mobile/parity-oct16)**:
+  role `mekanik` + 13 menu (`staging`), guard toggle izin (auto-uncheck
+  write saat uncheck view), Activity `shift` field + toggle Shift 1/2
+  (kategori Daily Check Dragflow), 3 kategori baru, tab DC Dragflow
+  (6 pasang EX/WP × tanggal, HM S1 biru / S2 amber), hapus stat P6/FU
+  kosong di Bomak. `analyze` bersih, 31 test, APK terbuild.
   halaman `/bomak` + menu drawer (gate `bomak.view`): switch Bomak/R1BI,
   navigasi bulan, filter section/risiko/cari, Sync (timeout 10 mnt,
   `bomak.add`), salin WA via clipboard (format persis web), tabel 13/10

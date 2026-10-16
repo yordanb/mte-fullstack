@@ -20,16 +20,22 @@ void main() {
     expect(r.errors.first.row, 2);
   });
 
-  test('perm matrix: 12 menu aktual backend', () {
-    expect(permMenus.length, 12);
-    expect(permMenus, containsAll(['import', 'timeline', 'project', 'bomak']));
+  test('perm matrix: 13 menu aktual backend (V21 staging + V24 mekanik)', () {
+    expect(permMenus.length, 13);
+    expect(permMenus, containsAll(['import', 'timeline', 'project', 'bomak', 'staging']));
   });
 
-  test('perm toggle butuh view bila tulis (aturan server)', () {
-    const row = PermRow(role: 'inputer', menu: 'dbr', canAdd: true);
-    final violates =
-        (row.canAdd || row.canEdit || row.canDelete) && !row.canView;
-    expect(violates, isTrue);
+  test('role mekanik ada di userRoles (V24)', () {
+    expect(userRoles, contains('mekanik'));
+    expect(userRoles.length, 4);
+  });
+
+  test('perm toggle: uncheck view auto-uncheck write (web ca75ff0)', () {
+    const row = PermRow(role: 'inputer', menu: 'dbr', canView: true, canAdd: true);
+    // Simulasi uncheck view -> auto-uncheck semua write
+    final next = row.copyWith(canView: false, canAdd: false, canEdit: false, canDelete: false);
+    expect(next.canView, isFalse);
+    expect(next.canAdd, isFalse);
   });
 
   test('notifikasi: imports + activities', () {

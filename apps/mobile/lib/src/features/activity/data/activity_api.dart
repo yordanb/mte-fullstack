@@ -79,6 +79,7 @@ class ActivityApi {
     String? category,
     String? cn,
     String? hm,
+    int? shift,
     String? description,
     List<String> filePaths = const [],
     void Function(int sent, int total)? onProgress,
@@ -90,6 +91,7 @@ class ActivityApi {
       if (category != null && category.isNotEmpty) 'category': category,
       if (cn != null && cn.isNotEmpty) 'cn': cn.toUpperCase(),
       if (hm != null && hm.trim().isNotEmpty) 'hm': hm.trim(),
+      if (shift != null) 'shift': '$shift',
       if (description != null && description.isNotEmpty) 'description': description,
       'files': [for (final p in filePaths) await _mp(p)],
     });
@@ -119,6 +121,22 @@ class ActivityApi {
 
   Future<void> deletePhoto(String aid, String pid) async {
     await _dio.delete('/v1/activities/$aid/photos/$pid');
+  }
+
+  /// GET /v1/activities/filters -> {crews, categories} (web eb70446).
+  Future<({List<String> crews, List<String> categories})> fetchFilters({
+    int? year,
+    int? month,
+  }) async {
+    final r = await _dio.get('/v1/activities/filters', queryParameters: {
+      if (year != null) 'year': year,
+      if (month != null) 'month': month,
+    });
+    final d = r.data as Map;
+    return (
+      crews: ((d['crews'] as List?) ?? []).map((e) => '$e').toList(),
+      categories: ((d['categories'] as List?) ?? []).map((e) => '$e').toList(),
+    );
   }
 
   /// Image.network tak bisa kirim header -> pakai ?token= (activities.py:236-248).

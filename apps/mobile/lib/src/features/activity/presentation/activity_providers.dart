@@ -118,9 +118,30 @@ final activityDetailProvider = FutureProvider.family<Activity, String>((ref, id)
   return _guard(ref, () => api.detail(id));
 });
 
+/// Crew/kategori dari API (web eb70446). Dipakai dropdown form+filter.
+final activityFiltersProvider =
+    FutureProvider<({List<String> crews, List<String> categories})>((ref) async {
+  final ym = ref.watch(activityMonthProvider);
+  final api = ref.watch(activityApiProvider);
+  return _guard(ref, () => api.fetchFilters(year: ym.year, month: ym.month));
+});
+
 /// Panggil setelah simpan/hapus agar kalender + rekap + list segar.
 void invalidateActivityLists(WidgetRef ref) {
   ref.invalidate(monthCountsProvider);
   ref.invalidate(dayItemsProvider);
   ref.invalidate(recapProvider);
+  ref.invalidate(dcDragflowProvider);
 }
+
+/// Recap khusus Daily Check Dragflow untuk tab DC Dragflow (web 5357b3a).
+/// Key lookup: `${ex}|${dateISO}|${shift}` → hm.
+final dcDragflowProvider = FutureProvider<List<Activity>>((ref) async {
+  final ym = ref.watch(activityMonthProvider);
+  final api = ref.watch(activityApiProvider);
+  return _guard(ref, () => api.recap(
+        year: ym.year,
+        month: ym.month,
+        category: 'Daily Check Dragflow',
+      ));
+});

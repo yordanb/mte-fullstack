@@ -22,6 +22,7 @@ class Activity {
   final String? crew;
   final String? cn;
   final double? hm;
+  final int? shift;
   final String? createdBy;
   final List<ActivityPhoto> photos;
   final int photoCount;
@@ -36,6 +37,7 @@ class Activity {
     this.crew,
     this.cn,
     this.hm,
+    this.shift,
     this.createdBy,
     this.photos = const [],
     this.photoCount = 0,
@@ -61,6 +63,7 @@ class Activity {
       crew: j['crew']?.toString(),
       cn: j['cn']?.toString(),
       hm: (j['hm'] as num?)?.toDouble(),
+      shift: (j['shift'] as num?)?.toInt(),
       createdBy: j['created_by']?.toString(),
       photos: photoList,
       photoCount: count,
