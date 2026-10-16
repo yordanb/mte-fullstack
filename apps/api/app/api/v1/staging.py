@@ -280,6 +280,11 @@ async def delete_pump(pid: int, db: AsyncSession = Depends(get_db),
     if not cur:
         raise HTTPException(404, "Pump item tidak ditemukan")
     await db.execute(text("DELETE FROM staging_pump_items WHERE id=:pid"), {"pid": pid})
+    # Tutup gap: pump setelah posisi yang dihapus naik (role_order - 1)
+    await db.execute(text(
+        "UPDATE staging_pump_items SET role_order = role_order - 1 "
+        "WHERE group_id=:gid AND period=:p AND role_order > :r"),
+        {"gid": cur["group_id"], "p": cur["period"], "r": cur["role_order"]})
     await db.execute(text("""
         INSERT INTO staging_pump_changes(group_id, period, change_type, pump_cn, from_value, to_value, changed_by)
         VALUES (:gid, :p, 'REMOVE_PUMP', :cn, :role, NULL, :u)
