@@ -674,7 +674,7 @@ export function ActivityPage() {
         </select>
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={applyFilter}>Tampilkan</button>
       </div>
-      {tab === 'cal' ? (
+      {tab === 'cal' && (
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_340px]">
       <div className="rounded-2xl border bg-white p-5">
         <div className="flex items-center justify-between">
@@ -730,7 +730,8 @@ export function ActivityPage() {
         ))}
       </div>
       </div>
-      ) : (
+      )}
+      {tab === 'recap' && (
       <div className="overflow-x-auto rounded-2xl border bg-white">
         <table className="w-full border-collapse text-center text-theme-sm">
           <thead className="bg-[#d6e4c9] font-semibold">
