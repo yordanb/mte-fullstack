@@ -71,6 +71,10 @@ export function can(menu: string, act: 'view' | 'add' | 'edit' | 'delete'): bool
   } catch { return false }
 }
 
+export function isAdmin(): boolean {
+  return (localStorage.getItem('mte_role') ?? '') === 'admin'
+}
+
 export async function fetchMe() {
   const r = await api.get('/v1/users/me')
   localStorage.setItem('mte_role', r.data.role)

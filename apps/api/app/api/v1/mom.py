@@ -325,7 +325,7 @@ async def patch_agenda(aid: int, body: AgendaPatch, db: AsyncSession = Depends(g
     return {"ok": True}
 
 
-@router.delete("/agendas/{aid}", dependencies=[Depends(require_role("inputer", "admin"))])
+@router.delete("/agendas/{aid}", dependencies=[Depends(require_role("admin"))])
 async def delete_agenda(aid: int, db: AsyncSession = Depends(get_db),
                         user=Depends(get_current_user)):
     res = await db.execute(text("DELETE FROM mom_agendas WHERE id=:id"), {"id": aid})

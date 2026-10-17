@@ -4,7 +4,7 @@ import {
   copyMomMeeting, fetchPreviousMeeting, carryMomItem,
   addMomAgenda, patchMomAgenda, deleteMomAgenda,
   addMomItem, patchMomItem, deleteMomItem,
-  can, errMsg, todayLocal,
+  can, isAdmin, errMsg, todayLocal,
   type MomMeeting, type MomAgenda, type MomItem,
 } from '../api/client'
 
@@ -288,12 +288,12 @@ function MeetingDetail({ id, onBack }: { id: number; onBack: () => void }) {
                   <button className="rounded-lg p-1 text-gray-400 hover:text-gray-600" onClick={() => setEditAgenda(ag)} title="Ubah agenda">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                   </button>
-                  {canDel() && (
+                  {isAdmin() && (
                     <button className="rounded-lg p-1 text-gray-400 hover:text-red-500" onClick={async () => {
                       if (!confirm('Hapus agenda ini + semua action items-nya?')) return
                       try { await deleteMomAgenda(ag.id); load() }
                       catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
-                    }} title="Hapus agenda">
+                    }} title="Hapus agenda (admin only)">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
                     </button>
                   )}
