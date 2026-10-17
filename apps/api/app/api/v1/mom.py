@@ -17,7 +17,7 @@ CATS = ('Operasional', 'Safety', 'Maintenance', 'Project', 'Lainnya')
 
 class MeetingIn(BaseModel):
     title: str
-    meeting_date: str
+    meeting_date: date
     location: str | None = None
     category: str = 'Operasional'
     status: str = 'open'
@@ -25,7 +25,7 @@ class MeetingIn(BaseModel):
 
 class MeetingPatch(BaseModel):
     title: str | None = None
-    meeting_date: str | None = None
+    meeting_date: date | None = None
     location: str | None = None
     category: str | None = None
     status: str | None = None
@@ -34,7 +34,7 @@ class MeetingPatch(BaseModel):
 class ItemIn(BaseModel):
     description: str
     pic: str | None = None
-    due_date: str | None = None
+    due_date: date | None = None
     priority: str = 'medium'
     status: str = 'open'
     notes: str | None = None
@@ -43,7 +43,7 @@ class ItemIn(BaseModel):
 class ItemPatch(BaseModel):
     description: str | None = None
     pic: str | None = None
-    due_date: str | None = None
+    due_date: date | None = None
     priority: str | None = None
     status: str | None = None
     notes: str | None = None
