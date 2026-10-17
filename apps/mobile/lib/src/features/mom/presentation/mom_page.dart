@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:mte_data_center/src/core/auth/auth_notifier.dart';
 import 'package:mte_data_center/src/core/network/dio_client.dart' show apiMessage;
 import 'package:mte_data_center/src/core/utils/date_fmt.dart';
@@ -89,7 +88,7 @@ class _MeetingList extends ConsumerWidget {
               DropdownButton<String>(
                 value: filter.category.isEmpty ? '' : filter.category,
                 hint: const Text('Kategori: semua'),
-                items: const [
+                items: [
                   DropdownMenuItem(value: '', child: Text('Kategori: semua')),
                   for (final c in momCats) DropdownMenuItem(value: c, child: Text(c)),
                 ],
@@ -181,7 +180,10 @@ class _MeetingDetail extends ConsumerWidget {
             tooltip: 'Ubah',
             icon: const Icon(Icons.edit),
             onPressed: () {
-              final d = ref.read(momDetailProvider(id)).valueOrNull;
+              final d = switch (ref.read(momDetailProvider(id))) {
+                AsyncData(:final value) => value,
+                _ => null,
+              };
               if (d != null) {
                 showModalBottomSheet(
                   context: context,
