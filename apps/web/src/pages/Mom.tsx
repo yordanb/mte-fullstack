@@ -180,6 +180,16 @@ function MeetingDetail({ id, onBack }: { id: number; onBack: () => void }) {
             {meeting.status === 'open' ? 'Tutup Meeting' : 'Buka Kembali'}
           </button>
         )}
+        {isAdmin() && (
+          <button className="rounded-lg border border-red-300 px-3 py-2 text-theme-sm text-red-600 hover:bg-red-50 dark:border-red-700 dark:hover:bg-red-900/20"
+            onClick={async () => {
+              if (!confirm(`Hapus meeting "${meeting.title}"?\nSemua agenda dan action items akan terhapus.`)) return
+              try { await deleteMomMeeting(id); onBack() }
+              catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+            }}>
+            Hapus
+          </button>
+        )}
       </div>
 
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
