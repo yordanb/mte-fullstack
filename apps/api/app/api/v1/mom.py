@@ -59,6 +59,18 @@ class ItemPatch(BaseModel):
     notes: str | None = None
 
 
+class CopyMeetingIn(BaseModel):
+    from_meeting_id: int
+    title: str
+    meeting_date: date
+    location: str | None = None
+    carry_open_items: bool = True
+
+
+class CarryItemIn(BaseModel):
+    target_agenda_id: int
+
+
 # ─── Meetings ─────────────────────────────────────────────
 
 @router.get("/meetings")
@@ -163,6 +175,113 @@ async def delete_meeting(mid: int, db: AsyncSession = Depends(get_db),
         raise HTTPException(404, "Meeting tidak ditemukan")
     await db.commit()
     return {"ok": True}
+
+
+# ─── Copy / Previous / Carry ─────────────────────────────
+
+@router.post("/meetings/copy", dependencies=[Depends(require_role("inputer", "admin"))], status_code=201)
+async def copy_meeting(body: CopyMeetingIn, db: AsyncSession = Depends(get_db),
+                       user=Depends(get_current_user)):
+    """Salin meeting: buat meeting baru + copy agenda + optionally carry open items."""
+    src = (await db.execute(text("SELECT * FROM mom_meetings WHERE id=:id"), {"id": body.from_meeting_id})).mappings().first()
+    if not src:
+        raise HTTPException(404, "Meeting sumber tidak ditemukan")
+    # 1. Create new meeting
+    res = await db.execute(text("""
+        INSERT INTO mom_meetings(title, meeting_date, location, category, status, created_by)
+        VALUES (:t, :d, :loc, :cat, 'open', :u) RETURNING id
+    """), {"t": body.title.strip(), "d": body.meeting_date, "loc": body.location,
+           "cat": src["category"], "u": user["username"]})
+    new_mid = res.scalar_one()
+    # 2. Copy agendas
+    src_agendas = (await db.execute(text(
+        "SELECT id, seq, title, discussion FROM mom_agendas WHERE meeting_id=:mid ORDER BY seq"), {"mid": body.from_meeting_id})).mappings().all()
+    agenda_map = {}  # old_id → new_id
+    for ag in src_agendas:
+        r = await db.execute(text("""
+            INSERT INTO mom_agendas(meeting_id, seq, title, discussion)
+            VALUES (:mid, :seq, :t, :disc) RETURNING id
+        """), {"mid": new_mid, "seq": ag["seq"], "t": ag["title"], "disc": None})  # discussion kosong untuk meeting baru
+        agenda_map[ag["id"]] = r.scalar_one()
+    # 3. Optionally carry open items
+    if body.carry_open_items:
+        open_items = (await db.execute(text("""
+            SELECT * FROM mom_items WHERE meeting_id=:mid AND status <> 'closed' ORDER BY agenda_id, item_no
+        """), {"mid": body.from_meeting_id})).mappings().all()
+        for it in open_items:
+            target_agenda = agenda_map.get(it["agenda_id"])
+            if not target_agenda:
+                continue
+            max_no = (await db.execute(text(
+                "SELECT COALESCE(MAX(item_no), 0) + 1 FROM mom_items WHERE meeting_id=:mid"), {"mid": new_mid})).scalar()
+            await db.execute(text("""
+                INSERT INTO mom_items(meeting_id, agenda_id, item_no, description, pic, due_date, priority, status, notes)
+                VALUES (:mid, :aid, :no, :desc, :pic, :due, :pri, 'open', :notes)
+            """), {"mid": new_mid, "aid": target_agenda, "no": max_no,
+                   "desc": it["description"], "pic": it["pic"], "due": it["due_date"],
+                   "pri": it["priority"], "notes": it["notes"]})
+    await db.commit()
+    return {"id": new_mid}
+
+
+@router.get("/meetings/{mid}/previous")
+async def get_previous_meeting(mid: int, db: AsyncSession = Depends(get_db),
+                               user=Depends(get_current_user)):
+    """Cari meeting sebelumnya (same category, tanggal lebih awal) + open items."""
+    cur = (await db.execute(text("SELECT category, meeting_date FROM mom_meetings WHERE id=:id"), {"id": mid})).mappings().first()
+    if not cur:
+        raise HTTPException(404, "Meeting tidak ditemukan")
+    prev = (await db.execute(text("""
+        SELECT m.id, m.title, m.meeting_date, m.status,
+               COUNT(i.id) FILTER (WHERE i.status <> 'closed') AS open_count
+        FROM mom_meetings m
+        LEFT JOIN mom_items i ON i.meeting_id = m.id
+        WHERE m.category = :cat AND m.meeting_date < :d AND m.id <> :id
+        GROUP BY m.id
+        ORDER BY m.meeting_date DESC LIMIT 1
+    """), {"cat": cur["category"], "d": cur["meeting_date"], "id": mid})).mappings().first()
+    if not prev:
+        return {"data": None}
+    # Get open items with agenda title
+    items = (await db.execute(text("""
+        SELECT i.id, i.description, i.pic, i.due_date, i.priority, i.status, i.notes,
+               a.title AS agenda_title
+        FROM mom_items i
+        LEFT JOIN mom_agendas a ON a.id = i.agenda_id
+        WHERE i.meeting_id = :mid AND i.status <> 'closed'
+        ORDER BY a.seq, i.item_no
+    """), {"mid": prev["id"]})).mappings().all()
+    out = dict(prev)
+    out["items"] = [dict(i) for i in items]
+    return {"data": out}
+
+
+@router.post("/meetings/{mid}/carry/{item_id}", dependencies=[Depends(require_role("inputer", "admin"))], status_code=201)
+async def carry_item(mid: int, item_id: int, body: CarryItemIn,
+                     db: AsyncSession = Depends(get_db),
+                     user=Depends(get_current_user)):
+    """Pindahkan (copy) satu item dari meeting lain ke agenda di meeting ini."""
+    # Validate target
+    ag = (await db.execute(text("SELECT meeting_id FROM mom_agendas WHERE id=:id"), {"id": body.target_agenda_id})).mappings().first()
+    if not ag or ag["meeting_id"] != mid:
+        raise HTTPException(400, "Agenda target tidak valid untuk meeting ini")
+    # Get source item
+    src = (await db.execute(text("SELECT * FROM mom_items WHERE id=:id"), {"id": item_id})).mappings().first()
+    if not src:
+        raise HTTPException(404, "Item tidak ditemukan")
+    if src["meeting_id"] == mid:
+        raise HTTPException(400, "Item sudah ada di meeting ini")
+    max_no = (await db.execute(text(
+        "SELECT COALESCE(MAX(item_no), 0) + 1 FROM mom_items WHERE meeting_id=:mid"), {"mid": mid})).scalar()
+    res = await db.execute(text("""
+        INSERT INTO mom_items(meeting_id, agenda_id, item_no, description, pic, due_date, priority, status, notes)
+        VALUES (:mid, :aid, :no, :desc, :pic, :due, :pri, 'open', :notes) RETURNING id
+    """), {"mid": mid, "aid": body.target_agenda_id, "no": max_no,
+           "desc": src["description"], "pic": src["pic"], "due": src["due_date"],
+           "pri": src["priority"], "notes": src["notes"]})
+    new_id = res.scalar_one()
+    await db.commit()
+    return {"id": new_id}
 
 
 # ─── Agendas ──────────────────────────────────────────────

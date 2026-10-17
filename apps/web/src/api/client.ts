@@ -689,6 +689,18 @@ export async function deleteMomMeeting(id: number) {
   const r = await api.delete(`/v1/mom/meetings/${id}`)
   return r.data
 }
+export async function copyMomMeeting(body: { from_meeting_id: number; title: string; meeting_date: string; location?: string; carry_open_items: boolean }) {
+  const r = await api.post('/v1/mom/meetings/copy', body)
+  return r.data
+}
+export async function fetchPreviousMeeting(mid: number): Promise<{ data: { id: number; title: string; meeting_date: string; status: string; open_count: number; items: { id: number; description: string; pic?: string | null; due_date?: string | null; priority: string; status: string; notes?: string | null; agenda_title?: string | null }[] } | null }> {
+  const r = await api.get(`/v1/mom/meetings/${mid}/previous`)
+  return r.data
+}
+export async function carryMomItem(mid: number, itemId: number, targetAgendaId: number) {
+  const r = await api.post(`/v1/mom/meetings/${mid}/carry/${itemId}`, { target_agenda_id: targetAgendaId })
+  return r.data
+}
 export async function addMomAgenda(meetingId: number, body: { title: string; discussion?: string }) {
   const r = await api.post(`/v1/mom/meetings/${meetingId}/agendas`, body)
   return r.data

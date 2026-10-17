@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   fetchMomMeetings, createMomMeeting, fetchMomMeeting, patchMomMeeting, deleteMomMeeting,
+  copyMomMeeting, fetchPreviousMeeting, carryMomItem,
   addMomAgenda, patchMomAgenda, deleteMomAgenda,
   addMomItem, patchMomItem, deleteMomItem,
   can, errMsg, todayLocal,
@@ -46,6 +47,7 @@ export default function MomPage() {
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [copySrc, setCopySrc] = useState<MomMeeting | null>(null)
   const [selId, setSelId] = useState<number | null>(null)
 
   const load = async () => {
@@ -90,31 +92,39 @@ export default function MomPage() {
 
       <div className="flex flex-col gap-2">
         {meetings.map(m => (
-          <button key={m.id} onClick={() => setSelId(m.id)}
-            className="flex items-center gap-3 rounded-2xl border bg-white p-4 text-left hover:shadow-md dark:border-gray-700 dark:bg-gray-900">
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-theme-sm font-bold ${m.status === 'open' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
-              {m.status === 'open' ? m.open_items ?? 0 : '✓'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate font-semibold">{m.title}</div>
-              <div className="text-theme-sm text-gray-500">
-                {fmtDate(m.meeting_date)} • {m.category}
-                {m.location && ` • ${m.location}`}
+          <div key={m.id}
+            className="flex items-center gap-3 rounded-2xl border bg-white p-4 hover:shadow-md dark:border-gray-700 dark:bg-gray-900">
+            <button onClick={() => setSelId(m.id)} className="flex items-center gap-3 text-left min-w-0 flex-1">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-theme-sm font-bold ${m.status === 'open' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'}`}>
+                {m.status === 'open' ? m.open_items ?? 0 : '✓'}
               </div>
-            </div>
-            <div className="shrink-0 text-right">
-              <div className="text-theme-sm font-medium">
-                {m.open_items ?? 0} open / {m.total_items ?? 0} total
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-semibold">{m.title}</div>
+                <div className="text-theme-sm text-gray-500">
+                  {fmtDate(m.meeting_date)} • {m.category}
+                  {m.location && ` • ${m.location}`}
+                </div>
               </div>
-              <div className={`text-theme-xs ${m.status === 'open' ? 'text-blue-500' : 'text-emerald-500'}`}>
-                {m.status === 'open' ? 'Open' : 'Closed'}
+              <div className="shrink-0 text-right">
+                <div className="text-theme-sm font-medium">
+                  {m.open_items ?? 0} open / {m.total_items ?? 0} total
+                </div>
+                <div className={`text-theme-xs ${m.status === 'open' ? 'text-blue-500' : 'text-emerald-500'}`}>
+                  {m.status === 'open' ? 'Open' : 'Closed'}
+                </div>
               </div>
-            </div>
-          </button>
+            </button>
+            {canAdd() && (
+              <button className="shrink-0 rounded-lg border px-2 py-1 text-theme-xs text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800" onClick={() => setCopySrc(m)} title="Salin meeting">
+                Salin
+              </button>
+            )}
+          </div>
         ))}
       </div>
 
       {showAdd && <MeetingForm onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); load() }} />}
+      {copySrc && <CopyForm src={copySrc} onClose={() => setCopySrc(null)} onSaved={(id) => { setCopySrc(null); setSelId(id) }} />}
     </div>
   )
 }
@@ -131,12 +141,21 @@ function MeetingDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const [editAgenda, setEditAgenda] = useState<MomAgenda | null>(null)
   const [addItemAgenda, setAddItemAgenda] = useState<number | null>(null)
   const [editItem, setEditItem] = useState<MomItem | null>(null)
+  const [prevMeeting, setPrevMeeting] = useState<{ id: number; title: string; meeting_date: string; open_count: number; items: { id: number; description: string; pic?: string | null; due_date?: string | null; priority: string; agenda_title?: string | null }[] } | null>(null)
+  const [showPrev, setShowPrev] = useState(false)
+  const [carryTarget, setCarryTarget] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     try { setMsg(''); setMeeting(await fetchMomMeeting(id)) }
     catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }, [id])
   useEffect(() => { load() }, [load])
+
+  // Load previous meeting
+  useEffect(() => {
+    if (!meeting) return
+    fetchPreviousMeeting(id).then(r => setPrevMeeting(r.data)).catch(() => setPrevMeeting(null))
+  }, [id, meeting])
 
   if (!meeting) return <p className="text-gray-500">Memuat...</p>
 
@@ -181,6 +200,75 @@ function MeetingDetail({ id, onBack }: { id: number; onBack: () => void }) {
           </span>
         </div>
       </div>
+
+      {/* Review meeting sebelumnya */}
+      {prevMeeting && prevMeeting.items.length > 0 && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20">
+          <button className="flex w-full items-center justify-between px-4 py-3"
+            onClick={() => setShowPrev(!showPrev)}>
+            <div className="flex items-center gap-2">
+              <span className="text-theme-sm font-semibold text-amber-700 dark:text-amber-400">
+                📋 Review meeting lalu
+              </span>
+              <span className="text-theme-xs text-amber-600 dark:text-amber-500">
+                {prevMeeting.title} ({fmtDate(prevMeeting.meeting_date)}) — {prevMeeting.items.length} item open
+              </span>
+            </div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              className={`text-amber-600 transition-transform ${showPrev ? 'rotate-180' : ''}`}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          {showPrev && (
+            <div className="border-t border-amber-200 dark:border-amber-800">
+              {prevMeeting.items.map((pi, idx) => (
+                <div key={pi.id} className="flex items-start gap-2 border-b border-amber-100 px-4 py-2 last:border-0 dark:border-amber-800/50">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-theme-sm text-gray-700 dark:text-gray-300">
+                      {pi.description}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap gap-2 text-theme-xs text-gray-500">
+                      {pi.agenda_title && <span className="rounded bg-amber-100 px-1.5 py-0.5 dark:bg-amber-800/30">{pi.agenda_title}</span>}
+                      {pi.pic && <span>PIC: {pi.pic}</span>}
+                      {pi.due_date && <span>Due: {fmtDate(pi.due_date)}</span>}
+                      <span className={priCls(pi.priority)}>{pi.priority}</span>
+                    </div>
+                  </div>
+                  {canAdd() && meeting.status === 'open' && (
+                    <button className="shrink-0 rounded-lg bg-brand-500 px-2 py-1 text-theme-xs text-white hover:bg-brand-600"
+                      onClick={() => setCarryTarget(pi.id)}>
+                      → Pindahkan
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Carry over target picker */}
+      {carryTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 dark:bg-gray-900">
+            <h3 className="font-semibold">Pindahkan ke agenda:</h3>
+            <div className="mt-3 flex flex-col gap-2">
+              {meeting.agendas.map(ag => (
+                <button key={ag.id} className="rounded-lg border px-3 py-2 text-left text-theme-sm hover:bg-brand-50 dark:hover:bg-brand-900/20"
+                  onClick={async () => {
+                    try {
+                      await carryMomItem(id, carryTarget, ag.id)
+                      setCarryTarget(null); load()
+                    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+                  }}>
+                  {ag.title}
+                </button>
+              ))}
+            </div>
+            <button className="mt-3 w-full rounded-lg border py-2" onClick={() => setCarryTarget(null)}>Batal</button>
+          </div>
+        </div>
+      )}
 
       {/* Agendas */}
       {meeting.agendas.map((ag, idx) => {
@@ -397,6 +485,57 @@ function AgendaForm({ meetingId, agenda, onClose, onSaved }: {
         <div className="mt-4 flex justify-end gap-2">
           <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
           <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={save}>Simpan</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Copy Meeting Form ────────────────────────────────────
+
+function CopyForm({ src, onClose, onSaved }: {
+  src: MomMeeting; onClose: () => void; onSaved: (id: number) => void
+}) {
+  const [title, setTitle] = useState(src.title)
+  const [dt, setDt] = useState(todayLocal())
+  const [location, setLocation] = useState(src.location ?? '')
+  const [carry, setCarry] = useState(true)
+  const [msg, setMsg] = useState('')
+  const save = async () => {
+    try {
+      setMsg('')
+      if (!title.trim()) { setMsg('Judul wajib diisi'); return }
+      const r = await copyMomMeeting({
+        from_meeting_id: src.id,
+        title, meeting_date: dt,
+        location: location || undefined,
+        carry_open_items: carry,
+      })
+      onSaved(r.id)
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+  }
+  const inp = 'w-full rounded-lg border px-3 py-2'
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 dark:bg-gray-900">
+        <h3 className="font-semibold">Salin Meeting</h3>
+        <p className="mt-1 text-theme-sm text-gray-500">
+          Salin struktur agenda dari <b>{src.title}</b> ({fmtDate(src.meeting_date)}).
+          {src.open_items ? ` ${src.open_items} item open akan dibawa.` : ''}
+        </p>
+        <div className="mt-3 flex flex-col gap-3">
+          <label className="text-theme-sm">Judul Meeting Baru<input className={inp} value={title} onChange={e => setTitle(e.target.value)} /></label>
+          <label className="text-theme-sm">Tanggal<input type="date" className={inp} value={dt} onChange={e => setDt(e.target.value)} /></label>
+          <label className="text-theme-sm">Lokasi<input className={inp} value={location} onChange={e => setLocation(e.target.value)} /></label>
+          <label className="flex items-center gap-2 text-theme-sm">
+            <input type="checkbox" checked={carry} onChange={e => setCarry(e.target.checked)} />
+            Bawa action items yang masih open ({src.open_items ?? 0} item)
+          </label>
+        </div>
+        {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
+          <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={save}>Salin</button>
         </div>
       </div>
     </div>
