@@ -125,18 +125,23 @@ async def get_meeting(mid: int, db: AsyncSession = Depends(get_db),
     m = (await db.execute(text("SELECT * FROM mom_meetings WHERE id=:id"), {"id": mid})).mappings().first()
     if not m:
         raise HTTPException(404, "Meeting tidak ditemukan")
-    agendas = (await db.execute(text("""
-        SELECT a.*, COUNT(i.id) AS total_items,
-               COUNT(i.id) FILTER (WHERE i.status <> 'closed') AS open_items
-        FROM mom_agendas a
-        LEFT JOIN mom_items i ON i.agenda_id = a.id
-        WHERE a.meeting_id = :mid
-        GROUP BY a.id
-        ORDER BY a.seq, a.id
-    """), {"mid": mid})).mappings().all()
-    items = (await db.execute(text("""
-        SELECT * FROM mom_items WHERE meeting_id=:mid ORDER BY item_no, id
-    """), {"mid": mid})).mappings().all()
+    try:
+        agendas = (await db.execute(text("""
+            SELECT a.*, COUNT(i.id) AS total_items,
+                   COUNT(i.id) FILTER (WHERE i.status <> 'closed') AS open_items
+            FROM mom_agendas a
+            LEFT JOIN mom_items i ON i.agenda_id = a.id
+            WHERE a.meeting_id = :mid
+            GROUP BY a.id
+            ORDER BY a.seq, a.id
+        """), {"mid": mid})).mappings().all()
+        items = (await db.execute(text("""
+            SELECT * FROM mom_items WHERE meeting_id=:mid ORDER BY item_no, id
+        """), {"mid": mid})).mappings().all()
+    except ProgrammingError as e:
+        if "does not exist" in str(e):
+            raise HTTPException(500, "Tabel mom_agendas belum dibuat — jalankan migration V26: docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V26__mom_agendas.sql")
+        raise
     out = dict(m)
     out["agendas"] = [dict(a) for a in agendas]
     out["items"] = [dict(i) for i in items]
