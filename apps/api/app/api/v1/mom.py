@@ -3,6 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.deps import get_current_user, require_role
@@ -62,16 +63,21 @@ async def list_meetings(status: str | None = Query(None),
     if category:
         conds.append("m.category = :cat"); p["cat"] = category
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
-    rows = (await db.execute(text(f"""
-        SELECT m.*, 
-               COUNT(i.id) AS total_items,
-               COUNT(i.id) FILTER (WHERE i.status <> 'closed') AS open_items
-        FROM mom_meetings m
-        LEFT JOIN mom_items i ON i.meeting_id = m.id
-        {where}
-        GROUP BY m.id
-        ORDER BY m.meeting_date DESC
-    """), p)).mappings().all()
+    try:
+        rows = (await db.execute(text(f"""
+            SELECT m.*, 
+                   COUNT(i.id) AS total_items,
+                   COUNT(i.id) FILTER (WHERE i.status <> 'closed') AS open_items
+            FROM mom_meetings m
+            LEFT JOIN mom_items i ON i.meeting_id = m.id
+            {where}
+            GROUP BY m.id
+            ORDER BY m.meeting_date DESC
+        """), p)).mappings().all()
+    except ProgrammingError as e:
+        if "does not exist" in str(e):
+            raise HTTPException(500, "Tabel mom_meetings belum dibuat — jalankan migration V25")
+        raise
     return {"data": [dict(r) for r in rows]}
 
 
@@ -82,13 +88,18 @@ async def create_meeting(body: MeetingIn, db: AsyncSession = Depends(get_db),
         raise HTTPException(400, f"Kategori harus salah satu {CATS}")
     if body.status not in ('open', 'closed'):
         raise HTTPException(400, "Status harus 'open' atau 'closed'")
-    res = await db.execute(text("""
-        INSERT INTO mom_meetings(title, meeting_date, location, category, status, created_by)
-        VALUES (:t, :d, :loc, :cat, :st, :u) RETURNING id
-    """), {"t": body.title.strip(), "d": body.meeting_date, "loc": body.location,
-           "cat": body.category, "st": body.status, "u": user["username"]})
-    mid = res.scalar_one()
-    await db.commit()
+    try:
+        res = await db.execute(text("""
+            INSERT INTO mom_meetings(title, meeting_date, location, category, status, created_by)
+            VALUES (:t, :d, :loc, :cat, :st, :u) RETURNING id
+        """), {"t": body.title.strip(), "d": body.meeting_date, "loc": body.location,
+               "cat": body.category, "st": body.status, "u": user["username"]})
+        mid = res.scalar_one()
+        await db.commit()
+    except ProgrammingError as e:
+        if "does not exist" in str(e):
+            raise HTTPException(500, "Tabel mom_meetings belum dibuat — jalankan migration V25 di VPS: docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V25__mom.sql")
+        raise
     return {"id": mid}
 
 
