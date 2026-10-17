@@ -655,8 +655,15 @@ export type MomMeeting = {
   total_items?: number; open_items?: number
 }
 
+export type MomAgenda = {
+  id: number; meeting_id: number; seq: number
+  title: string; discussion?: string | null
+  created_at?: string; updated_at?: string
+  total_items?: number; open_items?: number
+}
+
 export type MomItem = {
-  id: number; meeting_id: number; item_no: number
+  id: number; meeting_id: number; agenda_id?: number | null; item_no: number
   description: string; pic?: string | null; due_date?: string | null
   priority: string; status: string; notes?: string | null
   created_at?: string; updated_at?: string
@@ -670,7 +677,7 @@ export async function createMomMeeting(body: { title: string; meeting_date: stri
   const r = await api.post('/v1/mom/meetings', body)
   return r.data
 }
-export async function fetchMomMeeting(id: number): Promise<MomMeeting & { items: MomItem[] }> {
+export async function fetchMomMeeting(id: number): Promise<MomMeeting & { agendas: MomAgenda[]; items: MomItem[] }> {
   const r = await api.get(`/v1/mom/meetings/${id}`)
   return r.data
 }
@@ -682,8 +689,20 @@ export async function deleteMomMeeting(id: number) {
   const r = await api.delete(`/v1/mom/meetings/${id}`)
   return r.data
 }
-export async function addMomItem(meetingId: number, body: { description: string; pic?: string; due_date?: string; priority: string; status: string; notes?: string }) {
-  const r = await api.post(`/v1/mom/meetings/${meetingId}/items`, body)
+export async function addMomAgenda(meetingId: number, body: { title: string; discussion?: string }) {
+  const r = await api.post(`/v1/mom/meetings/${meetingId}/agendas`, body)
+  return r.data
+}
+export async function patchMomAgenda(id: number, body: Record<string, unknown>) {
+  const r = await api.patch(`/v1/mom/agendas/${id}`, body)
+  return r.data
+}
+export async function deleteMomAgenda(id: number) {
+  const r = await api.delete(`/v1/mom/agendas/${id}`)
+  return r.data
+}
+export async function addMomItem(agendaId: number, body: { description: string; pic?: string; due_date?: string; priority: string; status: string; notes?: string }) {
+  const r = await api.post(`/v1/mom/agendas/${agendaId}/items`, body)
   return r.data
 }
 export async function patchMomItem(id: number, body: Record<string, unknown>) {

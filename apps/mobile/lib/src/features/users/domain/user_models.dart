@@ -1,5 +1,5 @@
 /// Model Users + Audit — kontrak users.py admin routes + client.ts:100-143.
-/// Role: admin/inputer/mekanik/viewer. Menu izin 13 (MENUS users.py:15).
+/// Role: admin/inputer/mekanik/viewer. Menu izin 14 (MENUS users.py:15).
 class AppUser {
   final String username;
   final String role;
@@ -15,7 +15,7 @@ const userRoles = ['admin', 'inputer', 'mekanik', 'viewer'];
 const permMenus = [
   'dashboard', 'dbr', 'performance', 'activity', 'equipment',
   'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak',
-  'staging', 'import',
+  'staging', 'mom', 'import',
 ];
 
 class PermRow {

@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   fetchMomMeetings, createMomMeeting, fetchMomMeeting, patchMomMeeting, deleteMomMeeting,
+  addMomAgenda, patchMomAgenda, deleteMomAgenda,
   addMomItem, patchMomItem, deleteMomItem,
   can, errMsg, todayLocal,
-  type MomMeeting, type MomItem,
+  type MomMeeting, type MomAgenda, type MomItem,
 } from '../api/client'
 
 const CATS = ['Operasional', 'Safety', 'Maintenance', 'Project', 'Lainnya']
@@ -120,11 +121,15 @@ export default function MomPage() {
 
 // ─── Meeting Detail ───────────────────────────────────────
 
+type MeetingFull = MomMeeting & { agendas: MomAgenda[]; items: MomItem[] }
+
 function MeetingDetail({ id, onBack }: { id: number; onBack: () => void }) {
-  const [meeting, setMeeting] = useState<(MomMeeting & { items: MomItem[] }) | null>(null)
+  const [meeting, setMeeting] = useState<MeetingFull | null>(null)
   const [msg, setMsg] = useState('')
   const [showEdit, setShowEdit] = useState(false)
-  const [showAddItem, setShowAddItem] = useState(false)
+  const [showAddAgenda, setShowAddAgenda] = useState(false)
+  const [editAgenda, setEditAgenda] = useState<MomAgenda | null>(null)
+  const [addItemAgenda, setAddItemAgenda] = useState<number | null>(null)
   const [editItem, setEditItem] = useState<MomItem | null>(null)
 
   const load = useCallback(async () => {
@@ -140,6 +145,8 @@ function MeetingDetail({ id, onBack }: { id: number; onBack: () => void }) {
     try { await patchMomMeeting(id, { status: next }); load() }
     catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
+
+  const itemsForAgenda = (aid: number) => meeting.items.filter(i => i.agenda_id === aid)
 
   return (
     <div className="flex flex-col gap-4">
@@ -175,76 +182,132 @@ function MeetingDetail({ id, onBack }: { id: number; onBack: () => void }) {
         </div>
       </div>
 
-      {/* Action items */}
-      <div className="rounded-2xl border bg-white dark:border-gray-700 dark:bg-gray-900">
-        <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-700">
-          <h3 className="font-semibold">Action Items ({meeting.items.length})</h3>
-          {canAdd() && meeting.status === 'open' && (
-            <button className="rounded-lg bg-brand-500 px-3 py-1 text-theme-sm text-white" onClick={() => setShowAddItem(true)}>+ Item</button>
-          )}
-        </div>
-        {meeting.items.length === 0 ? (
-          <p className="px-4 py-4 text-theme-sm text-gray-400">Belum ada action item.</p>
-        ) : (
-          <div className="flex flex-col">
-            {meeting.items.map(item => {
-              const dl = daysLeft(item.due_date)
-              return (
-                <div key={item.id} className="flex items-start gap-3 border-b px-4 py-3 last:border-0 dark:border-gray-700">
-                  <button
-                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${item.status === 'closed' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-300 hover:border-emerald-400'}`}
-                    onClick={async () => {
-                      if (!canEdit()) return
-                      const next = item.status === 'closed' ? 'open' : 'closed'
-                      try { await patchMomItem(item.id, { status: next }); load() }
-                      catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
-                    }}
-                    title={item.status === 'closed' ? 'Buka kembali' : 'Tandai selesai'}
-                  >
-                    {item.status === 'closed' && <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 5l2 2 4-4" /></svg>}
+      {/* Agendas */}
+      {meeting.agendas.map((ag, idx) => {
+        const aItems = itemsForAgenda(ag.id)
+        return (
+          <div key={ag.id} className="rounded-2xl border bg-white dark:border-gray-700 dark:bg-gray-900">
+            <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-700">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500 text-theme-xs font-bold text-white">{idx + 1}</span>
+                <span className="font-semibold truncate">{ag.title}</span>
+                <span className="text-theme-xs text-gray-400">
+                  {ag.open_items ?? 0} open / {ag.total_items ?? 0} total
+                </span>
+              </div>
+              {canEdit() && (
+                <div className="flex shrink-0 items-center gap-1">
+                  <button className="rounded-lg p-1 text-gray-400 hover:text-gray-600" onClick={() => setEditAgenda(ag)} title="Ubah agenda">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                   </button>
-                  <div className="min-w-0 flex-1">
-                    <div className={`text-theme-sm ${item.status === 'closed' ? 'text-gray-400 line-through' : 'text-gray-800 dark:text-gray-200'}`}>
-                      {item.description}
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-theme-xs">
-                      <span className={`rounded-full px-2 py-0.5 ${priCls(item.priority)}`}>{item.priority}</span>
-                      <span className={`rounded-full px-2 py-0.5 ${stCls(item.status)}`}>{stLabel(item.status)}</span>
-                      {item.pic && <span className="text-gray-500">PIC: {item.pic}</span>}
-                      {item.due_date && (
-                        <span className={dl != null && dl < 0 && item.status !== 'closed' ? 'text-red-500 font-medium' : 'text-gray-500'}>
-                          Due: {fmtDate(item.due_date)}{dl != null && item.status !== 'closed' ? ` (${dl > 0 ? `${dl}d` : 'overdue'})` : ''}
-                        </span>
-                      )}
-                      {item.notes && <span className="text-gray-400">• {item.notes}</span>}
-                    </div>
-                  </div>
-                  {canEdit() && (
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button className="rounded-lg p-1 text-gray-400 hover:text-gray-600" onClick={() => setEditItem(item)} title="Ubah">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                      </button>
-                      {canDel() && (
-                        <button className="rounded-lg p-1 text-gray-400 hover:text-red-500" onClick={async () => {
-                          if (!confirm('Hapus item ini?')) return
-                          try { await deleteMomItem(item.id); load() }
-                          catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
-                        }} title="Hapus">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
-                        </button>
-                      )}
-                    </div>
+                  {canDel() && (
+                    <button className="rounded-lg p-1 text-gray-400 hover:text-red-500" onClick={async () => {
+                      if (!confirm('Hapus agenda ini + semua action items-nya?')) return
+                      try { await deleteMomAgenda(ag.id); load() }
+                      catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+                    }} title="Hapus agenda">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
+                    </button>
                   )}
                 </div>
-              )
-            })}
+              )}
+            </div>
+
+            {/* Discussion */}
+            {ag.discussion && (
+              <div className="px-4 py-2 border-b text-theme-sm text-gray-600 dark:border-gray-700 dark:text-gray-400">
+                <span className="font-medium">Discussion: </span>{ag.discussion}
+              </div>
+            )}
+
+            {/* Items */}
+            {aItems.length === 0 ? (
+              <p className="px-4 py-3 text-theme-sm text-gray-400">Belum ada action item.</p>
+            ) : (
+              <div className="flex flex-col">
+                {aItems.map(item => (
+                  <ItemRow key={item.id} item={item} onEdit={() => setEditItem(item)} onToggle={async (next) => {
+                    try { await patchMomItem(item.id, { status: next }); load() }
+                    catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+                  }} onDelete={async () => {
+                    if (!confirm('Hapus item ini?')) return
+                    try { await deleteMomItem(item.id); load() }
+                    catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+                  }} />
+                ))}
+              </div>
+            )}
+
+            {/* Add item button */}
+            {canAdd() && meeting.status === 'open' && (
+              <button className="px-4 py-2 text-theme-sm text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/20"
+                onClick={() => setAddItemAgenda(ag.id)}>+ Action Item</button>
+            )}
           </div>
-        )}
-      </div>
+        )
+      })}
+
+      {/* Add agenda button */}
+      {canAdd() && meeting.status === 'open' && (
+        <button className="rounded-2xl border-2 border-dashed p-3 text-theme-sm text-gray-500 hover:border-brand-400 hover:text-brand-500"
+          onClick={() => setShowAddAgenda(true)}>+ Tambah Agenda</button>
+      )}
 
       {showEdit && <MeetingForm meeting={meeting} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); load() }} />}
-      {showAddItem && <ItemForm meetingId={id} onClose={() => setShowAddItem(false)} onSaved={() => { setShowAddItem(false); load() }} />}
-      {editItem && <ItemForm meetingId={id} item={editItem} onClose={() => setEditItem(null)} onSaved={() => { setEditItem(null); load() }} />}
+      {showAddAgenda && <AgendaForm onClose={() => setShowAddAgenda(false)} onSaved={() => { setShowAddAgenda(false); load() }} meetingId={id} />}
+      {editAgenda && <AgendaForm agenda={editAgenda} onClose={() => setEditAgenda(null)} onSaved={() => { setEditAgenda(null); load() }} meetingId={id} />}
+      {addItemAgenda && <ItemForm agendaId={addItemAgenda} onClose={() => setAddItemAgenda(null)} onSaved={() => { setAddItemAgenda(null); load() }} />}
+      {editItem && <ItemForm agendaId={editItem.agenda_id ?? 0} item={editItem} onClose={() => setEditItem(null)} onSaved={() => { setEditItem(null); load() }} />}
+    </div>
+  )
+}
+
+// ─── Item Row ─────────────────────────────────────────────
+
+function ItemRow({ item, onEdit, onToggle, onDelete }: {
+  item: MomItem
+  onEdit: () => void
+  onToggle: (next: string) => void
+  onDelete: () => void
+}) {
+  const dl = daysLeft(item.due_date)
+  return (
+    <div className="flex items-start gap-3 border-b px-4 py-3 last:border-0 dark:border-gray-700">
+      <button
+        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${item.status === 'closed' ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-gray-300 hover:border-emerald-400'}`}
+        onClick={() => onToggle(item.status === 'closed' ? 'open' : 'closed')}
+        title={item.status === 'closed' ? 'Buka kembali' : 'Tandai selesai'}
+      >
+        {item.status === 'closed' && <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 5l2 2 4-4" /></svg>}
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className={`text-theme-sm ${item.status === 'closed' ? 'text-gray-400 line-through' : 'text-gray-800 dark:text-gray-200'}`}>
+          {item.description}
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-theme-xs">
+          <span className={`rounded-full px-2 py-0.5 ${priCls(item.priority)}`}>{item.priority}</span>
+          <span className={`rounded-full px-2 py-0.5 ${stCls(item.status)}`}>{stLabel(item.status)}</span>
+          {item.pic && <span className="text-gray-500">PIC: {item.pic}</span>}
+          {item.due_date && (
+            <span className={dl != null && dl < 0 && item.status !== 'closed' ? 'text-red-500 font-medium' : 'text-gray-500'}>
+              Due: {fmtDate(item.due_date)}{dl != null && item.status !== 'closed' ? ` (${dl > 0 ? `${dl}d` : 'overdue'})` : ''}
+            </span>
+          )}
+          {item.notes && <span className="text-gray-400">• {item.notes}</span>}
+        </div>
+      </div>
+      {canEdit() && (
+        <div className="flex shrink-0 items-center gap-1">
+          <button className="rounded-lg p-1 text-gray-400 hover:text-gray-600" onClick={onEdit} title="Ubah">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+          </button>
+          {canDel() && (
+            <button className="rounded-lg p-1 text-gray-400 hover:text-red-500" onClick={onDelete} title="Hapus">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -255,7 +318,7 @@ function MeetingForm({ meeting, onClose, onSaved }: {
   meeting?: MomMeeting; onClose: () => void; onSaved: () => void
 }) {
   const [title, setTitle] = useState(meeting?.title ?? '')
-  const [date, setDate] = useState(meeting?.meeting_date?.slice(0, 10) ?? todayLocal())
+  const [dt, setDt] = useState(meeting?.meeting_date?.slice(0, 10) ?? todayLocal())
   const [location, setLocation] = useState(meeting?.location ?? '')
   const [category, setCategory] = useState(meeting?.category ?? 'Operasional')
   const [msg, setMsg] = useState('')
@@ -264,9 +327,9 @@ function MeetingForm({ meeting, onClose, onSaved }: {
       setMsg('')
       if (!title.trim()) { setMsg('Judul wajib diisi'); return }
       if (meeting) {
-        await patchMomMeeting(meeting.id, { title, meeting_date: date, location: location || null, category })
+        await patchMomMeeting(meeting.id, { title, meeting_date: dt, location: location || null, category })
       } else {
-        await createMomMeeting({ title, meeting_date: date, location: location || undefined, category, status: 'open' })
+        await createMomMeeting({ title, meeting_date: dt, location: location || undefined, category, status: 'open' })
       }
       onSaved(); onClose()
     } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
@@ -279,7 +342,7 @@ function MeetingForm({ meeting, onClose, onSaved }: {
         <div className="mt-3 flex flex-col gap-3">
           <label className="text-theme-sm">Judul<input className={inp} value={title} onChange={e => setTitle(e.target.value)} placeholder="cth Daily Meeting Pumping" /></label>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-theme-sm">Tanggal<input type="date" className={inp} value={date} onChange={e => setDate(e.target.value)} /></label>
+            <label className="text-theme-sm">Tanggal<input type="date" className={inp} value={dt} onChange={e => setDt(e.target.value)} /></label>
             <label className="text-theme-sm">Kategori
               <select className={inp} value={category} onChange={e => setCategory(e.target.value)}>
                 {CATS.map(c => <option key={c} value={c}>{c}</option>)}
@@ -298,10 +361,52 @@ function MeetingForm({ meeting, onClose, onSaved }: {
   )
 }
 
+// ─── Agenda Form ──────────────────────────────────────────
+
+function AgendaForm({ meetingId, agenda, onClose, onSaved }: {
+  meetingId: number; agenda?: MomAgenda; onClose: () => void; onSaved: () => void
+}) {
+  const [title, setTitle] = useState(agenda?.title ?? '')
+  const [discussion, setDiscussion] = useState(agenda?.discussion ?? '')
+  const [msg, setMsg] = useState('')
+  const save = async () => {
+    try {
+      setMsg('')
+      if (!title.trim()) { setMsg('Judul agenda wajib diisi'); return }
+      if (agenda) {
+        await patchMomAgenda(agenda.id, { title, discussion: discussion || null })
+      } else {
+        await addMomAgenda(meetingId, { title, discussion: discussion || undefined })
+      }
+      onSaved(); onClose()
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+  }
+  const inp = 'w-full rounded-lg border px-3 py-2'
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 dark:bg-gray-900">
+        <h3 className="font-semibold">{agenda ? 'Ubah Agenda' : 'Agenda Baru'}</h3>
+        <div className="mt-3 flex flex-col gap-3">
+          <label className="text-theme-sm">Judul Agenda<input className={inp} value={title} onChange={e => setTitle(e.target.value)} placeholder="cth Pompa WP855 Flow Rendah" /></label>
+          <label className="text-theme-sm">Discussion / Catatan
+            <textarea className={inp} rows={3} value={discussion} onChange={e => setDiscussion(e.target.value)}
+              placeholder="Ringkasan diskusi untuk agenda ini..." />
+          </label>
+        </div>
+        {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
+          <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={save}>Simpan</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Item Form ────────────────────────────────────────────
 
-function ItemForm({ meetingId, item, onClose, onSaved }: {
-  meetingId: number; item?: MomItem; onClose: () => void; onSaved: () => void
+function ItemForm({ agendaId, item, onClose, onSaved }: {
+  agendaId: number; item?: MomItem; onClose: () => void; onSaved: () => void
 }) {
   const [desc, setDesc] = useState(item?.description ?? '')
   const [pic, setPic] = useState(item?.pic ?? '')
@@ -320,7 +425,7 @@ function ItemForm({ meetingId, item, onClose, onSaved }: {
           priority, status, notes: notes || null,
         })
       } else {
-        await addMomItem(meetingId, {
+        await addMomItem(agendaId, {
           description: desc, pic: pic || undefined, due_date: due || undefined,
           priority, status, notes: notes || undefined,
         })

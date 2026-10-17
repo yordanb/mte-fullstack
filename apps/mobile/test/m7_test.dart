@@ -20,9 +20,9 @@ void main() {
     expect(r.errors.first.row, 2);
   });
 
-  test('perm matrix: 13 menu aktual backend (V21 staging + V24 mekanik)', () {
-    expect(permMenus.length, 13);
-    expect(permMenus, containsAll(['import', 'timeline', 'project', 'bomak', 'staging']));
+  test('perm matrix: 14 menu aktual backend (V21 staging + V24 mekanik + V25 mom)', () {
+    expect(permMenus.length, 14);
+    expect(permMenus, containsAll(['import', 'timeline', 'project', 'bomak', 'staging', 'mom']));
   });
 
   test('role mekanik ada di userRoles (V24)', () {

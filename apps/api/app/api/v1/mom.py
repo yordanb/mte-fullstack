@@ -1,4 +1,4 @@
-"""Minute of Meeting — meetings + action items CRUD."""
+"""Minute of Meeting — meetings + agendas + action items CRUD."""
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
@@ -29,6 +29,16 @@ class MeetingPatch(BaseModel):
     location: str | None = None
     category: str | None = None
     status: str | None = None
+
+
+class AgendaIn(BaseModel):
+    title: str
+    discussion: str | None = None
+
+
+class AgendaPatch(BaseModel):
+    title: str | None = None
+    discussion: str | None = None
 
 
 class ItemIn(BaseModel):
@@ -63,21 +73,16 @@ async def list_meetings(status: str | None = Query(None),
     if category:
         conds.append("m.category = :cat"); p["cat"] = category
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
-    try:
-        rows = (await db.execute(text(f"""
-            SELECT m.*, 
-                   COUNT(i.id) AS total_items,
-                   COUNT(i.id) FILTER (WHERE i.status <> 'closed') AS open_items
-            FROM mom_meetings m
-            LEFT JOIN mom_items i ON i.meeting_id = m.id
-            {where}
-            GROUP BY m.id
-            ORDER BY m.meeting_date DESC
-        """), p)).mappings().all()
-    except ProgrammingError as e:
-        if "does not exist" in str(e):
-            raise HTTPException(500, "Tabel mom_meetings belum dibuat — jalankan migration V25")
-        raise
+    rows = (await db.execute(text(f"""
+        SELECT m.*,
+               COUNT(i.id) AS total_items,
+               COUNT(i.id) FILTER (WHERE i.status <> 'closed') AS open_items
+        FROM mom_meetings m
+        LEFT JOIN mom_items i ON i.meeting_id = m.id
+        {where}
+        GROUP BY m.id
+        ORDER BY m.meeting_date DESC
+    """), p)).mappings().all()
     return {"data": [dict(r) for r in rows]}
 
 
@@ -88,18 +93,17 @@ async def create_meeting(body: MeetingIn, db: AsyncSession = Depends(get_db),
         raise HTTPException(400, f"Kategori harus salah satu {CATS}")
     if body.status not in ('open', 'closed'):
         raise HTTPException(400, "Status harus 'open' atau 'closed'")
-    try:
-        res = await db.execute(text("""
-            INSERT INTO mom_meetings(title, meeting_date, location, category, status, created_by)
-            VALUES (:t, :d, :loc, :cat, :st, :u) RETURNING id
-        """), {"t": body.title.strip(), "d": body.meeting_date, "loc": body.location,
-               "cat": body.category, "st": body.status, "u": user["username"]})
-        mid = res.scalar_one()
-        await db.commit()
-    except ProgrammingError as e:
-        if "does not exist" in str(e):
-            raise HTTPException(500, "Tabel mom_meetings belum dibuat — jalankan migration V25 di VPS: docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V25__mom.sql")
-        raise
+    res = await db.execute(text("""
+        INSERT INTO mom_meetings(title, meeting_date, location, category, status, created_by)
+        VALUES (:t, :d, :loc, :cat, :st, :u) RETURNING id
+    """), {"t": body.title.strip(), "d": body.meeting_date, "loc": body.location,
+           "cat": body.category, "st": body.status, "u": user["username"]})
+    mid = res.scalar_one()
+    # Auto-create first agenda
+    await db.execute(text("""
+        INSERT INTO mom_agendas(meeting_id, seq, title) VALUES (:mid, 0, 'Agenda 1')
+    """), {"mid": mid})
+    await db.commit()
     return {"id": mid}
 
 
@@ -109,10 +113,20 @@ async def get_meeting(mid: int, db: AsyncSession = Depends(get_db),
     m = (await db.execute(text("SELECT * FROM mom_meetings WHERE id=:id"), {"id": mid})).mappings().first()
     if not m:
         raise HTTPException(404, "Meeting tidak ditemukan")
+    agendas = (await db.execute(text("""
+        SELECT a.*, COUNT(i.id) AS total_items,
+               COUNT(i.id) FILTER (WHERE i.status <> 'closed') AS open_items
+        FROM mom_agendas a
+        LEFT JOIN mom_items i ON i.agenda_id = a.id
+        WHERE a.meeting_id = :mid
+        GROUP BY a.id
+        ORDER BY a.seq, a.id
+    """), {"mid": mid})).mappings().all()
     items = (await db.execute(text("""
         SELECT * FROM mom_items WHERE meeting_id=:mid ORDER BY item_no, id
     """), {"mid": mid})).mappings().all()
     out = dict(m)
+    out["agendas"] = [dict(a) for a in agendas]
     out["items"] = [dict(i) for i in items]
     return out
 
@@ -126,7 +140,7 @@ async def patch_meeting(mid: int, body: MeetingPatch, db: AsyncSession = Depends
         v = getattr(body, k)
         if v is not None:
             if k == "category" and v not in CATS:
-                raise HTTPException(400, f"Kategori tidak valid")
+                raise HTTPException(400, "Kategori tidak valid")
             if k == "status" and v not in ('open', 'closed'):
                 raise HTTPException(400, "Status tidak valid")
             sets.append(f"{k}=:{k}"); p[k] = v
@@ -151,25 +165,99 @@ async def delete_meeting(mid: int, db: AsyncSession = Depends(get_db),
     return {"ok": True}
 
 
-# ─── Items ────────────────────────────────────────────────
+# ─── Agendas ──────────────────────────────────────────────
 
-@router.post("/meetings/{mid}/items", dependencies=[Depends(require_role("inputer", "admin"))], status_code=201)
-async def add_item(mid: int, body: ItemIn, db: AsyncSession = Depends(get_db),
-                   user=Depends(get_current_user)):
+@router.post("/meetings/{mid}/agendas", dependencies=[Depends(require_role("inputer", "admin"))], status_code=201)
+async def add_agenda(mid: int, body: AgendaIn, db: AsyncSession = Depends(get_db),
+                     user=Depends(get_current_user)):
     ok = (await db.execute(text("SELECT 1 FROM mom_meetings WHERE id=:id"), {"id": mid})).scalar()
     if not ok:
         raise HTTPException(404, "Meeting tidak ditemukan")
+    max_seq = (await db.execute(text(
+        "SELECT COALESCE(MAX(seq), -1) + 1 FROM mom_agendas WHERE meeting_id=:mid"), {"mid": mid})).scalar()
+    res = await db.execute(text("""
+        INSERT INTO mom_agendas(meeting_id, seq, title, discussion)
+        VALUES (:mid, :seq, :t, :disc) RETURNING id
+    """), {"mid": mid, "seq": max_seq, "t": body.title.strip(), "disc": body.discussion})
+    aid = res.scalar_one()
+    await db.commit()
+    return {"id": aid}
+
+
+@router.patch("/agendas/{aid}", dependencies=[Depends(require_role("inputer", "admin"))])
+async def patch_agenda(aid: int, body: AgendaPatch, db: AsyncSession = Depends(get_db),
+                       user=Depends(get_current_user)):
+    sets, p = [], {"id": aid}
+    if body.title is not None:
+        sets.append("title=:t"); p["t"] = body.title.strip()
+    if body.discussion is not None:
+        sets.append("discussion=:d"); p["d"] = body.discussion
+    if not sets:
+        raise HTTPException(400, "Tidak ada field yang diubah")
+    res = await db.execute(text(f"UPDATE mom_agendas SET {', '.join(sets)} WHERE id=:id"), p)
+    if res.rowcount == 0:
+        raise HTTPException(404, "Agenda tidak ditemukan")
+    await db.commit()
+    return {"ok": True}
+
+
+@router.delete("/agendas/{aid}", dependencies=[Depends(require_role("inputer", "admin"))])
+async def delete_agenda(aid: int, db: AsyncSession = Depends(get_db),
+                        user=Depends(get_current_user)):
+    res = await db.execute(text("DELETE FROM mom_agendas WHERE id=:id"), {"id": aid})
+    if res.rowcount == 0:
+        raise HTTPException(404, "Agenda tidak ditemukan")
+    await db.commit()
+    return {"ok": True}
+
+
+# ─── Items ────────────────────────────────────────────────
+
+@router.post("/agendas/{aid}/items", dependencies=[Depends(require_role("inputer", "admin"))], status_code=201)
+async def add_item(aid: int, body: ItemIn, db: AsyncSession = Depends(get_db),
+                   user=Depends(get_current_user)):
+    ag = (await db.execute(text("SELECT meeting_id FROM mom_agendas WHERE id=:id"), {"id": aid})).mappings().first()
+    if not ag:
+        raise HTTPException(404, "Agenda tidak ditemukan")
+    mid = ag["meeting_id"]
     if body.priority not in ('high', 'medium', 'low'):
         raise HTTPException(400, "Priority harus high/medium/low")
     if body.status not in ('open', 'in_progress', 'closed'):
         raise HTTPException(400, "Status tidak valid")
-    # Auto item_no
     max_no = (await db.execute(text(
         "SELECT COALESCE(MAX(item_no), 0) + 1 FROM mom_items WHERE meeting_id=:mid"), {"mid": mid})).scalar()
     res = await db.execute(text("""
-        INSERT INTO mom_items(meeting_id, item_no, description, pic, due_date, priority, status, notes)
-        VALUES (:mid, :no, :desc, :pic, :due, :pri, :st, :notes) RETURNING id
-    """), {"mid": mid, "no": max_no, "desc": body.description.strip(),
+        INSERT INTO mom_items(meeting_id, agenda_id, item_no, description, pic, due_date, priority, status, notes)
+        VALUES (:mid, :aid, :no, :desc, :pic, :due, :pri, :st, :notes) RETURNING id
+    """), {"mid": mid, "aid": aid, "no": max_no, "desc": body.description.strip(),
+           "pic": body.pic, "due": body.due_date, "pri": body.priority,
+           "st": body.status, "notes": body.notes})
+    iid = res.scalar_one()
+    await db.commit()
+    return {"id": iid}
+
+
+# Keep old endpoint for backward compat
+@router.post("/meetings/{mid}/items", dependencies=[Depends(require_role("inputer", "admin"))], status_code=201)
+async def add_item_legacy(mid: int, body: ItemIn, db: AsyncSession = Depends(get_db),
+                          user=Depends(get_current_user)):
+    ok = (await db.execute(text("SELECT 1 FROM mom_meetings WHERE id=:id"), {"id": mid})).scalar()
+    if not ok:
+        raise HTTPException(404, "Meeting tidak ditemukan")
+    # Find first agenda for this meeting
+    ag = (await db.execute(text(
+        "SELECT id FROM mom_agendas WHERE meeting_id=:mid ORDER BY seq LIMIT 1"), {"mid": mid})).mappings().first()
+    aid = ag["id"] if ag else None
+    if body.priority not in ('high', 'medium', 'low'):
+        raise HTTPException(400, "Priority harus high/medium/low")
+    if body.status not in ('open', 'in_progress', 'closed'):
+        raise HTTPException(400, "Status tidak valid")
+    max_no = (await db.execute(text(
+        "SELECT COALESCE(MAX(item_no), 0) + 1 FROM mom_items WHERE meeting_id=:mid"), {"mid": mid})).scalar()
+    res = await db.execute(text("""
+        INSERT INTO mom_items(meeting_id, agenda_id, item_no, description, pic, due_date, priority, status, notes)
+        VALUES (:mid, :aid, :no, :desc, :pic, :due, :pri, :st, :notes) RETURNING id
+    """), {"mid": mid, "aid": aid, "no": max_no, "desc": body.description.strip(),
            "pic": body.pic, "due": body.due_date, "pri": body.priority,
            "st": body.status, "notes": body.notes})
     iid = res.scalar_one()
