@@ -645,3 +645,52 @@ export async function searchStagingEquipment(q: string): Promise<{ data: { cn: s
   const r = await api.get('/v1/staging/equipment', { params: { q } })
   return r.data
 }
+
+// ─── Minute of Meeting ───────────────────────────────────
+
+export type MomMeeting = {
+  id: number; title: string; meeting_date: string; location?: string | null
+  category: string; status: string; created_by?: string | null
+  created_at?: string; updated_at?: string
+  total_items?: number; open_items?: number
+}
+
+export type MomItem = {
+  id: number; meeting_id: number; item_no: number
+  description: string; pic?: string | null; due_date?: string | null
+  priority: string; status: string; notes?: string | null
+  created_at?: string; updated_at?: string
+}
+
+export async function fetchMomMeetings(status?: string, category?: string): Promise<{ data: MomMeeting[] }> {
+  const r = await api.get('/v1/mom/meetings', { params: { status, category } })
+  return r.data
+}
+export async function createMomMeeting(body: { title: string; meeting_date: string; location?: string; category: string; status: string }) {
+  const r = await api.post('/v1/mom/meetings', body)
+  return r.data
+}
+export async function fetchMomMeeting(id: number): Promise<MomMeeting & { items: MomItem[] }> {
+  const r = await api.get(`/v1/mom/meetings/${id}`)
+  return r.data
+}
+export async function patchMomMeeting(id: number, body: Record<string, unknown>) {
+  const r = await api.patch(`/v1/mom/meetings/${id}`, body)
+  return r.data
+}
+export async function deleteMomMeeting(id: number) {
+  const r = await api.delete(`/v1/mom/meetings/${id}`)
+  return r.data
+}
+export async function addMomItem(meetingId: number, body: { description: string; pic?: string; due_date?: string; priority: string; status: string; notes?: string }) {
+  const r = await api.post(`/v1/mom/meetings/${meetingId}/items`, body)
+  return r.data
+}
+export async function patchMomItem(id: number, body: Record<string, unknown>) {
+  const r = await api.patch(`/v1/mom/items/${id}`, body)
+  return r.data
+}
+export async function deleteMomItem(id: number) {
+  const r = await api.delete(`/v1/mom/items/${id}`)
+  return r.data
+}
