@@ -760,15 +760,15 @@ export function ActivityPage() {
       {tab === 'dcdragflow' && (() => {
         const daysIn = new Date(ym.y, ym.m, 0).getDate()
         const days = Array.from({ length: daysIn }, (_, i) => i + 1)
-        // Build lookup: key = `${ex}|${dateISO}|${shift}` → hm
+        // Build lookup: key = `${cn}|${dateISO}|${shift}` → hm
+        // Key per unit code (bukan pair.ex) supaya EX & WP tidak saling overwrite
         const dcMap = new Map<string, number | null>()
+        const dragflowCns = new Set(DRAGFLOW_PAIRS.flatMap(p => [p.ex, p.wp]))
         dcData.forEach(a => {
           const d = String(a.date).slice(0, 10)
-          DRAGFLOW_PAIRS.forEach(pair => {
-            if (a.cn === pair.ex || a.cn === pair.wp) {
-              dcMap.set(`${pair.ex}|${d}|${a.shift ?? 1}`, a.hm ?? null)
-            }
-          })
+          if (a.cn && dragflowCns.has(a.cn)) {
+            dcMap.set(`${a.cn}|${d}|${a.shift ?? 1}`, a.hm ?? null)
+          }
         })
         const todayDay = new Date().getDate()
         const isCurMonth = new Date().getFullYear() === ym.y && new Date().getMonth() + 1 === ym.m
@@ -797,15 +797,20 @@ export function ActivityPage() {
                       </td>
                       {days.map(d => {
                         const dateStr = iso(ym.y, ym.m, d)
-                        const hm1 = dcMap.get(`${pair.ex}|${dateStr}|1`)
-                        const hm2 = dcMap.get(`${pair.ex}|${dateStr}|2`)
-                        const hasData = hm1 != null || hm2 != null
+                        // Lookup EX & WP secara terpisah per shift
+                        const exHm1 = dcMap.get(`${pair.ex}|${dateStr}|1`)
+                        const exHm2 = dcMap.get(`${pair.ex}|${dateStr}|2`)
+                        const wpHm1 = dcMap.get(`${pair.wp}|${dateStr}|1`)
+                        const wpHm2 = dcMap.get(`${pair.wp}|${dateStr}|2`)
+                        const hasData = exHm1 != null || exHm2 != null || wpHm1 != null || wpHm2 != null
                         return (
                           <td key={d} className={`border px-1 py-1 text-center text-theme-xs ${hasData ? 'font-medium text-gray-700 dark:text-gray-300' : 'text-gray-300 dark:text-gray-700'}`}>
                             {hasData ? (
                               <span className="flex flex-col gap-0.5">
-                                {hm1 != null && <span className="text-blue-600 dark:text-blue-400">{hm1}</span>}
-                                {hm2 != null && <span className="text-amber-600 dark:text-amber-400">{hm2}</span>}
+                                {exHm1 != null && <span className="text-blue-600 dark:text-blue-400">{exHm1}</span>}
+                                {wpHm1 != null && <span className="text-blue-600 dark:text-blue-400">{wpHm1}</span>}
+                                {exHm2 != null && <span className="text-amber-600 dark:text-amber-400">{exHm2}</span>}
+                                {wpHm2 != null && <span className="text-amber-600 dark:text-amber-400">{wpHm2}</span>}
                               </span>
                             ) : '·'}
                           </td>
