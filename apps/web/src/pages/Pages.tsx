@@ -760,26 +760,13 @@ export function ActivityPage() {
       {tab === 'dcdragflow' && (() => {
         const daysIn = new Date(ym.y, ym.m, 0).getDate()
         const days = Array.from({ length: daysIn }, (_, i) => i + 1)
-        // Build lookup: key = `${cn}|${dateISO}|${shift}` → hm[]
-        // Array supaya multiple aktivitas dengan cn+shift sama tidak saling overwrite
+        // Build lookup: key = `${wp}|${dateISO}|${shift}` → hm[]
+        // Hanya cari berdasarkan WP code, bukan EX
         const dcMap = new Map<string, number[]>()
-        const pairedCns = new Set(DRAGFLOW_PAIRS.flatMap(p => [p.ex, p.wp]))
-        // Deteksi unit dragflow dari data yang belum ada di DRAGFLOW_PAIRS
-        const extraCns = new Set<string>()
-        dcData.forEach(a => {
-          if (a.cn && !pairedCns.has(a.cn) && a.hm != null) {
-            extraCns.add(a.cn)
-          }
-        })
-        // Gabungkan pairs yang sudah ada + solo rows untuk unit unpaired
-        const allPairs = [
-          ...DRAGFLOW_PAIRS.map(p => ({ ex: p.ex, wp: p.wp })),
-          ...[...extraCns].map(cn => ({ ex: cn, wp: '' as string })),
-        ]
-        const allCns = new Set([...pairedCns, ...extraCns])
+        const wpCodes = new Set(DRAGFLOW_PAIRS.map(p => p.wp))
         dcData.forEach(a => {
           const d = String(a.date).slice(0, 10)
-          if (a.cn && allCns.has(a.cn) && a.hm != null) {
+          if (a.cn && wpCodes.has(a.cn) && a.hm != null) {
             const key = `${a.cn}|${d}|${a.shift ?? 1}`
             const arr = dcMap.get(key) ?? []
             arr.push(a.hm)
@@ -806,27 +793,23 @@ export function ActivityPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {allPairs.map(pair => (
-                    <tr key={pair.ex + (pair.wp ? `-${pair.wp}` : '')} className="hover:bg-gray-50 dark:hover:bg-white/5">
+                  {DRAGFLOW_PAIRS.map(pair => (
+                    <tr key={pair.ex} className="hover:bg-gray-50 dark:hover:bg-white/5">
                       <td className="sticky left-0 z-10 border bg-white px-3 py-1.5 font-medium whitespace-nowrap dark:bg-gray-900">
-                        {pair.ex} {pair.wp && <><span className="text-gray-400">-</span> {pair.wp}</>}
+                        {pair.ex} <span className="text-gray-400">-</span> {pair.wp}
                       </td>
                       {days.map(d => {
                         const dateStr = iso(ym.y, ym.m, d)
-                        // Lookup EX & WP secara terpisah per shift — array of values
-                        const exHm1 = dcMap.get(`${pair.ex}|${dateStr}|1`) ?? []
-                        const exHm2 = dcMap.get(`${pair.ex}|${dateStr}|2`) ?? []
-                        const wpHm1 = dcMap.get(`${pair.wp}|${dateStr}|1`) ?? []
-                        const wpHm2 = dcMap.get(`${pair.wp}|${dateStr}|2`) ?? []
-                        const hasData = exHm1.length > 0 || exHm2.length > 0 || wpHm1.length > 0 || wpHm2.length > 0
+                        // Lookup hanya berdasarkan WP code per shift
+                        const hm1 = dcMap.get(`${pair.wp}|${dateStr}|1`) ?? []
+                        const hm2 = dcMap.get(`${pair.wp}|${dateStr}|2`) ?? []
+                        const hasData = hm1.length > 0 || hm2.length > 0
                         return (
                           <td key={d} className={`border px-1 py-1 text-center text-theme-xs ${hasData ? 'font-medium text-gray-700 dark:text-gray-300' : 'text-gray-300 dark:text-gray-700'}`}>
                             {hasData ? (
                               <span className="flex flex-col gap-0.5">
-                                {exHm1.map((hm, i) => <span key={`ex1-${i}`} className="text-blue-600 dark:text-blue-400">{hm}</span>)}
-                                {wpHm1.map((hm, i) => <span key={`wp1-${i}`} className="text-blue-600 dark:text-blue-400">{hm}</span>)}
-                                {exHm2.map((hm, i) => <span key={`ex2-${i}`} className="text-amber-600 dark:text-amber-400">{hm}</span>)}
-                                {wpHm2.map((hm, i) => <span key={`wp2-${i}`} className="text-amber-600 dark:text-amber-400">{hm}</span>)}
+                                {hm1.map((hm, i) => <span key={`s1-${i}`} className="text-blue-600 dark:text-blue-400">{hm}</span>)}
+                                {hm2.map((hm, i) => <span key={`s2-${i}`} className="text-amber-600 dark:text-amber-400">{hm}</span>)}
                               </span>
                             ) : '·'}
                           </td>
@@ -841,7 +824,7 @@ export function ActivityPage() {
               <span className="flex items-center gap-1"><span className="text-blue-600 dark:text-blue-400">●</span> Shift 1</span>
               <span className="flex items-center gap-1"><span className="text-amber-600 dark:text-amber-400">●</span> Shift 2</span>
               <span>·</span>
-              <span>HM dari aktivitas "Daily Check Dragflow"</span>
+              <span>HM dari aktivitas "Daily Check Dragflow" (lookup by WP code)</span>
             </div>
           </div>
         )
