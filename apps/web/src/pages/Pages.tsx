@@ -763,10 +763,23 @@ export function ActivityPage() {
         // Build lookup: key = `${cn}|${dateISO}|${shift}` → hm[]
         // Array supaya multiple aktivitas dengan cn+shift sama tidak saling overwrite
         const dcMap = new Map<string, number[]>()
-        const dragflowCns = new Set(DRAGFLOW_PAIRS.flatMap(p => [p.ex, p.wp]))
+        const pairedCns = new Set(DRAGFLOW_PAIRS.flatMap(p => [p.ex, p.wp]))
+        // Deteksi unit dragflow dari data yang belum ada di DRAGFLOW_PAIRS
+        const extraCns = new Set<string>()
+        dcData.forEach(a => {
+          if (a.cn && !pairedCns.has(a.cn) && a.hm != null) {
+            extraCns.add(a.cn)
+          }
+        })
+        // Gabungkan pairs yang sudah ada + solo rows untuk unit unpaired
+        const allPairs = [
+          ...DRAGFLOW_PAIRS.map(p => ({ ex: p.ex, wp: p.wp })),
+          ...[...extraCns].map(cn => ({ ex: cn, wp: '' as string })),
+        ]
+        const allCns = new Set([...pairedCns, ...extraCns])
         dcData.forEach(a => {
           const d = String(a.date).slice(0, 10)
-          if (a.cn && dragflowCns.has(a.cn) && a.hm != null) {
+          if (a.cn && allCns.has(a.cn) && a.hm != null) {
             const key = `${a.cn}|${d}|${a.shift ?? 1}`
             const arr = dcMap.get(key) ?? []
             arr.push(a.hm)
@@ -793,10 +806,10 @@ export function ActivityPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {DRAGFLOW_PAIRS.map(pair => (
-                    <tr key={pair.ex} className="hover:bg-gray-50 dark:hover:bg-white/5">
+                  {allPairs.map(pair => (
+                    <tr key={pair.ex + (pair.wp ? `-${pair.wp}` : '')} className="hover:bg-gray-50 dark:hover:bg-white/5">
                       <td className="sticky left-0 z-10 border bg-white px-3 py-1.5 font-medium whitespace-nowrap dark:bg-gray-900">
-                        {pair.ex} <span className="text-gray-400">-</span> {pair.wp}
+                        {pair.ex} {pair.wp && <><span className="text-gray-400">-</span> {pair.wp}</>}
                       </td>
                       {days.map(d => {
                         const dateStr = iso(ym.y, ym.m, d)
