@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { DatePicker } from '../components/DatePicker'
 import {
   fetchRiwayatIssues, createRiwayatIssue, fetchRiwayatIssue, patchRiwayatIssue, deleteRiwayatIssue,
-  addRiwayatProgress, deleteRiwayatProgress,
+  addRiwayatProgress, patchRiwayatProgress, deleteRiwayatProgress,
   fetchRiwayatProgressPhotos, addRiwayatProgressPhotos, deleteRiwayatProgressPhoto,
   patchProgressPhotoNotes,
   riwayatProgressPhotoUrl,
@@ -144,6 +144,7 @@ function IssueDetail({ id, onBack }: { id: number; onBack: () => void }) {
   const [msg, setMsg] = useState('')
   const [showEdit, setShowEdit] = useState(false)
   const [showAddProgress, setShowAddProgress] = useState(false)
+  const [editProgress, setEditProgress] = useState<RiwayatProgress | null>(null)
   const [showAddPart, setShowAddPart] = useState(false)
   const [editPart, setEditPart] = useState<RiwayatPart | null>(null)
 
@@ -239,13 +240,18 @@ function IssueDetail({ id, onBack }: { id: number; onBack: () => void }) {
                   {pr.part_required && <ProgressParts pid={pr.id} key={`pt-${pr.id}`} />}
                 </div>
                 {canEdit() && (
-                  <button className="shrink-0 rounded-lg p-1 text-gray-400 hover:text-red-500" onClick={async () => {
-                    if (!confirm('Hapus progress ini?')) return
-                    try { await deleteRiwayatProgress(pr.id); load() }
-                    catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
-                  }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button className="shrink-0 rounded-lg p-1 text-gray-400 hover:text-blue-500" onClick={() => setEditProgress(pr)} title="Ubah">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                    </button>
+                    <button className="shrink-0 rounded-lg p-1 text-gray-400 hover:text-red-500" onClick={async () => {
+                      if (!confirm('Hapus progress ini?')) return
+                      try { await deleteRiwayatProgress(pr.id); load() }
+                      catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+                    }} title="Hapus">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
@@ -294,6 +300,7 @@ function IssueDetail({ id, onBack }: { id: number; onBack: () => void }) {
 
       {showEdit && <IssueForm issue={issue} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); load() }} />}
       {showAddProgress && <ProgressForm issueId={id} onClose={() => setShowAddProgress(false)} onSaved={() => { setShowAddProgress(false); load() }} />}
+      {editProgress && <ProgressForm issueId={id} progress={editProgress} onClose={() => setEditProgress(null)} onSaved={() => { setEditProgress(null); load() }} />}
       {showAddPart && <PartForm issueId={id} onClose={() => setShowAddPart(false)} onSaved={() => { setShowAddPart(false); load() }} />}
       {editPart && <PartForm issueId={id} part={editPart} onClose={() => setEditPart(null)} onSaved={() => { setEditPart(null); load() }} />}
     </div>
@@ -367,25 +374,29 @@ function IssueForm({ issue, onClose, onSaved }: {
 
 // ─── Progress Form ───────────────────────────────────────
 
-function ProgressForm({ issueId, onClose, onSaved }: {
-  issueId: number; onClose: () => void; onSaved: () => void
+function ProgressForm({ issueId, progress, onClose, onSaved }: {
+  issueId: number; progress?: RiwayatProgress; onClose: () => void; onSaved: () => void
 }) {
-  const [desc, setDesc] = useState('')
-  const [partReq, setPartReq] = useState(false)
+  const [desc, setDesc] = useState(progress?.description ?? '')
+  const [partReq, setPartReq] = useState(progress?.part_required ?? false)
   const [msg, setMsg] = useState('')
   const save = async () => {
     try {
       setMsg('')
       if (!desc.trim()) { setMsg('Deskripsi progress wajib diisi'); return }
-      await addRiwayatProgress(issueId, { description: desc, part_required: partReq })
-      onSaved(); onClose()
+      if (progress) {
+        await patchRiwayatProgress(progress.id, { description: desc, part_required: partReq })
+      } else {
+        await addRiwayatProgress(issueId, { description: desc, part_required: partReq })
+      }
+      onSaved()
     } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   const inp = 'w-full rounded-lg border px-3 py-2'
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-5 dark:bg-gray-900">
-        <h3 className="font-semibold">Progress Baru</h3>
+        <h3 className="font-semibold">{progress ? 'Edit Progress' : 'Progress Baru'}</h3>
         <div className="mt-3 flex flex-col gap-3">
           <label className="text-theme-sm">Deskripsi<textarea className={inp} rows={3} value={desc} onChange={e => setDesc(e.target.value)} placeholder="cth: Sudah dibongkar, ditemukan bearing aus" /></label>
           <label className="flex items-center gap-2 text-theme-sm">
