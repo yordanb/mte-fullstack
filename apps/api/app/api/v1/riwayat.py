@@ -1,11 +1,15 @@
 """Riwayat — issue tracking dengan progress timeline + parts requirement."""
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, Query
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
+from app.core.config import settings
 from app.core.deps import get_current_user, require_role
+from app.core.security import decode_token
 
 router = APIRouter(prefix="/v1/riwayat", tags=["riwayat"])
 
@@ -264,3 +268,102 @@ async def delete_part(ptid: int, db: AsyncSession = Depends(get_db),
         raise HTTPException(404, "Part tidak ditemukan")
     await db.commit()
     return {"ok": True}
+
+
+# ─── Evidence Photos ─────────────────────────────────────
+
+def _pdir() -> Path:
+    p = Path(getattr(settings, 'upload_dir', '/data/uploads')) / "riwayat"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+async def _save_progress_files(db: AsyncSession, pid: int, files: list[UploadFile]) -> int:
+    import uuid as _uuid
+    adir = _pdir() / str(pid)
+    adir.mkdir(parents=True, exist_ok=True)
+    n = 0
+    for f in files:
+        if not f.filename:
+            continue
+        ext = Path(f.filename).suffix[:10]
+        stored = f"{_uuid.uuid4().hex}{ext}"
+        dest = adir / stored
+        size = 0
+        with dest.open("wb") as out:
+            while True:
+                chunk = await f.read(1024 * 1024)
+                if not chunk:
+                    break
+                size += len(chunk)
+                out.write(chunk)
+        await db.execute(text(
+            "INSERT INTO riwayat_progress_photos(progress_id,filename,orig_name,content_type,size) "
+            "VALUES (:pid,:fn,:on,:ct,:s)"),
+            {"pid": pid, "fn": stored, "on": f.filename[:200],
+             "ct": f.content_type, "s": size})
+        n += 1
+    return n
+
+
+@router.post("/progress/{pid}/photos", dependencies=[Depends(require_role("inputer", "admin", "mekanik"))], status_code=201)
+async def add_progress_photos(pid: int, files: list[UploadFile] = File(...),
+                               db: AsyncSession = Depends(get_db),
+                               user=Depends(get_current_user)):
+    ok = (await db.execute(text("SELECT 1 FROM riwayat_progress WHERE id=:id"), {"id": pid})).scalar()
+    if not ok:
+        raise HTTPException(404, "Progress tidak ditemukan")
+    n = await _save_progress_files(db, pid, files)
+    if n == 0:
+        raise HTTPException(400, "tidak ada file diterima")
+    await db.commit()
+    return {"added": n}
+
+
+@router.get("/progress/{pid}/photos")
+async def list_progress_photos(pid: int, db: AsyncSession = Depends(get_db),
+                               user=Depends(get_current_user)):
+    rows = (await db.execute(text(
+        "SELECT id, orig_name, content_type, size, created_at FROM riwayat_progress_photos "
+        "WHERE progress_id=:pid ORDER BY created_at"), {"pid": pid})).mappings().all()
+    return {"data": [dict(r) for r in rows]}
+
+
+@router.delete("/progress/{pid}/photos/{phid}", dependencies=[Depends(require_role("inputer", "admin", "mekanik"))])
+async def delete_progress_photo(pid: int, phid: int, db: AsyncSession = Depends(get_db),
+                                user=Depends(get_current_user)):
+    row = (await db.execute(text(
+        "SELECT filename FROM riwayat_progress_photos WHERE id=:p AND progress_id=:pid"),
+        {"p": phid, "pid": pid})).mappings().first()
+    if not row:
+        raise HTTPException(404, "Foto tidak ditemukan")
+    (_pdir() / str(pid) / row["filename"]).unlink(missing_ok=True)
+    await db.execute(text("DELETE FROM riwayat_progress_photos WHERE id=:p"), {"p": phid})
+    await db.commit()
+    return {"ok": True}
+
+
+@router.get("/progress/{pid}/photos/{phid}")
+async def get_progress_photo(pid: int, phid: int, request: Request | None = None,
+                             db: AsyncSession = Depends(get_db)):
+    tok = request.query_params.get("token") if request else None
+    if not tok and request is not None:
+        auth = request.headers.get("authorization", "")
+        if auth.lower().startswith("bearer "):
+            tok = auth[7:]
+    if not tok:
+        raise HTTPException(401, "Butuh login")
+    try:
+        decode_token(tok)
+    except Exception:
+        raise HTTPException(401, "Token tidak valid")
+    row = (await db.execute(text(
+        "SELECT filename, content_type, orig_name FROM riwayat_progress_photos "
+        "WHERE id=:p AND progress_id=:pid"), {"p": phid, "pid": pid})).mappings().first()
+    if not row:
+        raise HTTPException(404, "Foto tidak ditemukan")
+    path = _pdir() / str(pid) / row["filename"]
+    if not path.is_file():
+        raise HTTPException(404, "File hilang")
+    return FileResponse(path, media_type=row["content_type"] or "application/octet-stream",
+                        filename=row["orig_name"])

@@ -790,6 +790,25 @@ export async function deleteRiwayatPart(id: number) {
   const r = await api.delete(`/v1/riwayat/parts/${id}`)
   return r.data
 }
+export async function fetchRiwayatProgressPhotos(pid: number) {
+  const r = await api.get(`/v1/riwayat/progress/${pid}/photos`)
+  return r.data.data as { id: number; orig_name: string; content_type: string | null; size: number; created_at: string }[]
+}
+export async function addRiwayatProgressPhotos(pid: number, files: File[]) {
+  const fd = new FormData()
+  files.forEach(f => fd.append('files', f))
+  const r = await api.post(`/v1/riwayat/progress/${pid}/photos`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return r.data
+}
+export async function deleteRiwayatProgressPhoto(pid: number, phid: number) {
+  const r = await api.delete(`/v1/riwayat/progress/${pid}/photos/${phid}`)
+  return r.data
+}
+export function riwayatProgressPhotoUrl(pid: number, phid: number) {
+  return `/api/v1/riwayat/progress/${pid}/photos/${phid}?token=${localStorage.getItem('mte_token') ?? ''}`
+}
 
 export async function deleteMomItem(id: number) {
   const r = await api.delete(`/v1/mom/items/${id}`)

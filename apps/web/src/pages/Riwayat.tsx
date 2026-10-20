@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   fetchRiwayatIssues, createRiwayatIssue, fetchRiwayatIssue, patchRiwayatIssue, deleteRiwayatIssue,
   addRiwayatProgress, deleteRiwayatProgress,
+  fetchRiwayatProgressPhotos, addRiwayatProgressPhotos, deleteRiwayatProgressPhoto,
+  riwayatProgressPhotoUrl,
   addRiwayatPart, patchRiwayatPart, deleteRiwayatPart,
   can, isAdmin, errMsg, todayLocal,
   type RiwayatIssue, type RiwayatProgress, type RiwayatPart,
@@ -225,6 +227,8 @@ function IssueDetail({ id, onBack }: { id: number; onBack: () => void }) {
                     <span>{fmtDateTime(pr.log_date)}{pr.created_by && ` • ${pr.created_by}`}</span>
                     {pr.part_required && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">⚠ Part Required</span>}
                   </div>
+                  {/* Evidence photos */}
+                  <ProgressPhotos pid={pr.id} key={pr.id} />
                 </div>
                 {canEdit() && (
                   <button className="shrink-0 rounded-lg p-1 text-gray-400 hover:text-red-500" onClick={async () => {
@@ -436,6 +440,67 @@ function PartForm({ issueId, part, onClose, onSaved }: {
           <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
           <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={save}>Simpan</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Progress Photos (evidence) ──────────────────────
+
+function ProgressPhotos({ pid }: { pid: number }) {
+  const [photos, setPhotos] = useState<{ id: number; orig_name: string; content_type: string | null; size: number; created_at: string }[]>([])
+  const [msg, setMsg] = useState('')
+  const load = async () => {
+    try { setPhotos(await fetchRiwayatProgressPhotos(pid)) } catch {}
+  }
+  useEffect(() => { load() }, [pid])
+
+  const upload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    try { await addRiwayatProgressPhotos(pid, Array.from(files)); load() }
+    catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+  }
+
+  return (
+    <div className="mt-2">
+      {photos.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {photos.map(ph => {
+            const isImg = ph.content_type?.startsWith('image/')
+            return (
+              <div key={ph.id} className="group relative">
+                {isImg ? (
+                  <img src={riwayatProgressPhotoUrl(pid, ph.id)} alt={ph.orig_name}
+                    className="h-16 w-16 rounded-lg border object-cover" />
+                ) : (
+                  <a href={riwayatProgressPhotoUrl(pid, ph.id)} download
+                    className="flex h-16 w-16 flex-col items-center justify-center rounded-lg border p-1 text-center text-theme-xs text-gray-500">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                    <span className="truncate w-full">{ph.orig_name}</span>
+                  </a>
+                )}
+                {can('riwayat', 'add') && (
+                  <button
+                    className="absolute right-0 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={async (e) => {
+                      e.preventDefault()
+                      try { await deleteRiwayatProgressPhoto(pid, ph.id); load() }
+                      catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+                  }}>×</button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      <div className="mt-1 flex items-center gap-2">
+        {can('riwayat', 'add') && (
+          <label className="cursor-pointer text-theme-xs text-brand-500 hover:text-brand-600">
+            + Foto/File
+            <input type="file" multiple onChange={e => upload(e.target.files)} className="hidden" />
+          </label>
+        )}
+        {msg && <span className="text-theme-xs text-red-500">{msg}</span>}
       </div>
     </div>
   )
