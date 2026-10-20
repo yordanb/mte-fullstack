@@ -4,6 +4,8 @@ import {
   addRiwayatProgress, deleteRiwayatProgress,
   fetchRiwayatProgressPhotos, addRiwayatProgressPhotos, deleteRiwayatProgressPhoto,
   riwayatProgressPhotoUrl,
+  fetchRiwayatPartPhotos, addRiwayatPartPhotos, deleteRiwayatPartPhoto,
+  riwayatPartPhotoUrl,
   addRiwayatPartToProgress, fetchRiwayatPartsByProgress,
   addRiwayatPart, patchRiwayatPart, deleteRiwayatPart,
   can, isAdmin, errMsg, todayLocal,
@@ -272,6 +274,7 @@ function IssueDetail({ id, onBack }: { id: number; onBack: () => void }) {
                     {pt.eta && <span className="text-gray-500">ETA: {fmtDate(pt.eta)}</span>}
                     {pt.notes && <span className="text-gray-400">• {pt.notes}</span>}
                   </div>
+                  <PartPhotos ptid={pt.id} key={`pp-${pt.id}`} />
                 </div>
                 {canEdit() && (
                   <div className="flex shrink-0 items-center gap-1">
@@ -583,6 +586,7 @@ function ProgressParts({ pid }: { pid: number }) {
                   {p.eta && <span>ETA: {fmtDate(p.eta)}</span>}
                   {p.notes && <span className="italic">"{p.notes}"</span>}
                 </div>
+                <PartPhotos ptid={p.id} key={`pp-${p.id}`} />
               </div>
               <span className={`rounded-full px-2 py-0.5 text-theme-xs font-medium ${PART_STATUSES.find(x => x.v === p.status)?.cls ?? ''}`}>
                 {PART_STATUSES.find(x => x.v === p.status)?.label ?? p.status}
@@ -636,6 +640,68 @@ function ProgressParts({ pid }: { pid: number }) {
           </button>
         )
       )}
+    </div>
+  )
+}
+
+
+// ─── Part Photos (evidence per part request) ─────────
+
+function PartPhotos({ ptid }: { ptid: number }) {
+  const [photos, setPhotos] = useState<{ id: number; orig_name: string; content_type: string | null; size: number; created_at: string }[]>([])
+  const [msg, setMsg] = useState('')
+  const load = async () => {
+    try { setPhotos(await fetchRiwayatPartPhotos(ptid)) } catch {}
+  }
+  useEffect(() => { load() }, [ptid])
+
+  const upload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    try { await addRiwayatPartPhotos(ptid, Array.from(files)); load() }
+    catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+  }
+
+  return (
+    <div className="mt-2">
+      {photos.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {photos.map(ph => {
+            const isImg = ph.content_type?.startsWith('image/')
+            return (
+              <div key={ph.id} className="group relative">
+                {isImg ? (
+                  <img src={riwayatPartPhotoUrl(ptid, ph.id)} alt={ph.orig_name}
+                    className="h-16 w-16 rounded-lg border object-cover" />
+                ) : (
+                  <a href={riwayatPartPhotoUrl(ptid, ph.id)} download
+                    className="flex h-16 w-16 flex-col items-center justify-center rounded-lg border p-1 text-center text-theme-xs text-gray-500">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+                    <span className="truncate w-full">{ph.orig_name}</span>
+                  </a>
+                )}
+                {can('riwayat', 'add') && (
+                  <button
+                    className="absolute right-0 top-0 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={async (e) => {
+                      e.preventDefault()
+                      try { await deleteRiwayatPartPhoto(ptid, ph.id); load() }
+                      catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+                  }}>×</button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+      <div className="mt-1 flex items-center gap-2">
+        {can('riwayat', 'add') && (
+          <label className="cursor-pointer text-theme-xs text-brand-500 hover:text-brand-600">
+            + Foto/File
+            <input type="file" multiple onChange={e => upload(e.target.files)} className="hidden" />
+          </label>
+        )}
+        {msg && <span className="text-theme-xs text-red-500">{msg}</span>}
+      </div>
     </div>
   )
 }

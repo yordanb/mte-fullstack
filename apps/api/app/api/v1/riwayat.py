@@ -400,3 +400,104 @@ async def get_progress_photo(pid: int, phid: int, request: Request = None,
         raise HTTPException(404, "File hilang")
     return FileResponse(path, media_type=row["content_type"] or "application/octet-stream",
                         filename=row["orig_name"])
+
+
+# ─── Part Photos (evidence per part request) ─────────
+
+_PART_DIR = "parts"
+
+def _pdir_parts() -> Path:
+    p = Path(getattr(settings, 'upload_dir', '/data/uploads')) / "riwayat" / _PART_DIR
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+async def _save_part_files(db: AsyncSession, ptid: int, files: list[UploadFile]) -> int:
+    import uuid as _uuid
+    adir = _pdir_parts() / str(ptid)
+    adir.mkdir(parents=True, exist_ok=True)
+    n = 0
+    for f in files:
+        if not f.filename:
+            continue
+        ext = Path(f.filename).suffix[:10]
+        stored = f"{_uuid.uuid4().hex}{ext}"
+        dest = adir / stored
+        size = 0
+        with dest.open("wb") as out:
+            while True:
+                chunk = await f.read(1024 * 1024)
+                if not chunk:
+                    break
+                size += len(chunk)
+                out.write(chunk)
+        await db.execute(text(
+            "INSERT INTO riwayat_part_photos(part_id,filename,orig_name,content_type,size) "
+            "VALUES (:pt,:fn,:on,:ct,:s)"),
+            {"pt": ptid, "fn": stored, "on": f.filename[:200],
+             "ct": f.content_type, "s": size})
+        n += 1
+    return n
+
+
+@router.post("/parts/{ptid}/photos", dependencies=[Depends(require_role("inputer", "admin", "mekanik"))], status_code=201)
+async def add_part_photos(ptid: int, files: list[UploadFile] = File(...),
+                           db: AsyncSession = Depends(get_db),
+                           user=Depends(get_current_user)):
+    ok = (await db.execute(text("SELECT 1 FROM riwayat_parts WHERE id=:id"), {"id": ptid})).scalar()
+    if not ok:
+        raise HTTPException(404, "Part tidak ditemukan")
+    n = await _save_part_files(db, ptid, files)
+    if n == 0:
+        raise HTTPException(400, "tidak ada file diterima")
+    await db.commit()
+    return {"added": n}
+
+
+@router.get("/parts/{ptid}/photos")
+async def list_part_photos(ptid: int, db: AsyncSession = Depends(get_db),
+                            user=Depends(get_current_user)):
+    rows = (await db.execute(text(
+        "SELECT id, orig_name, content_type, size, created_at FROM riwayat_part_photos "
+        "WHERE part_id=:pt ORDER BY created_at"), {"pt": ptid})).mappings().all()
+    return {"data": [dict(r) for r in rows]}
+
+
+@router.delete("/parts/{ptid}/photos/{phid}", dependencies=[Depends(require_role("inputer", "5 admin", "mekanik"))])
+async def delete_part_photo(ptid: int, phid: int, db: AsyncSession = Depends(get_db),
+                             user=Depends(get_current_user)):
+    row = (await db.execute(text(
+        "SELECT filename FROM riwayat_part_photos WHERE id=:p AND part_id=:pt"),
+        {"p": phid, "pt": ptid})).mappings().first()
+    if not row:
+        raise HTTPException(404, "Foto tidak ditemukan")
+    (_pdir_parts() / str(ptid) / row["filename"]).unlink(missing_ok=True)
+    await db.execute(text("DELETE FROM riwayat_part_photos WHERE id=:p"), {"p": phid})
+    await db.commit()
+    return {"ok": True}
+
+
+@router.get("/parts/{ptid}/photos/{phid}")
+async def get_part_photo(ptid: int, phid: int, request: Request = None,
+                          db: AsyncSession = Depends(get_db)):
+    tok = request.query_params.get("token") if request else None
+    if not tok and request is not None:
+        auth = request.headers.get("authorization", "")
+        if auth.lower().startswith("bearer "):
+            tok = auth[7:]
+    if not tok:
+        raise HTTPException(401, "Butuh login")
+    try:
+        decode_token(tok)
+    except Exception:
+        raise HTTPException(401, "Token tidak valid")
+    row = (await db.execute(text(
+        "SELECT filename, content_type, orig_name FROM riwayat_part_photos "
+        "WHERE id=:p AND part_id=:pt"), {"p": phid, "pt": ptid})).mappings().first()
+    if not row:
+        raise HTTPException(404, "Foto tidak ditemukan")
+    path = _pdir_parts() / str(ptid) / row["filename"]
+    if not path.is_file():
+        raise HTTPException(404, "File hilang")
+    return FileResponse(path, media_type=row["content_type"] or "application/octet-stream",
+                        filename=row["orig_name"])

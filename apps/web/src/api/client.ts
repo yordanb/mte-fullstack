@@ -825,6 +825,27 @@ export function riwayatProgressPhotoUrl(pid: number, phid: number) {
   return `/api/v1/riwayat/progress/${pid}/photos/${phid}?token=${localStorage.getItem('mte_token') ?? ''}`
 }
 
+// ─── Part Photos (evidence per part) ──────────────────
+export async function fetchRiwayatPartPhotos(ptid: number) {
+  const r = await api.get(`/v1/riwayat/parts/${ptid}/photos`)
+  return r.data.data as { id: number; orig_name: string; content_type: string | null; size: number; created_at: string }[]
+}
+export async function addRiwayatPartPhotos(ptid: number, files: File[]) {
+  const fd = new FormData()
+  files.forEach(f => fd.append('files', f))
+  const r = await api.post(`/v1/riwayat/parts/${ptid}/photos`, fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return r.data
+}
+export async function deleteRiwayatPartPhoto(ptid: number, phid: number) {
+  const r = await api.delete(`/v1/riwayat/parts/${ptid}/photos/${phid}`)
+  return r.data
+}
+export function riwayatPartPhotoUrl(ptid: number, phid: number) {
+  return `/api/v1/riwayat/parts/${ptid}/photos/${phid}?token=${localStorage.getItem('mte_token') ?? ''}`
+}
+
 export async function deleteMomItem(id: number) {
   const r = await api.delete(`/v1/mom/items/${id}`)
   return r.data
