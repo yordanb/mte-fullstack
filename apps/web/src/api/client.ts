@@ -725,6 +725,72 @@ export async function patchMomItem(id: number, body: Record<string, unknown>) {
   const r = await api.patch(`/v1/mom/items/${id}`, body)
   return r.data
 }
+// ─── Riwayat (Issue Tracking) ──────────────────────────
+
+export type RiwayatIssue = {
+  id: number; title: string; cn?: string | null; category: string; status: string
+  start_date: string; end_date?: string | null; description?: string | null
+  created_by?: string | null; created_at?: string; updated_at?: string
+  progress_count?: number; open_parts?: number
+}
+
+export type RiwayatProgress = {
+  id: number; issue_id: number; seq: number; log_date: string
+  description: string; part_required: boolean
+  created_by?: string | null; created_at?: string; updated_at?: string
+}
+
+export type RiwayatPart = {
+  id: number; issue_id: number; part_name: string; qty: number
+  status: string; eta?: string | null; notes?: string | null
+  created_at?: string; updated_at?: string
+}
+
+export async function fetchRiwayatIssues(status?: string, category?: string, cn?: string): Promise<{ data: RiwayatIssue[] }> {
+  const r = await api.get('/v1/riwayat/issues', { params: { status, category, cn } })
+  return r.data
+}
+export async function createRiwayatIssue(body: Record<string, unknown>) {
+  const r = await api.post('/v1/riwayat/issues', body)
+  return r.data
+}
+export async function fetchRiwayatIssue(id: number): Promise<RiwayatIssue & { progress: RiwayatProgress[]; parts: RiwayatPart[] }> {
+  const r = await api.get(`/v1/riwayat/issues/${id}`)
+  return r.data
+}
+export async function patchRiwayatIssue(id: number, body: Record<string, unknown>) {
+  const r = await api.patch(`/v1/riwayat/issues/${id}`, body)
+  return r.data
+}
+export async function deleteRiwayatIssue(id: number) {
+  const r = await api.delete(`/v1/riwayat/issues/${id}`)
+  return r.data
+}
+export async function addRiwayatProgress(issueId: number, body: { description: string; part_required: boolean }) {
+  const r = await api.post(`/v1/riwayat/issues/${issueId}/progress`, body)
+  return r.data
+}
+export async function patchRiwayatProgress(id: number, body: Record<string, unknown>) {
+  const r = await api.patch(`/v1/riwayat/progress/${id}`, body)
+  return r.data
+}
+export async function deleteRiwayatProgress(id: number) {
+  const r = await api.delete(`/v1/riwayat/progress/${id}`)
+  return r.data
+}
+export async function addRiwayatPart(issueId: number, body: Record<string, unknown>) {
+  const r = await api.post(`/v1/riwayat/issues/${issueId}/parts`, body)
+  return r.data
+}
+export async function patchRiwayatPart(id: number, body: Record<string, unknown>) {
+  const r = await api.patch(`/v1/riwayat/parts/${id}`, body)
+  return r.data
+}
+export async function deleteRiwayatPart(id: number) {
+  const r = await api.delete(`/v1/riwayat/parts/${id}`)
+  return r.data
+}
+
 export async function deleteMomItem(id: number) {
   const r = await api.delete(`/v1/mom/items/${id}`)
   return r.data

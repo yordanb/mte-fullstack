@@ -14,6 +14,7 @@ from app.api.v1.r1bi import router as r1bi_router
 from app.api.v1.fui import router as fui_router
 from app.api.v1.staging import router as staging_router
 from app.api.v1.mom import router as mom_router
+from app.api.v1.riwayat import router as riwayat_router
 from app.core.config import settings
 from app.core.security import hash_pw
 from app.core.audit import write_log
@@ -92,3 +93,4 @@ app.include_router(r1bi_router)
 app.include_router(fui_router)
 app.include_router(staging_router)
 app.include_router(mom_router)
+app.include_router(riwayat_router)
