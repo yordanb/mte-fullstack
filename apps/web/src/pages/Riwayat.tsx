@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { DatePicker } from '../components/DatePicker'
 import {
   fetchRiwayatIssues, createRiwayatIssue, fetchRiwayatIssue, patchRiwayatIssue, deleteRiwayatIssue,
   addRiwayatProgress, deleteRiwayatProgress,
@@ -344,8 +345,8 @@ function IssueForm({ issue, onClose, onSaved }: {
             </label>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-theme-sm">Start Date<input type="date" className={inp} value={startDate} onChange={e => setStartDate(e.target.value)} /></label>
-            <label className="text-theme-sm">End Date (opsional)<input type="date" className={inp} value={endDate} onChange={e => setEndDate(e.target.value)} /></label>
+            <label className="text-theme-sm">Start Date<DatePicker value={startDate} max={endDate || undefined} onChange={v => setStartDate(v)} /></label>
+            <label className="text-theme-sm">End Date (opsional)<DatePicker value={endDate} min={startDate || undefined} onChange={v => setEndDate(v)} /></label>
           </div>
           <label className="text-theme-sm">Status
             <select className={inp} value={status} onChange={e => setStatus(e.target.value)}>
@@ -441,7 +442,7 @@ function PartForm({ issueId, part, onClose, onSaved }: {
               </select>
             </label>
           </div>
-          <label className="text-theme-sm">ETA<input type="date" className={inp} value={eta} onChange={e => setEta(e.target.value)} /></label>
+          <label className="text-theme-sm">ETA<DatePicker value={eta} onChange={v => setEta(v)} /></label>
           <label className="text-theme-sm">Notes<input className={inp} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Catatan tambahan..." /></label>
         </div>
         {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
@@ -681,8 +682,7 @@ function ProgressParts({ pid }: { pid: number }) {
               value={st} onChange={e => setSt(e.target.value)}>
               {PART_STATUSES.map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
             </select>
-            <input type="date" className="rounded border px-2 py-1 text-theme-sm dark:border-gray-600 dark:bg-gray-700"
-              value={eta} onChange={e => setEta(e.target.value)} />
+            <DatePicker value={eta} onChange={v => setEta(v)} />
           </div>
           <input className="w-full rounded border px-2 py-1 text-theme-sm dark:border-gray-600 dark:bg-gray-700"
             placeholder="Catatan..." value={nts} onChange={e => setNts(e.target.value)} />
