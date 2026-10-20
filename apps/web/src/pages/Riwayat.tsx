@@ -268,6 +268,7 @@ function IssueDetail({ id, onBack }: { id: number; onBack: () => void }) {
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-theme-xs">
                     <span className={`rounded-full px-2 py-0.5 ${partStCls(pt.status)}`}>{partStLabel(pt.status)}</span>
+                    {pt.created_at && <span className="text-gray-400">Dibuat: {fmtDate(pt.created_at)}</span>}
                     {pt.eta && <span className="text-gray-500">ETA: {fmtDate(pt.eta)}</span>}
                     {pt.notes && <span className="text-gray-400">• {pt.notes}</span>}
                   </div>
