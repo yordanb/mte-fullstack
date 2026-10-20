@@ -344,7 +344,7 @@ async def delete_progress_photo(pid: int, phid: int, db: AsyncSession = Depends(
 
 
 @router.get("/progress/{pid}/photos/{phid}")
-async def get_progress_photo(pid: int, phid: int, request: Request | None = None,
+async def get_progress_photo(pid: int, phid: int, request: Request = None,
                              db: AsyncSession = Depends(get_db)):
     tok = request.query_params.get("token") if request else None
     if not tok and request is not None:
