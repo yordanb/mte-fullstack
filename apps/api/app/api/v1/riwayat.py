@@ -270,6 +270,39 @@ async def delete_part(ptid: int, db: AsyncSession = Depends(get_db),
     return {"ok": True}
 
 
+# ─── Parts by Progress ─────────────────────────────────
+
+@router.post("/progress/{pid}/parts", dependencies=[Depends(require_role("inputer", "admin", "mekanik"))], status_code=201)
+async def add_part_to_progress(pid: int, body: PartIn, db: AsyncSession = Depends(get_db),
+                                user=Depends(get_current_user)):
+    """Tambah part request langsung ke progress entry tertentu."""
+    row = (await db.execute(
+        text("SELECT issue_id FROM riwayat_progress WHERE id=:id"), {"id": pid})).mappings().first()
+    if not row:
+        raise HTTPException(404, "Progress tidak ditemukan")
+    if body.status not in PART_STATUSES:
+        raise HTTPException(400, "Status part tidak valid")
+    res = await db.execute(text("""
+        INSERT INTO riwayat_parts(issue_id, progress_id, part_name, qty, status, eta, notes)
+        VALUES (:iid, :pid, :pn, :qty, :st, :eta, :notes) RETURNING id
+    """), {"iid": row["issue_id"], "pid": pid, "pn": body.part_name.strip(),
+           "qty": body.qty, "st": body.status, "eta": body.eta, "notes": body.notes})
+    ptid = res.scalar_one()
+    await db.commit()
+    return {"id": ptid}
+
+
+@router.get("/progress/{pid}/parts")
+async def list_parts_by_progress(pid: int, db: AsyncSession = Depends(get_db),
+                                  user=Depends(get_current_user)):
+    """List semua part request yang ter-link ke progress tertentu."""
+    rows = (await db.execute(text("""
+        SELECT id, part_name, qty, status, eta, notes, created_at, updated_at
+        FROM riwayat_parts WHERE progress_id=:pid ORDER BY created_at
+    """), {"pid": pid})).mappings().all()
+    return {"data": [dict(r) for r in rows]}
+
+
 # ─── Evidence Photos ─────────────────────────────────────
 
 def _pdir() -> Path:

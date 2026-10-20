@@ -790,6 +790,21 @@ export async function deleteRiwayatPart(id: number) {
   const r = await api.delete(`/v1/riwayat/parts/${id}`)
   return r.data
 }
+
+// ─── Parts by Progress ───────────────────────────────
+export async function addRiwayatPartToProgress(pid: number, body: {
+  part_name: string; qty: number; status: string; eta?: string | null; notes?: string | null
+}) {
+  const r = await api.post(`/v1/riwayat/progress/${pid}/parts`, body)
+  return r.data as { id: number }
+}
+export async function fetchRiwayatPartsByProgress(pid: number) {
+  const r = await api.get(`/v1/riwayat/progress/${pid}/parts`)
+  return r.data.data as {
+    id: number; part_name: string; qty: number; status: string;
+    eta: string | null; notes: string | null; created_at: string; updated_at: string
+  }[]
+}
 export async function fetchRiwayatProgressPhotos(pid: number) {
   const r = await api.get(`/v1/riwayat/progress/${pid}/photos`)
   return r.data.data as { id: number; orig_name: string; content_type: string | null; size: number; created_at: string }[]

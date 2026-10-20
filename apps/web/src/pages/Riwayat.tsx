@@ -4,6 +4,7 @@ import {
   addRiwayatProgress, deleteRiwayatProgress,
   fetchRiwayatProgressPhotos, addRiwayatProgressPhotos, deleteRiwayatProgressPhoto,
   riwayatProgressPhotoUrl,
+  addRiwayatPartToProgress, fetchRiwayatPartsByProgress,
   addRiwayatPart, patchRiwayatPart, deleteRiwayatPart,
   can, isAdmin, errMsg, todayLocal,
   type RiwayatIssue, type RiwayatProgress, type RiwayatPart,
@@ -228,7 +229,9 @@ function IssueDetail({ id, onBack }: { id: number; onBack: () => void }) {
                     {pr.part_required && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">⚠ Part Required</span>}
                   </div>
                   {/* Evidence photos */}
-                  <ProgressPhotos pid={pr.id} key={pr.id} />
+                  <ProgressPhotos pid={pr.id} key={`ph-${pr.id}`} />
+                  {/* Part request (hanya jika part_required) */}
+                  {pr.part_required && <ProgressParts pid={pr.id} key={`pt-${pr.id}`} />}
                 </div>
                 {canEdit() && (
                   <button className="shrink-0 rounded-lg p-1 text-gray-400 hover:text-red-500" onClick={async () => {
@@ -502,6 +505,136 @@ function ProgressPhotos({ pid }: { pid: number }) {
         )}
         {msg && <span className="text-theme-xs text-red-500">{msg}</span>}
       </div>
+    </div>
+  )
+}
+
+
+// ─── Progress Parts (part request per progress) ─────
+
+// PART_STATUSES (dari top-level: [{v, label, cls}])
+
+function ProgressParts({ pid }: { pid: number }) {
+  const [parts, setParts] = useState<{
+    id: number; part_name: string; qty: number; status: string;
+    eta: string | null; notes: string | null; created_at: string; updated_at: string
+  }[]>([])
+  const [showForm, setShowForm] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [editId, setEditId] = useState<number | null>(null)
+  const [pn, setPn] = useState(''); const [qty, setQty] = useState(1)
+  const [st, setSt] = useState<string>('needed'); const [eta, setEta] = useState('')
+  const [nts, setNts] = useState('')
+
+  const load = async () => {
+    try { setParts(await fetchRiwayatPartsByProgress(pid)) } catch {}
+  }
+  useEffect(() => { load() }, [pid])
+
+  const reset = () => {
+    setPn(''); setQty(1); setSt('needed'); setEta(''); setNts('')
+    setShowForm(false); setEditId(null); setMsg('')
+  }
+
+  const save = async () => {
+    if (!pn.trim()) { setMsg('Nama part wajib'); return }
+    try {
+      if (editId) {
+        await patchRiwayatPart(editId, {
+          part_name: pn.trim(), qty, status: st,
+          eta: eta || null, notes: nts.trim() || null,
+        })
+      } else {
+        await addRiwayatPartToProgress(pid, {
+          part_name: pn.trim(), qty, status: st,
+          eta: eta || null, notes: nts.trim() || null,
+        })
+      }
+      reset(); load()
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+  }
+
+  const startEdit = (p: typeof parts[0]) => {
+    setEditId(p.id); setPn(p.part_name); setQty(p.qty); setSt(p.status)
+    setEta(p.eta ? p.eta.slice(0, 10) : ''); setNts(p.notes ?? '')
+    setShowForm(true); setMsg('')
+  }
+
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+
+  return (
+    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/50 p-2 dark:border-amber-900/30 dark:bg-amber-900/10">
+      <div className="mb-1 flex items-center gap-2">
+        <span className="text-theme-xs font-semibold text-amber-700 dark:text-amber-400">🔧 Part Request</span>
+        <span className="text-theme-xs text-gray-400">({parts.length})</span>
+      </div>
+
+      {parts.length > 0 && (
+        <div className="mb-2 space-y-1">
+          {parts.map(p => (
+            <div key={p.id} className="flex flex-wrap items-center gap-2 rounded-md border border-amber-100 bg-white px-2 py-1.5 dark:border-amber-900/20 dark:bg-gray-800">
+              <div className="min-w-0 flex-1">
+                <div className="text-theme-sm font-medium text-gray-800 dark:text-gray-200">
+                  {p.part_name} <span className="text-gray-400">×{p.qty}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-theme-xs text-gray-500">
+                  <span>Dibuat: {fmtDate(p.created_at)}</span>
+                  {p.eta && <span>ETA: {fmtDate(p.eta)}</span>}
+                  {p.notes && <span className="italic">"{p.notes}"</span>}
+                </div>
+              </div>
+              <span className={`rounded-full px-2 py-0.5 text-theme-xs font-medium ${PART_STATUSES.find(x => x.v === p.status)?.cls ?? ''}`}>
+                {PART_STATUSES.find(x => x.v === p.status)?.label ?? p.status}
+              </span>
+              {can('riwayat', 'edit') && (
+                <button className="rounded p-1 text-gray-400 hover:text-blue-500"
+                  onClick={() => startEdit(p)}
+                  title="Edit">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                </button>
+              )}
+              {can('riwayat', 'delete') && (
+                <button className="rounded p-1 text-gray-400 hover:text-red-500"
+                  onClick={async () => { if (confirm('Hapus part ini?')) { try { await deleteRiwayatPart(p.id); load() } catch (e) { setMsg(`gagal: ${errMsg(e)}`) } } }}
+                  title="Hapus">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showForm ? (
+        <div className="space-y-1.5 rounded-md border border-amber-200 bg-white p-2 dark:border-amber-900/20 dark:bg-gray-800">
+          <div className="flex flex-wrap gap-2">
+            <input className="min-w-[140px] flex-1 rounded border px-2 py-1 text-theme-sm dark:border-gray-600 dark:bg-gray-700"
+              placeholder="Nama part *" value={pn} onChange={e => setPn(e.target.value)} />
+            <input type="number" min={1} className="w-16 rounded border px-2 py-1 text-theme-sm dark:border-gray-600 dark:bg-gray-700"
+              value={qty} onChange={e => setQty(Math.max(1, parseInt(e.target.value) || 1))} />
+            <select className="rounded border px-2 py-1 text-theme-sm dark:border-gray-600 dark:bg-gray-700"
+              value={st} onChange={e => setSt(e.target.value)}>
+              {PART_STATUSES.map(s => <option key={s.v} value={s.v}>{s.label}</option>)}
+            </select>
+            <input type="date" className="rounded border px-2 py-1 text-theme-sm dark:border-gray-600 dark:bg-gray-700"
+              value={eta} onChange={e => setEta(e.target.value)} />
+          </div>
+          <input className="w-full rounded border px-2 py-1 text-theme-sm dark:border-gray-600 dark:bg-gray-700"
+            placeholder="Catatan..." value={nts} onChange={e => setNts(e.target.value)} />
+          {msg && <p className="text-theme-xs text-red-500">{msg}</p>}
+          <div className="flex gap-2">
+            <button className="rounded bg-amber-500 px-3 py-1 text-theme-xs text-white" onClick={save}>Simpan</button>
+            <button className="rounded border px-3 py-1 text-theme-xs" onClick={reset}>Batal</button>
+          </div>
+        </div>
+      ) : (
+        can('riwayat', 'add') && (
+          <button className="text-theme-xs text-amber-600 hover:text-amber-700 dark:text-amber-400"
+            onClick={() => { reset(); setShowForm(true) }}>
+            + Tambah Part
+          </button>
+        )
+      )}
     </div>
   )
 }
