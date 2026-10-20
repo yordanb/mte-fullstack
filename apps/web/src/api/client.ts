@@ -766,7 +766,7 @@ export async function deleteRiwayatIssue(id: number) {
   const r = await api.delete(`/v1/riwayat/issues/${id}`)
   return r.data
 }
-export async function addRiwayatProgress(issueId: number, body: { description: string; part_required: boolean }) {
+export async function addRiwayatProgress(issueId: number, body: { description: string; part_required: boolean; log_date?: string }) {
   const r = await api.post(`/v1/riwayat/issues/${issueId}/progress`, body)
   return r.data
 }

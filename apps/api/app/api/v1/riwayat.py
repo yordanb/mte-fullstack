@@ -43,11 +43,13 @@ class IssuePatch(BaseModel):
 class ProgressIn(BaseModel):
     description: str
     part_required: bool = False
+    log_date: date | None = None
 
 
 class ProgressPatch(BaseModel):
     description: str | None = None
     part_required: bool | None = None
+    log_date: date | None = None
 
 
 class PartIn(BaseModel):
@@ -185,9 +187,9 @@ async def add_progress(iid: int, body: ProgressIn, db: AsyncSession = Depends(ge
         "SELECT COALESCE(MAX(seq), -1) + 1 FROM riwayat_progress WHERE issue_id=:iid"), {"iid": iid})).scalar()
     res = await db.execute(text("""
         INSERT INTO riwayat_progress(issue_id, seq, log_date, description, part_required, created_by)
-        VALUES (:iid, :seq, now(), :desc, :pr, :u) RETURNING id
-    """), {"iid": iid, "seq": max_seq, "desc": body.description.strip(),
-           "pr": body.part_required, "u": user["username"]})
+        VALUES (:iid, :seq, :ld, :desc, :pr, :u) RETURNING id
+    """), {"iid": iid, "seq": max_seq, "ld": body.log_date,
+           "desc": body.description.strip(), "pr": body.part_required, "u": user["username"]})
     pid = res.scalar_one()
     await db.commit()
     return {"id": pid}
@@ -201,6 +203,8 @@ async def patch_progress(pid: int, body: ProgressPatch, db: AsyncSession = Depen
         sets.append("description=:dsc"); p["dsc"] = body.description.strip()
     if body.part_required is not None:
         sets.append("part_required=:pr"); p["pr"] = body.part_required
+    if body.log_date is not None:
+        sets.append("log_date=:ld"); p["ld"] = body.log_date
     if not sets:
         raise HTTPException(400, "Tidak ada field yang diubah")
     res = await db.execute(text(f"UPDATE riwayat_progress SET {', '.join(sets)} WHERE id=:id"), p)
@@ -230,6 +234,10 @@ async def add_part(iid: int, body: PartIn, db: AsyncSession = Depends(get_db),
         raise HTTPException(404, "Issue tidak ditemukan")
     if body.status not in PART_STATUSES:
         raise HTTPException(400, "Status part tidak valid")
+    has_progress = (await db.execute(text(
+        "SELECT 1 FROM riwayat_progress WHERE issue_id=:iid LIMIT 1"), {"iid": iid})).scalar()
+    if not has_progress:
+        raise HTTPException(400, "Buat minimal 1 progress entry sebelum menambah part")
     res = await db.execute(text("""
         INSERT INTO riwayat_parts(issue_id, part_name, qty, status, eta, notes)
         VALUES (:iid, :pn, :qty, :st, :eta, :notes) RETURNING id

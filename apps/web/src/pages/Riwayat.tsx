@@ -264,7 +264,11 @@ function IssueDetail({ id, onBack }: { id: number; onBack: () => void }) {
         <div className="flex items-center justify-between px-4 py-3 border-b dark:border-gray-700">
           <h3 className="font-semibold">Parts Requirement ({issue.parts.length})</h3>
           {canAdd() && issue.status !== 'closed' && (
-            <button className="rounded-lg bg-brand-500 px-3 py-1 text-theme-sm text-white" onClick={() => setShowAddPart(true)}>+ Part</button>
+            issue.progress.length === 0 ? (
+              <span className="text-theme-xs text-gray-400" title="Buat progress dulu">Buat progress dulu</span>
+            ) : (
+              <button className="rounded-lg bg-brand-500 px-3 py-1 text-theme-sm text-white" onClick={() => setShowAddPart(true)}>+ Part</button>
+            )
           )}
         </div>
         {issue.parts.length === 0 ? (
@@ -377,6 +381,8 @@ function IssueForm({ issue, onClose, onSaved }: {
 function ProgressForm({ issueId, progress, onClose, onSaved }: {
   issueId: number; progress?: RiwayatProgress; onClose: () => void; onSaved: () => void
 }) {
+  // log_date di API TIMESTAMPTZ; tampil sebagai tanggal YYYY-MM-DD
+  const [logDate, setLogDate] = useState(progress?.log_date?.slice(0, 10) ?? todayLocal())
   const [desc, setDesc] = useState(progress?.description ?? '')
   const [partReq, setPartReq] = useState(progress?.part_required ?? false)
   const [msg, setMsg] = useState('')
@@ -385,9 +391,15 @@ function ProgressForm({ issueId, progress, onClose, onSaved }: {
       setMsg('')
       if (!desc.trim()) { setMsg('Deskripsi progress wajib diisi'); return }
       if (progress) {
-        await patchRiwayatProgress(progress.id, { description: desc, part_required: partReq })
+        await patchRiwayatProgress(progress.id, {
+          description: desc, part_required: partReq,
+          log_date: logDate || undefined,
+        })
       } else {
-        await addRiwayatProgress(issueId, { description: desc, part_required: partReq })
+        await addRiwayatProgress(issueId, {
+          description: desc, part_required: partReq,
+          log_date: logDate || undefined,
+        })
       }
       onSaved()
     } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
@@ -398,6 +410,7 @@ function ProgressForm({ issueId, progress, onClose, onSaved }: {
       <div className="w-full max-w-md rounded-2xl bg-white p-5 dark:bg-gray-900">
         <h3 className="font-semibold">{progress ? 'Edit Progress' : 'Progress Baru'}</h3>
         <div className="mt-3 flex flex-col gap-3">
+          <label className="text-theme-sm">Tanggal Progress<DatePicker value={logDate} max={todayLocal()} onChange={v => setLogDate(v)} /></label>
           <label className="text-theme-sm">Deskripsi<textarea className={inp} rows={3} value={desc} onChange={e => setDesc(e.target.value)} placeholder="cth: Sudah dibongkar, ditemukan bearing aus" /></label>
           <label className="flex items-center gap-2 text-theme-sm">
             <input type="checkbox" checked={partReq} onChange={e => setPartReq(e.target.checked)} />
