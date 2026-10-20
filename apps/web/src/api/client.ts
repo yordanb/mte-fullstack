@@ -807,11 +807,14 @@ export async function fetchRiwayatPartsByProgress(pid: number) {
 }
 export async function fetchRiwayatProgressPhotos(pid: number) {
   const r = await api.get(`/v1/riwayat/progress/${pid}/photos`)
-  return r.data.data as { id: number; orig_name: string; content_type: string | null; size: number; created_at: string }[]
+  return r.data.data as { id: number; orig_name: string; content_type: string | null; size: number; notes: string | null; created_at: string }[]
 }
-export async function addRiwayatProgressPhotos(pid: number, files: File[]) {
+export async function addRiwayatProgressPhotos(pid: number, files: File[], notesList?: string[]) {
   const fd = new FormData()
-  files.forEach(f => fd.append('files', f))
+  files.forEach((f, i) => {
+    fd.append('files', f)
+    if (notesList && notesList[i] !== undefined) fd.append('notes', notesList[i])
+  })
   const r = await api.post(`/v1/riwayat/progress/${pid}/photos`, fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
@@ -821,6 +824,10 @@ export async function deleteRiwayatProgressPhoto(pid: number, phid: number) {
   const r = await api.delete(`/v1/riwayat/progress/${pid}/photos/${phid}`)
   return r.data
 }
+export async function patchProgressPhotoNotes(pid: number, phid: number, notes: string | null) {
+  const r = await api.patch(`/v1/riwayat/progress/${pid}/photos/${phid}/notes`, { notes })
+  return r.data
+}
 export function riwayatProgressPhotoUrl(pid: number, phid: number) {
   return `/api/v1/riwayat/progress/${pid}/photos/${phid}?token=${localStorage.getItem('mte_token') ?? ''}`
 }
@@ -828,11 +835,14 @@ export function riwayatProgressPhotoUrl(pid: number, phid: number) {
 // ─── Part Photos (evidence per part) ──────────────────
 export async function fetchRiwayatPartPhotos(ptid: number) {
   const r = await api.get(`/v1/riwayat/parts/${ptid}/photos`)
-  return r.data.data as { id: number; orig_name: string; content_type: string | null; size: number; created_at: string }[]
+  return r.data.data as { id: number; orig_name: string; content_type: string | null; size: number; notes: string | null; created_at: string }[]
 }
-export async function addRiwayatPartPhotos(ptid: number, files: File[]) {
+export async function addRiwayatPartPhotos(ptid: number, files: File[], notesList?: string[]) {
   const fd = new FormData()
-  files.forEach(f => fd.append('files', f))
+  files.forEach((f, i) => {
+    fd.append('files', f)
+    if (notesList && notesList[i] !== undefined) fd.append('notes', notesList[i])
+  })
   const r = await api.post(`/v1/riwayat/parts/${ptid}/photos`, fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
@@ -840,6 +850,10 @@ export async function addRiwayatPartPhotos(ptid: number, files: File[]) {
 }
 export async function deleteRiwayatPartPhoto(ptid: number, phid: number) {
   const r = await api.delete(`/v1/riwayat/parts/${ptid}/photos/${phid}`)
+  return r.data
+}
+export async function patchPartPhotoNotes(ptid: number, phid: number, notes: string | null) {
+  const r = await api.patch(`/v1/riwayat/parts/${ptid}/photos/${phid}/notes`, { notes })
   return r.data
 }
 export function riwayatPartPhotoUrl(ptid: number, phid: number) {

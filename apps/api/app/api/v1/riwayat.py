@@ -1,7 +1,7 @@
 """Riwayat — issue tracking dengan progress timeline + parts requirement."""
 from datetime import date
 from pathlib import Path
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import text
@@ -311,12 +311,12 @@ def _pdir() -> Path:
     return p
 
 
-async def _save_progress_files(db: AsyncSession, pid: int, files: list[UploadFile]) -> int:
+async def _save_progress_files(db: AsyncSession, pid: int, files: list[UploadFile], notes_list: list[str] | None = None) -> int:
     import uuid as _uuid
     adir = _pdir() / str(pid)
     adir.mkdir(parents=True, exist_ok=True)
     n = 0
-    for f in files:
+    for i, f in enumerate(files):
         if not f.filename:
             continue
         ext = Path(f.filename).suffix[:10]
@@ -331,22 +331,23 @@ async def _save_progress_files(db: AsyncSession, pid: int, files: list[UploadFil
                 size += len(chunk)
                 out.write(chunk)
         await db.execute(text(
-            "INSERT INTO riwayat_progress_photos(progress_id,filename,orig_name,content_type,size) "
-            "VALUES (:pid,:fn,:on,:ct,:s)"),
+            "INSERT INTO riwayat_progress_photos(progress_id,filename,orig_name,content_type,size,notes) "
+            "VALUES (:pid,:fn,:on,:ct,:s,:nt)"),
             {"pid": pid, "fn": stored, "on": f.filename[:200],
-             "ct": f.content_type, "s": size})
+             "ct": f.content_type, "s": size, "nt": (notes_list[i] if notes_list and i < len(notes_list) else None)})
         n += 1
     return n
 
 
 @router.post("/progress/{pid}/photos", dependencies=[Depends(require_role("inputer", "admin", "mekanik"))], status_code=201)
 async def add_progress_photos(pid: int, files: list[UploadFile] = File(...),
+                               notes: list[str] | None = Form(None),
                                db: AsyncSession = Depends(get_db),
                                user=Depends(get_current_user)):
     ok = (await db.execute(text("SELECT 1 FROM riwayat_progress WHERE id=:id"), {"id": pid})).scalar()
     if not ok:
         raise HTTPException(404, "Progress tidak ditemukan")
-    n = await _save_progress_files(db, pid, files)
+    n = await _save_progress_files(db, pid, files, notes)
     if n == 0:
         raise HTTPException(400, "tidak ada file diterima")
     await db.commit()
@@ -357,7 +358,7 @@ async def add_progress_photos(pid: int, files: list[UploadFile] = File(...),
 async def list_progress_photos(pid: int, db: AsyncSession = Depends(get_db),
                                user=Depends(get_current_user)):
     rows = (await db.execute(text(
-        "SELECT id, orig_name, content_type, size, created_at FROM riwayat_progress_photos "
+        "SELECT id, orig_name, content_type, size, notes, created_at FROM riwayat_progress_photos "
         "WHERE progress_id=:pid ORDER BY created_at"), {"pid": pid})).mappings().all()
     return {"data": [dict(r) for r in rows]}
 
@@ -372,6 +373,23 @@ async def delete_progress_photo(pid: int, phid: int, db: AsyncSession = Depends(
         raise HTTPException(404, "Foto tidak ditemukan")
     (_pdir() / str(pid) / row["filename"]).unlink(missing_ok=True)
     await db.execute(text("DELETE FROM riwayat_progress_photos WHERE id=:p"), {"p": phid})
+    await db.commit()
+    return {"ok": True}
+
+
+class PhotoNotesIn(BaseModel):
+    notes: str | None = None
+
+
+@router.patch("/progress/{pid}/photos/{phid}/notes", dependencies=[Depends(require_role("inputer", "admin", "mekanik"))])
+async def patch_progress_photo_notes(pid: int, phid: int, body: PhotoNotesIn,
+                                       db: AsyncSession = Depends(get_db)):
+    res = await db.execute(text(
+        "UPDATE riwayat_progress_photos SET notes=:nt "
+        "WHERE id=:p AND progress_id=:pid"),
+        {"p": phid, "pid": pid, "nt": body.notes.strip() if body.notes else None})
+    if res.rowcount == 0:
+        raise HTTPException(404, "Foto tidak ditemukan")
     await db.commit()
     return {"ok": True}
 
@@ -412,12 +430,12 @@ def _pdir_parts() -> Path:
     return p
 
 
-async def _save_part_files(db: AsyncSession, ptid: int, files: list[UploadFile]) -> int:
+async def _save_part_files(db: AsyncSession, ptid: int, files: list[UploadFile], notes_list: list[str] | None = None) -> int:
     import uuid as _uuid
     adir = _pdir_parts() / str(ptid)
     adir.mkdir(parents=True, exist_ok=True)
     n = 0
-    for f in files:
+    for i, f in enumerate(files):
         if not f.filename:
             continue
         ext = Path(f.filename).suffix[:10]
@@ -432,22 +450,23 @@ async def _save_part_files(db: AsyncSession, ptid: int, files: list[UploadFile])
                 size += len(chunk)
                 out.write(chunk)
         await db.execute(text(
-            "INSERT INTO riwayat_part_photos(part_id,filename,orig_name,content_type,size) "
-            "VALUES (:pt,:fn,:on,:ct,:s)"),
+            "INSERT INTO riwayat_part_photos(part_id,filename,orig_name,content_type,size,notes) "
+            "VALUES (:pt,:fn,:on,:ct,:s,:nt)"),
             {"pt": ptid, "fn": stored, "on": f.filename[:200],
-             "ct": f.content_type, "s": size})
+             "ct": f.content_type, "s": size, "nt": (notes_list[i] if notes_list and i < len(notes_list) else None)})
         n += 1
     return n
 
 
 @router.post("/parts/{ptid}/photos", dependencies=[Depends(require_role("inputer", "admin", "mekanik"))], status_code=201)
 async def add_part_photos(ptid: int, files: list[UploadFile] = File(...),
+                           notes: list[str] | None = Form(None),
                            db: AsyncSession = Depends(get_db),
                            user=Depends(get_current_user)):
     ok = (await db.execute(text("SELECT 1 FROM riwayat_parts WHERE id=:id"), {"id": ptid})).scalar()
     if not ok:
         raise HTTPException(404, "Part tidak ditemukan")
-    n = await _save_part_files(db, ptid, files)
+    n = await _save_part_files(db, ptid, files, notes)
     if n == 0:
         raise HTTPException(400, "tidak ada file diterima")
     await db.commit()
@@ -458,12 +477,12 @@ async def add_part_photos(ptid: int, files: list[UploadFile] = File(...),
 async def list_part_photos(ptid: int, db: AsyncSession = Depends(get_db),
                             user=Depends(get_current_user)):
     rows = (await db.execute(text(
-        "SELECT id, orig_name, content_type, size, created_at FROM riwayat_part_photos "
+        "SELECT id, orig_name, content_type, size, notes, created_at FROM riwayat_part_photos "
         "WHERE part_id=:pt ORDER BY created_at"), {"pt": ptid})).mappings().all()
     return {"data": [dict(r) for r in rows]}
 
 
-@router.delete("/parts/{ptid}/photos/{phid}", dependencies=[Depends(require_role("inputer", "5 admin", "mekanik"))])
+@router.delete("/parts/{ptid}/photos/{phid}", dependencies=[Depends(require_role("inputer", "admin", "mekanik"))])
 async def delete_part_photo(ptid: int, phid: int, db: AsyncSession = Depends(get_db),
                              user=Depends(get_current_user)):
     row = (await db.execute(text(
@@ -473,6 +492,19 @@ async def delete_part_photo(ptid: int, phid: int, db: AsyncSession = Depends(get
         raise HTTPException(404, "Foto tidak ditemukan")
     (_pdir_parts() / str(ptid) / row["filename"]).unlink(missing_ok=True)
     await db.execute(text("DELETE FROM riwayat_part_photos WHERE id=:p"), {"p": phid})
+    await db.commit()
+    return {"ok": True}
+
+
+@router.patch("/parts/{ptid}/photos/{phid}/notes", dependencies=[Depends(require_role("inputer", "admin", "mekanik"))])
+async def patch_part_photo_notes(ptid: int, phid: int, body: PhotoNotesIn,
+                                  db: AsyncSession = Depends(get_db)):
+    res = await db.execute(text(
+        "UPDATE riwayat_part_photos SET notes=:nt "
+        "WHERE id=:p AND part_id=:pt"),
+        {"p": phid, "pt": ptid, "nt": body.notes.strip() if body.notes else None})
+    if res.rowcount == 0:
+        raise HTTPException(404, "Foto tidak ditemukan")
     await db.commit()
     return {"ok": True}
 
