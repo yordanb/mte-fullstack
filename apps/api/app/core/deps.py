@@ -7,6 +7,16 @@ from app.db.session import get_db
 
 bearer = HTTPBearer(auto_error=False)
 
+# Role inheritance: role baru mewarisi izin dari base role.
+# Saat require_role("inputer") dipanggil, planner & adm te juga diizinkan
+# karena mereka inherit dari inputer. admin selalu bypass semua cek.
+ROLE_INHERITS: dict[str, str] = {
+    "planner": "inputer",
+    "group leader": "mekanik",
+    "section head": "viewer",
+    "adm te": "inputer",
+}
+
 async def get_current_user(creds=Depends(bearer), db: AsyncSession = Depends(get_db)):
     if not creds:
         raise HTTPException(401, "Butuh login")
@@ -23,7 +33,16 @@ async def get_current_user(creds=Depends(bearer), db: AsyncSession = Depends(get
 
 def require_role(*roles: str):
     async def _check(user=Depends(get_current_user)):
-        if user["role"] not in roles and user["role"] != "admin":
-            raise HTTPException(403, "Akses ditolak")
-        return user
+        urole = user["role"]
+        # admin selalu bypass
+        if urole == "admin":
+            return user
+        # cocok langsung
+        if urole in roles:
+            return user
+        # cek inheritance: jika base role dari user ada di allowed list
+        base = ROLE_INHERITS.get(urole)
+        if base and base in roles:
+            return user
+        raise HTTPException(403, "Akses ditolak")
     return _check

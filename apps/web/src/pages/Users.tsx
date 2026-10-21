@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { fetchUsers, createUser, patchUser, deleteUser, fetchPerms, setPerm, fetchMe, errMsg, type PermRow } from '../api/client'
 
-const ROLES = ['admin', 'inputer', 'mekanik', 'viewer']
+const ROLES = ['admin', 'inputer', 'mekanik', 'viewer', 'planner', 'group leader', 'section head', 'adm te']
 const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'equipment', 'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak', 'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement', 'yazu']
 const ACTS = [
   { key: 'can_view', label: 'Lihat' },
@@ -94,7 +94,7 @@ export default function UsersPage() {
       </div>
       <div className="rounded-2xl border bg-white p-5">
         <h3 className="font-semibold">Izin per menu (role admin terkunci penuh)</h3>
-        {['inputer', 'mekanik', 'viewer'].map((role) => (
+        {['inputer', 'mekanik', 'viewer', 'planner', 'group leader', 'section head', 'adm te'].map((role) => (
           <div key={role} className="mt-4 overflow-x-auto">
             <p className="mb-1 font-semibold capitalize">{role}</p>
             <table className="w-full border-collapse text-center text-theme-sm">
