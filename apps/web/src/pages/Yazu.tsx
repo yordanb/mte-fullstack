@@ -62,31 +62,25 @@ export default function YazuPage() {
 
   return (
     <div ref={rootRef} className="w-full px-2">
-      {/* Header + filter — wrap if narrow, all visible */}
-      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-        <div className="shrink-0">
-          <h2 className="text-theme-lg font-semibold">Yazu</h2>
-          <p className="text-theme-xs text-gray-500">Checklist inspeksi unit — HM bulanan</p>
+      {/* Filter — wrap if narrow, all visible */}
+      <div className="mb-3 flex flex-wrap items-end justify-end gap-2">
+        <div>
+          <label className="block text-theme-xs text-gray-500">Bulan</label>
+          <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={month} onChange={e => setMonth(+e.target.value)}>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{MONTHS[m - 1]}</option>)}
+          </select>
         </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <div>
-            <label className="block text-theme-xs text-gray-500">Bulan</label>
-            <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={month} onChange={e => setMonth(+e.target.value)}>
-              {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-theme-xs text-gray-500">Tahun</label>
-            <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={year} onChange={e => setYear(+e.target.value)}>
-              {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
-          </div>
-          {isAdmin && (
-            <button className="shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600" onClick={doSync} disabled={loading}>
-              Sync Manual
-            </button>
-          )}
+        <div>
+          <label className="block text-theme-xs text-gray-500">Tahun</label>
+          <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={year} onChange={e => setYear(+e.target.value)}>
+            {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
         </div>
+        {isAdmin && (
+          <button className="shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600" onClick={doSync} disabled={loading}>
+            Sync Manual
+          </button>
+        )}
       </div>
 
       {msg && (
