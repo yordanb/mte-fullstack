@@ -1,8 +1,48 @@
 // Yazu — pivot HM bulanan dari checklist inspeksi unit (sync Google Sheets).
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+// Anomaly detection: warna font berdasarkan kenaikan HM harian vs threshold.
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { errMsg, fetchYazuPivot, fetchYazuStats, syncYazu, type YazuPivot, type YazuStats } from '../api/client'
 
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+
+// ── Anomaly helpers ──────────────────────────────────────────
+// Precompute per-unit, per-day delta (kenaikan HM rata-rata per hari).
+// Jika ada gap (tidak ada data di hari sebelumnya), normalisasi: delta / gap_days.
+function computeDeltas(pivot: YazuPivot): Record<string, Record<number, number>> {
+  const out: Record<string, Record<number, number>> = {}
+  for (const uid of pivot.units) {
+    const dm = pivot.cells[uid]
+    if (!dm) continue
+    const days = Object.keys(dm).map(Number).sort((a, b) => a - b)
+    const ud: Record<number, number> = {}
+    for (let i = 1; i < days.length; i++) {
+      const cur = days[i]
+      const prev = days[i - 1]
+      const gap = cur - prev
+      if (gap <= 0) continue
+      const curHm = dm[cur]
+      const prevHm = dm[prev]
+      if (curHm == null || prevHm == null) continue
+      const diff = curHm - prevHm
+      ud[cur] = diff / gap   // average daily increase
+    }
+    out[uid] = ud
+  }
+  return out
+}
+
+// Color class berdasarkan delta (kenaikan HM per hari).
+// > 24 → merah (anomali: mustahil > 24 jam dalam 1 hari)
+// 14–24 → orange (di atas normal)
+// 10–14 → hijau (normal, engine aktif shift malam)
+// < 10 → default (di bawah normal)
+function deltaColor(delta: number | undefined): string {
+  if (delta == null) return ''
+  if (delta > 24) return 'text-red-600 font-bold'
+  if (delta > 14) return 'text-orange-500 font-semibold'
+  if (delta >= 10) return 'text-green-600'
+  return ''   // < 10, biarkan default
+}
 
 export default function YazuPage() {
   const now = new Date()
@@ -12,11 +52,30 @@ export default function YazuPage() {
   const [stats, setStats] = useState<YazuStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
+  const [showAnomaly, setShowAnomaly] = useState(false)
 
   // Dynamic table height — measure actual screen position, always correct
   const tableWrapRef = useRef<HTMLDivElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const [tableH, setTableH] = useState(400)
+
+  // Precompute deltas saat pivot berubah
+  const deltas = useMemo(() => pivot ? computeDeltas(pivot) : {}, [pivot])
+
+  // Hitung ringkasan anomali
+  const anomalySummary = useMemo(() => {
+    if (!showAnomaly) return null
+    let red = 0, orange = 0, green = 0, normal = 0
+    for (const uid of Object.keys(deltas)) {
+      for (const delta of Object.values(deltas[uid])) {
+        if (delta > 24) red++
+        else if (delta > 14) orange++
+        else if (delta >= 10) green++
+        else normal++
+      }
+    }
+    return { red, orange, green, normal }
+  }, [deltas, showAnomaly])
 
   useLayoutEffect(() => {
     const el = tableWrapRef.current
@@ -33,7 +92,7 @@ export default function YazuPage() {
     if (rootRef.current) ro.observe(rootRef.current)
     window.addEventListener('resize', update)
     return () => { ro.disconnect(); window.removeEventListener('resize', update) }
-  }, [loading, pivot, stats, msg])
+  }, [loading, pivot, stats, msg, showAnomaly])
 
   const load = async () => {
     setLoading(true)
@@ -81,6 +140,11 @@ export default function YazuPage() {
             Sync Manual
           </button>
         )}
+        {/* Toggle anomaly */}
+        <label className="flex items-center gap-1.5 text-theme-sm text-gray-600 cursor-pointer select-none pb-0.5">
+          <input type="checkbox" checked={showAnomaly} onChange={e => setShowAnomaly(e.target.checked)} className="h-4 w-4 accent-brand-500" />
+          Anomali
+        </label>
         {/* Stats inline — text spans, no border boxes */}
         {stats && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-theme-xs text-gray-500">
@@ -97,6 +161,22 @@ export default function YazuPage() {
         )}
       </div>
 
+      {/* Anomaly legend + summary */}
+      {showAnomaly && anomalySummary && (
+        <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-theme-xs">
+          <span className="font-semibold text-gray-600">Analisa Anomali:</span>
+          <span className="text-red-600 font-bold">● &gt; 24 jam (anomali)</span>
+          <span className="text-orange-500 font-semibold">● 14–24 jam (di atas normal)</span>
+          <span className="text-green-600">● 10–14 jam (normal)</span>
+          <span className="text-gray-500">● &lt; 10 jam (di bawah normal)</span>
+          <span className="text-gray-600">|</span>
+          <span className="text-red-600">Merah: {anomalySummary.red}</span>
+          <span className="text-orange-500">Orange: {anomalySummary.orange}</span>
+          <span className="text-green-600">Hijau: {anomalySummary.green}</span>
+          <span className="text-gray-500">Lain: {anomalySummary.normal}</span>
+        </div>
+      )}
+
       {msg && (
         <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-theme-sm text-blue-700">
           {msg}
@@ -105,7 +185,7 @@ export default function YazuPage() {
 
       {/* Pivot table — width-constrained, internal scroll both axes */}
       {loading && !pivot ? (
-        <div className="rounded-2xl border bg-white p-10 text-center text-theme-sm text-gray-500">Memuat\u2026</div>
+        <div className="rounded-2xl border bg-white p-10 text-center text-theme-sm text-gray-500">Memuat…</div>
       ) : pivot && pivot.units.length > 0 ? (
         <div
           ref={tableWrapRef}
@@ -130,9 +210,15 @@ export default function YazuPage() {
                   {Array.from({ length: pivot.days_in_month }, (_, i) => i + 1).map(d => {
                     const hm = pivot.cells[uid]?.[d]
                     const isToday = isCurrentMonth && d === todayDay
+                    const delta = showAnomaly ? deltas[uid]?.[d] : undefined
+                    const colorCls = showAnomaly ? deltaColor(delta) : ''
                     return (
-                      <td key={d} className={`min-w-[42px] px-1.5 py-1.5 text-center tabular-nums ${isToday ? 'bg-brand-50' : ''} ${hm == null ? 'text-gray-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {hm != null ? hm.toLocaleString() : '\u00b7'}
+                      <td
+                        key={d}
+                        className={`min-w-[42px] px-1.5 py-1.5 text-center tabular-nums ${isToday ? 'bg-brand-50' : ''} ${hm == null ? 'text-gray-300' : colorCls || 'text-gray-700 dark:text-gray-300'}`}
+                        title={showAnomaly && delta != null ? `Δ ${delta.toFixed(1)} jam/hari` : undefined}
+                      >
+                        {hm != null ? hm.toLocaleString() : '·'}
                       </td>
                     )
                   })}
@@ -149,6 +235,7 @@ export default function YazuPage() {
 
       <p className="mt-2 text-theme-xs text-gray-400">
         Sumber: Google Sheets checklist inspeksi unit. Sel berisi HM terakhir pada tanggal tersebut. Kolom hari ini di-highlight.
+        {showAnomaly && ' Mode anomali: warna = kenaikan HM rata-rata per hari dari hari sebelumnya.'}
       </p>
     </div>
   )
