@@ -62,8 +62,8 @@ export default function YazuPage() {
 
   return (
     <div ref={rootRef} className="w-full px-2">
-      {/* Filter — wrap if narrow, all visible */}
-      <div className="mb-3 flex flex-wrap items-end justify-end gap-2">
+      {/* Filter + stats — single line, left-aligned, wrap if narrow */}
+      <div className="mb-3 flex flex-wrap items-end gap-3">
         <div>
           <label className="block text-theme-xs text-gray-500">Bulan</label>
           <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={month} onChange={e => setMonth(+e.target.value)}>
@@ -81,6 +81,20 @@ export default function YazuPage() {
             Sync Manual
           </button>
         )}
+        {/* Stats inline — text spans, no border boxes */}
+        {stats && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-theme-xs text-gray-500">
+            <span className="shrink-0">Baris: <span className="font-semibold text-gray-700">{stats.total_rows?.toLocaleString()}</span></span>
+            <span className="shrink-0">Unit: <span className="font-semibold text-gray-700">{stats.total_units}</span></span>
+            <span className="shrink-0">Akhir: <span className="font-semibold text-gray-700">{stats.last_data_waktu ? new Date(stats.last_data_waktu).toLocaleString('id-ID') : '-'}</span></span>
+            {stats.last_sync && (
+              <span className="shrink-0">Sync: <span className="font-semibold text-gray-700">{stats.last_sync.finished_at ? new Date(stats.last_sync.finished_at).toLocaleString('id-ID') : '-'} ({stats.last_sync.status})</span>
+              {stats.last_sync.rows_upserted != null && <span className="ml-1">→ {stats.last_sync.rows_upserted}/{stats.last_sync.rows_total}</span>}
+              </span>
+            )}
+            <span className="shrink-0">Auto: <span className="font-semibold text-gray-700">06:00 &amp; 18:00 (GMT+8)</span></span>
+          </div>
+        )}
       </div>
 
       {msg && (
@@ -89,33 +103,9 @@ export default function YazuPage() {
         </div>
       )}
 
-      {/* Stats bar — single line, horizontal scroll if too narrow */}
-      {stats && (
-        <div className="mb-3 flex gap-2 overflow-x-auto pb-1 text-theme-xs text-gray-500">
-          <div className="shrink-0 rounded-lg border bg-white px-3 py-1.5">
-            Baris: <span className="font-semibold text-gray-700">{stats.total_rows?.toLocaleString()}</span>
-          </div>
-          <div className="shrink-0 rounded-lg border bg-white px-3 py-1.5">
-            Unit: <span className="font-semibold text-gray-700">{stats.total_units}</span>
-          </div>
-          <div className="shrink-0 rounded-lg border bg-white px-3 py-1.5">
-            Akhir: <span className="font-semibold text-gray-700">{stats.last_data_waktu ? new Date(stats.last_data_waktu).toLocaleString('id-ID') : '-'}</span>
-          </div>
-          {stats.last_sync && (
-            <div className="shrink-0 rounded-lg border bg-white px-3 py-1.5">
-              Sync: <span className="font-semibold text-gray-700">{stats.last_sync.finished_at ? new Date(stats.last_sync.finished_at).toLocaleString('id-ID') : '-'} ({stats.last_sync.status})</span>
-              {stats.last_sync.rows_upserted != null && <span className="ml-1">→ {stats.last_sync.rows_upserted}/{stats.last_sync.rows_total}</span>}
-            </div>
-          )}
-          <div className="shrink-0 rounded-lg border bg-white px-3 py-1.5">
-            Auto: <span className="font-semibold text-gray-700">06:00 & 18:00 (GMT+8)</span>
-          </div>
-        </div>
-      )}
-
       {/* Pivot table — width-constrained, internal scroll both axes */}
       {loading && !pivot ? (
-        <div className="rounded-2xl border bg-white p-10 text-center text-theme-sm text-gray-500">Memuat…</div>
+        <div className="rounded-2xl border bg-white p-10 text-center text-theme-sm text-gray-500">Memuat\u2026</div>
       ) : pivot && pivot.units.length > 0 ? (
         <div
           ref={tableWrapRef}
@@ -142,7 +132,7 @@ export default function YazuPage() {
                     const isToday = isCurrentMonth && d === todayDay
                     return (
                       <td key={d} className={`min-w-[42px] px-1.5 py-1.5 text-center tabular-nums ${isToday ? 'bg-brand-50' : ''} ${hm == null ? 'text-gray-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                        {hm != null ? hm.toLocaleString() : '·'}
+                        {hm != null ? hm.toLocaleString() : '\u00b7'}
                       </td>
                     )
                   })}
