@@ -62,13 +62,13 @@ export default function YazuPage() {
 
   return (
     <div ref={rootRef} className="w-full px-2">
-      {/* Header + filter — single line, no wrap */}
-      <div className="mb-3 flex items-center justify-between gap-2">
+      {/* Header + filter — wrap if narrow, all visible */}
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div className="shrink-0">
           <h2 className="text-theme-lg font-semibold">Yazu</h2>
           <p className="text-theme-xs text-gray-500">Checklist inspeksi unit — HM bulanan</p>
         </div>
-        <div className="flex items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2">
           <div>
             <label className="block text-theme-xs text-gray-500">Bulan</label>
             <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={month} onChange={e => setMonth(+e.target.value)}>
@@ -125,7 +125,7 @@ export default function YazuPage() {
       ) : pivot && pivot.units.length > 0 ? (
         <div
           ref={tableWrapRef}
-          className="w-full max-w-full overflow-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+          className="min-w-0 w-full overflow-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
           style={{ height: tableH, boxSizing: 'border-box' }}
         >
           <table className="border-collapse text-theme-xs" style={{ width: 'max-content' }}>
