@@ -864,3 +864,47 @@ export async function deleteMomItem(id: number) {
   const r = await api.delete(`/v1/mom/items/${id}`)
   return r.data
 }
+
+// ─── Yazu (checklist inspeksi unit sync dari Google Sheets) ───
+export type YazuStats = {
+  total_rows: number
+  total_units: number
+  last_data_waktu: string | null
+  last_sync: { started_at: string; finished_at: string; status: string; rows_total: number; rows_upserted: number; error_msg: string | null } | null
+}
+export type YazuPivot = {
+  year: number
+  month: number
+  days_in_month: number
+  units: string[]
+  cells: Record<string, Record<number, number | null>>
+}
+export type YazuRaw = {
+  id: number; waktu: string; id_unit: string; nama: string | null; nrp: string | null
+  lokasi: string | null; hm: number | null; layak_operasi: string | null
+  user_field: string | null; akurasi: number | null; link_lokasi: string | null
+  coment: string | null; apar: string | null
+  temuan_status: string | null; pic: string | null; pic_nrp: string | null
+  action_comment: string | null
+}
+
+export async function syncYazu() {
+  const r = await api.post(`/v1/yazu/sync`)
+  return r.data
+}
+export async function fetchYazuStats(): Promise<YazuStats> {
+  const r = await api.get(`/v1/yazu/stats`)
+  return r.data
+}
+export async function fetchYazuUnits(): Promise<string[]> {
+  const r = await api.get(`/v1/yazu/units`)
+  return r.data
+}
+export async function fetchYazuPivot(year?: number, month?: number): Promise<YazuPivot> {
+  const r = await api.get(`/v1/yazu/pivot`, { params: { year, month } })
+  return r.data
+}
+export async function fetchYazuRaw(params: { year?: number; month?: number; id_unit?: string; limit?: number; offset?: number }): Promise<YazuRaw[]> {
+  const r = await api.get(`/v1/yazu/raw`, { params })
+  return r.data
+}

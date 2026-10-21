@@ -29,6 +29,7 @@ const GROUPS: MenuGroup[] = [
   { title: 'Technical Expert', items: [
     { key: 'ppm', label: 'PPM' },
     { key: 'measurement', label: 'Measurement' },
+    { key: 'yazu', label: 'Yazu' },
   ] },
   { title: 'Administrasi', items: [
     { key: 'users', label: 'Users', admin: true },

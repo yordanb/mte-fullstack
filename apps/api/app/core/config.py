@@ -10,6 +10,8 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password: str = "ganti-sekarang"
     upload_dir: str = "/data/uploads"
+    yazu_sheet_id: str = "1c9QKXeuf5bGHL7kRpR0v9cFoaMu3Fx3Kzxk_ZMsQDGE"
+    yazu_sheet_gid: int = 846518658
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -26,5 +28,9 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+
+    @property
+    def yazu_csv_url(self) -> str:
+        return f"https://docs.google.com/spreadsheets/d/{self.yazu_sheet_id}/gviz/tq?tqx=out:csv&gid={self.yazu_sheet_gid}"
 
 settings = Settings()

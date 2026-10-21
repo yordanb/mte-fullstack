@@ -15,6 +15,7 @@ from app.api.v1.fui import router as fui_router
 from app.api.v1.staging import router as staging_router
 from app.api.v1.mom import router as mom_router
 from app.api.v1.riwayat import router as riwayat_router
+from app.api.v1.yazu import router as yazu_router, do_sync
 from app.core.config import settings
 from app.core.security import hash_pw
 from app.core.audit import write_log
@@ -77,6 +78,21 @@ async def seed_admin():
             INSERT INTO users(username, password_hash, role)
             VALUES (:u, :p, 'admin') ON CONFLICT (username) DO NOTHING
         """), {"u": settings.admin_username, "p": hash_pw(settings.admin_password)})
+    # Start scheduler: yazu sync 06:00 & 18:00 Asia/Makassar (GMT+8)
+    global _scheduler
+    _scheduler = AsyncIOScheduler(timezone="Asia/Makassar")
+    _scheduler.add_job(_yazu_scheduled_sync, CronTrigger(hour=6, minute=0), id="yazu_morning")
+    _scheduler.add_job(_yazu_scheduled_sync, CronTrigger(hour=18, minute=0), id="yazu_evening")
+    _scheduler.start()
+    _yazu_log.info("yazu scheduler started (06:00 & 18:00 Asia/Makassar)")
+
+
+@app.on_event("shutdown")
+async def stop_scheduler():
+    global _scheduler
+    if _scheduler:
+        _scheduler.shutdown(wait=False)
+        _scheduler = None
 
 app.include_router(auth_router)
 app.include_router(results_router)
@@ -94,3 +110,20 @@ app.include_router(fui_router)
 app.include_router(staging_router)
 app.include_router(mom_router)
 app.include_router(riwayat_router)
+app.include_router(yazu_router)
+
+# ─── Scheduler: yazu sync 06:00 & 18:00 Asia/Makassar (GMT+8) ───
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+import logging as _log
+_yazu_log = _log.getLogger("yazu.scheduler")
+_scheduler: AsyncIOScheduler | None = None
+
+
+async def _yazu_scheduled_sync():
+    async with SessionLocal() as db:
+        try:
+            r = await do_sync(db)
+            _yazu_log.info("yazu scheduled sync OK: %s", r)
+        except Exception as e:
+            _yazu_log.exception("yazu scheduled sync error: %s", e)
