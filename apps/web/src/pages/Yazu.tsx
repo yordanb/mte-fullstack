@@ -99,17 +99,20 @@ export default function YazuPage() {
         </div>
       )}
 
-      {/* Pivot table */}
+      {/* Pivot table — internal scroll (vertical + horizontal), header & ID Unit sticky */}
       {loading && !pivot ? (
         <div className="rounded-2xl border bg-white p-10 text-center text-theme-sm text-gray-500">Memuat…</div>
       ) : pivot && pivot.units.length > 0 ? (
-        <div className="w-full overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+        <div
+          className="overflow-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+          style={{ height: 'calc(100vh - 280px)' }}
+        >
           <table className="border-collapse text-theme-xs" style={{ width: 'max-content' }}>
-            <thead>
+            <thead className="sticky top-0 z-30">
               <tr className="border-b bg-gray-50 dark:bg-gray-800">
-                <th className="sticky left-0 z-20 min-w-[90px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">ID Unit</th>
+                <th className="sticky left-0 top-0 z-40 min-w-[90px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">ID Unit</th>
                 {Array.from({ length: pivot.days_in_month }, (_, i) => i + 1).map(d => (
-                  <th key={d} className={`min-w-[42px] px-1.5 py-2 text-center font-semibold ${isCurrentMonth && d === todayDay ? 'bg-brand-100 text-brand-700' : ''}`}>
+                  <th key={d} className={`min-w-[42px] px-1.5 py-2 text-center font-semibold ${isCurrentMonth && d === todayDay ? 'bg-brand-100 text-brand-700' : 'bg-gray-50 dark:bg-gray-800'}`}>
                     {d}
                   </th>
                 ))}
