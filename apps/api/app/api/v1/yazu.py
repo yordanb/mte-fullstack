@@ -39,14 +39,14 @@ COLS = [
 ]
 
 
-def _month_range(y: int, m: int) -> tuple[str, str]:
-    """Return (start_iso, end_iso) ISO timestamp literals for year-month range."""
+def _month_range(y: int, m: int) -> tuple[datetime, datetime]:
+    """Return (start, end) tz-aware datetime for year-month range."""
     start = datetime(y, m, 1, 0, 0, 0, tzinfo=TZ)
     if m == 12:
         end = datetime(y + 1, 1, 1, 0, 0, 0, tzinfo=TZ)
     else:
-        end = datetime(y, m + 1, 1, 0, 0, 0, tzinfo=TZ)
-    return start.isoformat(), end.isoformat()
+       end = datetime(y, m + 1, 1, 0, 0, 0, tzinfo=TZ)
+    return start, end
 
 
 def _to_int(v: str | None) -> int | None:
