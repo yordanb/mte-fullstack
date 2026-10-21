@@ -507,6 +507,17 @@ function PhotoGallery({
   const [msg, setMsg] = useState('')
   const [showNotes, setShowNotes] = useState<number | null>(null)
   const [noteText, setNoteText] = useState('')
+  const [previewIdx, setPreviewIdx] = useState<number | null>(null)
+  useEffect(() => {
+    if (previewIdx === null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewIdx(null)
+      if (e.key === 'ArrowLeft' && previewIdx > 0) setPreviewIdx(previewIdx - 1)
+      if (e.key === 'ArrowRight' && previewIdx < photos.length - 1) setPreviewIdx(previewIdx + 1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [previewIdx, photos.length])
 
   const load = async () => {
     try { setPhotos(await fetchFn(itemId)) } catch {}
@@ -532,13 +543,14 @@ function PhotoGallery({
     <div className="mt-2">
       {photos.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {photos.map(ph => {
+          {photos.map((ph, idx) => {
             const isImg = ph.content_type?.startsWith('image/')
             return (
               <div key={ph.id} className="group relative w-16">
                 {isImg ? (
                   <img src={photoUrlFn(itemId, ph.id)} alt={ph.orig_name}
-                    className="h-16 w-16 rounded-lg border object-cover" />
+                    className="h-16 w-16 cursor-zoom-in rounded-lg border object-cover transition-opacity hover:opacity-80"
+                    onClick={(e) => { e.preventDefault(); setPreviewIdx(idx) }} />
                 ) : (
                   <a href={photoUrlFn(itemId, ph.id)} download
                     className="flex h-16 w-16 flex-col items-center justify-center rounded-lg border p-1 text-center text-theme-xs text-gray-500">
@@ -593,6 +605,45 @@ function PhotoGallery({
         )}
         {msg && <span className="text-theme-xs text-red-500">{msg}</span>}
       </div>
+
+      {/* Lightbox preview */}
+      {previewIdx !== null && photos[previewIdx] && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setPreviewIdx(null)}>
+          <button className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl text-white hover:bg-white/20"
+            onClick={(e) => { e.preventDefault(); setPreviewIdx(null) }} title="Tutup (Esc)">×</button>
+
+          <div className="absolute left-0 right-0 top-4 px-16 text-center text-theme-sm text-white/80">
+            {photos[previewIdx].orig_name}
+            {photos[previewIdx].notes && <span className="ml-2 text-white/60">— {photos[previewIdx].notes}</span>}
+          </div>
+
+          {photos.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-theme-xs text-white">
+              {previewIdx + 1} / {photos.length}
+            </div>
+          )}
+
+          {photos.length > 1 && previewIdx > 0 && (
+            <button className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center text-white hover:text-white/60"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreviewIdx(previewIdx - 1) }}
+              title="Sebelumnya (←)">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+          )}
+          {photos.length > 1 && previewIdx < photos.length - 1 && (
+            <button className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center text-white hover:text-white/60"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreviewIdx(previewIdx + 1) }}
+              title="Berikutnya (→)">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+            </button>
+          )}
+
+          <img src={photoUrlFn(itemId, photos[previewIdx].id)} alt={photos[previewIdx].orig_name}
+            className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   )
 }
