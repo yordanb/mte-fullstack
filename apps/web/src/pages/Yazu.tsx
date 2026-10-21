@@ -15,19 +15,24 @@ export default function YazuPage() {
 
   // Dynamic table height — measure actual screen position, always correct
   const tableWrapRef = useRef<HTMLDivElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
   const [tableH, setTableH] = useState(400)
 
   useLayoutEffect(() => {
+    const el = tableWrapRef.current
+    if (!el) return
     const update = () => {
-      if (!tableWrapRef.current) return
-      const top = tableWrapRef.current.getBoundingClientRect().top
-      const available = window.innerHeight - top - 36   // 36px = footer + margin
-      setTableH(Math.max(150, available))
+      const top = el.getBoundingClientRect().top
+      const available = window.innerHeight - top - 32   // 32px footer
+      setTableH(Math.max(120, available))
     }
     update()
-    const t = setTimeout(update, 100)   // re-measure after stats render
+    // ResizeObserver: re-measure when parent/children resize (filter wraps etc)
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    if (rootRef.current) ro.observe(rootRef.current)
     window.addEventListener('resize', update)
-    return () => { clearTimeout(t); window.removeEventListener('resize', update) }
+    return () => { ro.disconnect(); window.removeEventListener('resize', update) }
   }, [loading, pivot, stats, msg])
 
   const load = async () => {
@@ -51,35 +56,33 @@ export default function YazuPage() {
   }
 
   const isAdmin = localStorage.getItem('mte_role') === 'admin'
-  // Tentukan hari ini (untuk highlight kolom)
   const today = new Date()
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1
   const todayDay = today.getDate()
 
   return (
-    <div className="w-full px-2">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-theme-xl font-semibold">Yazu</h2>
-          <p className="mt-1 text-theme-sm text-gray-500">
-            Checklist inspeksi unit — HM bulanan
-          </p>
+    <div ref={rootRef} className="w-full px-2">
+      {/* Header + filter — single line, no wrap */}
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="shrink-0">
+          <h2 className="text-theme-lg font-semibold">Yazu</h2>
+          <p className="text-theme-xs text-gray-500">Checklist inspeksi unit — HM bulanan</p>
         </div>
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="flex items-end gap-2">
           <div>
             <label className="block text-theme-xs text-gray-500">Bulan</label>
-            <select className="rounded-lg border px-3 py-2 text-theme-sm" value={month} onChange={e => setMonth(+e.target.value)}>
+            <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={month} onChange={e => setMonth(+e.target.value)}>
               {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-theme-xs text-gray-500">Tahun</label>
-            <select className="rounded-lg border px-3 py-2 text-theme-sm" value={year} onChange={e => setYear(+e.target.value)}>
+            <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={year} onChange={e => setYear(+e.target.value)}>
               {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </div>
           {isAdmin && (
-            <button className="rounded-lg bg-brand-500 px-4 py-2 text-theme-sm font-medium text-white hover:bg-brand-600" onClick={doSync} disabled={loading}>
+            <button className="shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600" onClick={doSync} disabled={loading}>
               Sync Manual
             </button>
           )}
@@ -92,38 +95,38 @@ export default function YazuPage() {
         </div>
       )}
 
-      {/* Stats bar */}
+      {/* Stats bar — single line, horizontal scroll if too narrow */}
       {stats && (
-        <div className="mb-4 flex flex-wrap gap-3 text-theme-xs text-gray-500">
-          <div className="rounded-lg border bg-white px-3 py-1.5">
-            Total baris: <span className="font-semibold text-gray-700">{stats.total_rows?.toLocaleString()}</span>
+        <div className="mb-3 flex gap-2 overflow-x-auto pb-1 text-theme-xs text-gray-500">
+          <div className="shrink-0 rounded-lg border bg-white px-3 py-1.5">
+            Baris: <span className="font-semibold text-gray-700">{stats.total_rows?.toLocaleString()}</span>
           </div>
-          <div className="rounded-lg border bg-white px-3 py-1.5">
-            Unit unik: <span className="font-semibold text-gray-700">{stats.total_units}</span>
+          <div className="shrink-0 rounded-lg border bg-white px-3 py-1.5">
+            Unit: <span className="font-semibold text-gray-700">{stats.total_units}</span>
           </div>
-          <div className="rounded-lg border bg-white px-3 py-1.5">
-            Data terakhir: <span className="font-semibold text-gray-700">{stats.last_data_waktu ? new Date(stats.last_data_waktu).toLocaleString('id-ID') : '-'}</span>
+          <div className="shrink-0 rounded-lg border bg-white px-3 py-1.5">
+            Akhir: <span className="font-semibold text-gray-700">{stats.last_data_waktu ? new Date(stats.last_data_waktu).toLocaleString('id-ID') : '-'}</span>
           </div>
           {stats.last_sync && (
-            <div className="rounded-lg border bg-white px-3 py-1.5">
-              Sync terakhir: <span className="font-semibold text-gray-700">{stats.last_sync.finished_at ? new Date(stats.last_sync.finished_at).toLocaleString('id-ID') : '-'} ({stats.last_sync.status})</span>
-              {stats.last_sync.rows_upserted != null && <span className="ml-1">→ {stats.last_sync.rows_upserted}/{stats.last_sync.rows_total} rows</span>}
+            <div className="shrink-0 rounded-lg border bg-white px-3 py-1.5">
+              Sync: <span className="font-semibold text-gray-700">{stats.last_sync.finished_at ? new Date(stats.last_sync.finished_at).toLocaleString('id-ID') : '-'} ({stats.last_sync.status})</span>
+              {stats.last_sync.rows_upserted != null && <span className="ml-1">→ {stats.last_sync.rows_upserted}/{stats.last_sync.rows_total}</span>}
             </div>
           )}
-          <div className="rounded-lg border bg-white px-3 py-1.5">
-            Auto sync: <span className="font-semibold text-gray-700">06:00 & 18:00 (GMT+8)</span>
+          <div className="shrink-0 rounded-lg border bg-white px-3 py-1.5">
+            Auto: <span className="font-semibold text-gray-700">06:00 & 18:00 (GMT+8)</span>
           </div>
         </div>
       )}
 
-      {/* Pivot table — internal scroll (vertical + horizontal), header & ID Unit sticky */}
+      {/* Pivot table — width-constrained, internal scroll both axes */}
       {loading && !pivot ? (
         <div className="rounded-2xl border bg-white p-10 text-center text-theme-sm text-gray-500">Memuat…</div>
       ) : pivot && pivot.units.length > 0 ? (
         <div
           ref={tableWrapRef}
-          className="overflow-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
-          style={{ height: tableH }}
+          className="w-full max-w-full overflow-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+          style={{ height: tableH, boxSizing: 'border-box' }}
         >
           <table className="border-collapse text-theme-xs" style={{ width: 'max-content' }}>
             <thead className="sticky top-0 z-30">
@@ -160,7 +163,7 @@ export default function YazuPage() {
         </div>
       )}
 
-      <p className="mt-3 text-theme-xs text-gray-400">
+      <p className="mt-2 text-theme-xs text-gray-400">
         Sumber: Google Sheets checklist inspeksi unit. Sel berisi HM terakhir pada tanggal tersebut. Kolom hari ini di-highlight.
       </p>
     </div>
