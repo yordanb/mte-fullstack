@@ -10,6 +10,8 @@ import TimelinePage from './pages/Timeline'
 import StagingPage from './pages/Staging'
 import MomPage from './pages/Mom'
 import RiwayatPage from './pages/Riwayat'
+import PpmPage from './pages/Ppm'
+import MeasurementPage from './pages/Measurement'
 import { fetchMe, can } from './api/client'
 
 // ApexCharts berat (~700KB): muat hanya saat menu Performance dibuka.
@@ -65,6 +67,8 @@ export default function App() {
       {page === 'staging' && can('staging', 'view') && <StagingPage />}
       {page === 'mom' && can('mom', 'view') && <MomPage />}
       {page === 'riwayat' && can('riwayat', 'view') && <RiwayatPage />}
+      {page === 'ppm' && can('ppm', 'view') && <PpmPage />}
+      {page === 'measurement' && can('measurement', 'view') && <MeasurementPage />}
       {page === 'import' && <ImportPage />}
       {page === 'users' && me.role === 'admin' && <UsersPage />}
       {page === 'audit' && me.role === 'admin' && <AuditPage />}

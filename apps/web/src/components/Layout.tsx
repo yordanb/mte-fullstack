@@ -26,6 +26,10 @@ const GROUPS: MenuGroup[] = [
     { key: 'sugfui', label: 'Suggestion FUI' },
     { key: 'fureport', label: 'Report Follow Up' },
   ] },
+  { title: 'Technical Expert', items: [
+    { key: 'ppm', label: 'PPM' },
+    { key: 'measurement', label: 'Measurement' },
+  ] },
   { title: 'Administrasi', items: [
     { key: 'users', label: 'Users', admin: true },
     { key: 'audit', label: 'Audit Log', admin: true },
