@@ -103,8 +103,8 @@ export default function YazuPage() {
       {loading && !pivot ? (
         <div className="rounded-2xl border bg-white p-10 text-center text-theme-sm text-gray-500">Memuat…</div>
       ) : pivot && pivot.units.length > 0 ? (
-        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-          <table className="w-max min-w-full border-collapse text-theme-xs">
+        <div className="w-full overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+          <table className="border-collapse text-theme-xs" style={{ width: 'max-content' }}>
             <thead>
               <tr className="border-b bg-gray-50 dark:bg-gray-800">
                 <th className="sticky left-0 z-20 min-w-[90px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">ID Unit</th>

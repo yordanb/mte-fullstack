@@ -379,7 +379,7 @@ export default function Layout({ page, setPage, onLogout, user, refreshUser, chi
             <ProfileMenu user={user} refreshUser={refreshUser} onLogout={onLogout} />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 min-w-0 overflow-y-auto p-6">{children}</main>
       </div>
     </div>
   )
