@@ -2,7 +2,7 @@
 import csv
 import io
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -19,6 +19,7 @@ log = logging.getLogger("yazu")
 
 # dd/MM/yyyy HH:mm:ss  →  contoh "04/05/2026 18:27:50"
 WAKTU_FMT = "%d/%m/%Y %H:%M:%S"
+TZ = ZoneInfo("Asia/Makassar")
 
 # Mapping header sheet → kolom DB. Index berdasarkan urutan kolom CSV.
 # Header: Waktu, ID Unit, Nama, NRP, Lokasi, HM, Layak Operasi, USER, Akurasi,
@@ -36,6 +37,16 @@ COLS = [
     ("temuan_status", 30), ("pic", 31), ("pic_nrp", 32),
     ("action_comment", 34),
 ]
+
+
+def _month_range(y: int, m: int) -> tuple[str, str]:
+    """Return (start_iso, end_iso) ISO timestamp literals for year-month range."""
+    start = datetime(y, m, 1, 0, 0, 0, tzinfo=TZ)
+    if m == 12:
+        end = datetime(y + 1, 1, 1, 0, 0, 0, tzinfo=TZ)
+    else:
+        end = datetime(y, m + 1, 1, 0, 0, 0, tzinfo=TZ)
+    return start.isoformat(), end.isoformat()
 
 
 def _to_int(v: str | None) -> int | None:
@@ -184,34 +195,35 @@ async def pivot(
     _user=Depends(get_current_user),
 ):
     """Pivot: baris = ID Unit, kolom = tanggal 1..akhir bulan, sel = HM terakhir hari itu."""
-    tz = ZoneInfo("Asia/Makassar")
-    today = datetime.now(tz).date()
+    today = datetime.now(TZ).date()
     y = year or today.year
     m = month or today.month
-    # Hitung jumlah hari dalam bulan
     if m == 12:
         next_first = date(y + 1, 1, 1)
     else:
         next_first = date(y, m + 1, 1)
     days_in_month = (next_first - date(y, m, 1)).days
 
-    # Ambil HM terakhir per (id_unit, tanggal) dalam bulan y-m.
-    # ROW_NUMBER partition by (id_unit, tanggal) order by waktu desc → rn=1 = latest.
-    rows2 = (await db.execute(text("""
-        WITH latest AS (
-          SELECT id_unit,
-                 (waktu AT TIME ZONE 'Asia/Makassar')::date AS d,
-                 hm,
-                 waktu,
-                 ROW_NUMBER() OVER (PARTITION BY id_unit, (waktu AT TIME ZONE 'Asia/Makassar')::date
-                                    ORDER BY waktu DESC) AS rn
-          FROM yazu
-          WHERE waktu >= make_timestamptz(:y, :m, 1, 0, 0, 0, 'Asia/Makassar')
-            AND waktu <  make_timestamptz(:y2, :m2, 1, 0, 0, 0, 'Asia/Makassar')
-        )
-        SELECT id_unit, EXTRACT(DAY FROM d)::int AS day, hm
-        FROM latest WHERE rn = 1
-    """), {"y": y, "m": m, "y2": next_first.year, "m2": next_first.month})).fetchall()
+    start_iso, end_iso = _month_range(y, m)
+
+    try:
+        rows2 = (await db.execute(text("""
+            WITH latest AS (
+              SELECT id_unit,
+                     (waktu AT TIME ZONE 'Asia/Makassar')::date AS d,
+                     hm,
+                     waktu,
+                     ROW_NUMBER() OVER (PARTITION BY id_unit, (waktu AT TIME ZONE 'Asia/Makassar')::date
+                                        ORDER BY waktu DESC) AS rn
+              FROM yazu
+              WHERE waktu >= :s AND waktu < :e
+            )
+            SELECT id_unit, EXTRACT(DAY FROM d)::int AS day, hm
+            FROM latest WHERE rn = 1
+        """), {"s": start_iso, "e": end_iso})).fetchall()
+    except Exception as e:
+        log.exception("yazu pivot query error")
+        raise HTTPException(500, f"pivot error: {e}")
 
     cells: dict[str, dict[int, int]] = {}
     units_order: list[str] = []
@@ -245,12 +257,10 @@ async def list_raw(
     where = ["1=1"]
     params: dict = {"limit": limit, "offset": offset}
     if year and month:
-        if month == 12:
-            params["y"], params["m"], params["y2"], params["m2"] = year, month, year + 1, 1
-        else:
-            params["y"], params["m"], params["y2"], params["m2"] = year, month, year, month + 1
-        where.append("waktu >= make_timestamptz(:y, :m, 1, 0, 0, 0, 'Asia/Makassar')")
-        where.append("waktu <  make_timestamptz(:y2, :m2, 1, 0, 0, 0, 'Asia/Makassar')")
+        start_iso, end_iso = _month_range(year, month)
+        params["s"], params["e"] = start_iso, end_iso
+        where.append("waktu >= :s")
+        where.append("waktu <  :e")
     if id_unit:
         params["uid"] = id_unit
         where.append("id_unit = :uid")
