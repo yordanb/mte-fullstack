@@ -40,7 +40,7 @@ export default function YazuPage() {
   const todayDay = today.getDate()
 
   return (
-    <div className="mx-auto max-w-[1600px]">
+    <div className="w-full px-2">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-theme-xl font-semibold">Yazu</h2>
@@ -104,12 +104,12 @@ export default function YazuPage() {
         <div className="rounded-2xl border bg-white p-10 text-center text-theme-sm text-gray-500">Memuat…</div>
       ) : pivot && pivot.units.length > 0 ? (
         <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-          <table className="w-full border-collapse text-theme-xs">
+          <table className="w-max min-w-full border-collapse text-theme-xs">
             <thead>
               <tr className="border-b bg-gray-50 dark:bg-gray-800">
-                <th className="sticky left-0 z-10 min-w-[100px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">ID Unit</th>
+                <th className="sticky left-0 z-20 min-w-[90px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">ID Unit</th>
                 {Array.from({ length: pivot.days_in_month }, (_, i) => i + 1).map(d => (
-                  <th key={d} className={`min-w-[60px] px-2 py-2 text-center font-semibold ${isCurrentMonth && d === todayDay ? 'bg-brand-100 text-brand-700' : ''}`}>
+                  <th key={d} className={`min-w-[42px] px-1.5 py-2 text-center font-semibold ${isCurrentMonth && d === todayDay ? 'bg-brand-100 text-brand-700' : ''}`}>
                     {d}
                   </th>
                 ))}
@@ -117,13 +117,13 @@ export default function YazuPage() {
             </thead>
             <tbody>
               {pivot.units.map((uid, ri) => (
-                <tr key={uid} className={ri % 2 ? 'bg-gray-50/50 dark:bg-gray-800/30' : ''}>
-                  <td className="sticky left-0 z-10 bg-inherit px-2 py-1.5 font-medium text-gray-700 dark:text-gray-300">{uid}</td>
+                <tr key={uid} className={ri % 2 ? 'bg-gray-50/50 dark:bg-gray-800/30' : 'bg-white dark:bg-gray-900'}>
+                  <td className="sticky left-0 z-10 min-w-[90px] bg-inherit px-2 py-1.5 font-medium text-gray-700 dark:text-gray-300">{uid}</td>
                   {Array.from({ length: pivot.days_in_month }, (_, i) => i + 1).map(d => {
                     const hm = pivot.cells[uid]?.[d]
                     const isToday = isCurrentMonth && d === todayDay
                     return (
-                      <td key={d} className={`px-2 py-1.5 text-center tabular-nums ${isToday ? 'bg-brand-50' : ''} ${hm == null ? 'text-gray-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                      <td key={d} className={`min-w-[42px] px-1.5 py-1.5 text-center tabular-nums ${isToday ? 'bg-brand-50' : ''} ${hm == null ? 'text-gray-300' : 'text-gray-700 dark:text-gray-300'}`}>
                         {hm != null ? hm.toLocaleString() : '·'}
                       </td>
                     )
