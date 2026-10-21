@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchUsers, createUser, patchUser, deleteUser, fetchPerms, setPerm, fetchMe, errMsg, type PermRow } from '../api/client'
 
 const ROLES = ['admin', 'inputer', 'mekanik', 'viewer', 'planner', 'group leader', 'section head', 'adm te']
-const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'equipment', 'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak', 'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement', 'yazu']
+const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'equipment', 'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak', 'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement', 'yazu', 'ewacs']
 const ACTS = [
   { key: 'can_view', label: 'Lihat' },
   { key: 'can_add', label: 'Tambah' },

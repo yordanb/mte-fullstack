@@ -30,6 +30,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'ppm', label: 'PPM' },
     { key: 'measurement', label: 'Measurement' },
     { key: 'yazu', label: 'Yazu' },
+    { key: 'ewacs', label: 'Ewacs Performance' },
   ] },
   { title: 'Administrasi', items: [
     { key: 'users', label: 'Users', admin: true },

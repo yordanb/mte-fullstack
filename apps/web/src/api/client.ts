@@ -908,3 +908,45 @@ export async function fetchYazuRaw(params: { year?: number; month?: number; id_u
   const r = await api.get(`/v1/yazu/raw`, { params })
   return r.data
 }
+
+// ─── Ewacs Performance ────────────────────────────
+export type EwacsKpi = {
+  pa: number; scm_dur: number; usm_dur: number; scm_pct: number; usm_pct: number
+  unit_count: number; day_count: number; total_downtime: number
+}
+export type EwacsTrend = {
+  tanggal: string; scm_dur: number; usm_dur: number; pa: number
+}
+export type EwacsDetail = {
+  id: number; tanggal: string; crew: string | null; cn: string; egi: string | null
+  trouble_desc: string | null; shift: string | null; kode: string; wo: string | null
+  lokasi: string | null; start_bd: string | null; mekanik_datang: string | null
+  rfu: string | null; operator_datang: string | null; durasi: number
+  hm_start: number | null; hm_rfu_mek: number | null; hm_rfu_opt: number | null
+  gl_plant: string | null; mekanik: string | null; action: string | null
+  id_lastupdate: string | null
+}
+export type EwacsFilters = { egi: string[]; crew: string[]; cn: string[] }
+
+export async function importEwacsCsv(file: File): Promise<{ inserted: number; skipped: number; total_rows: number }> {
+  const form = new FormData()
+  form.append('file', file)
+  const r = await api.post(`/v1/ewacs/import`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+export async function fetchEwacsFilters(): Promise<EwacsFilters> {
+  const r = await api.get(`/v1/ewacs/filters`)
+  return r.data
+}
+export async function fetchEwacsKpi(params: { start?: string; end?: string; egi?: string; crew?: string; cn?: string }): Promise<EwacsKpi> {
+  const r = await api.get(`/v1/ewacs/kpi`, { params })
+  return r.data
+}
+export async function fetchEwacsTrend(params: { start?: string; end?: string; egi?: string; crew?: string; cn?: string }): Promise<EwacsTrend[]> {
+  const r = await api.get(`/v1/ewacs/trend`, { params })
+  return r.data
+}
+export async function fetchEwacsDetail(params: { start?: string; end?: string; egi?: string; crew?: string; cn?: string; kode?: string; limit?: number; offset?: number }): Promise<EwacsDetail[]> {
+  const r = await api.get(`/v1/ewacs/detail`, { params })
+  return r.data
+}
