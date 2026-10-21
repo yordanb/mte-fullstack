@@ -31,17 +31,19 @@ function computeDeltas(pivot: YazuPivot): Record<string, Record<number, number>>
   return out
 }
 
-// Color class berdasarkan delta (kenaikan HM per hari).
+// Color class berdasarkan delta (kenaikan HM rata-rata per hari).
+// < 0 → background merah + text putih (anomali parah: HM mundur — meter dimanipulasi/reset)
 // > 24 → merah (anomali: mustahil > 24 jam dalam 1 hari)
 // 14–24 → orange (di atas normal)
 // 10–14 → hijau (normal, engine aktif shift malam)
-// < 10 → default (di bawah normal)
+// 0–10 → default (di bawah normal, termasuk delta=0 = unit idle)
 function deltaColor(delta: number | undefined): string {
   if (delta == null) return ''
+  if (delta < 0) return 'bg-red-600 text-white font-bold'
   if (delta > 24) return 'text-red-600 font-bold'
   if (delta > 14) return 'text-orange-500 font-semibold'
   if (delta >= 10) return 'text-green-600'
-  return ''   // < 10, biarkan default
+  return ''   // 0–10, biarkan default
 }
 
 export default function YazuPage() {
@@ -65,16 +67,17 @@ export default function YazuPage() {
   // Hitung ringkasan anomali
   const anomalySummary = useMemo(() => {
     if (!showAnomaly) return null
-    let red = 0, orange = 0, green = 0, normal = 0
+    let red = 0, orange = 0, green = 0, normal = 0, mundur = 0
     for (const uid of Object.keys(deltas)) {
       for (const delta of Object.values(deltas[uid])) {
-        if (delta > 24) red++
+        if (delta < 0) mundur++
+        else if (delta > 24) red++
         else if (delta > 14) orange++
         else if (delta >= 10) green++
         else normal++
       }
     }
-    return { red, orange, green, normal }
+    return { red, orange, green, normal, mundur }
   }, [deltas, showAnomaly])
 
   useLayoutEffect(() => {
@@ -165,11 +168,13 @@ export default function YazuPage() {
       {showAnomaly && anomalySummary && (
         <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-theme-xs">
           <span className="font-semibold text-gray-600">Analisa Anomali:</span>
+          <span className="bg-red-600 px-1 font-bold text-white">■ HM mundur (delta &lt; 0)</span>
           <span className="text-red-600 font-bold">● &gt; 24 jam (anomali)</span>
           <span className="text-orange-500 font-semibold">● 14–24 jam (di atas normal)</span>
           <span className="text-green-600">● 10–14 jam (normal)</span>
           <span className="text-gray-500">● &lt; 10 jam (di bawah normal)</span>
           <span className="text-gray-600">|</span>
+          <span className="bg-red-600 px-1 font-bold text-white">Mundur: {anomalySummary.mundur}</span>
           <span className="text-red-600">Merah: {anomalySummary.red}</span>
           <span className="text-orange-500">Orange: {anomalySummary.orange}</span>
           <span className="text-green-600">Hijau: {anomalySummary.green}</span>
@@ -216,7 +221,11 @@ export default function YazuPage() {
                       <td
                         key={d}
                         className={`min-w-[42px] px-1.5 py-1.5 text-center tabular-nums ${isToday ? 'bg-brand-50' : ''} ${hm == null ? 'text-gray-300' : colorCls || 'text-gray-700 dark:text-gray-300'}`}
-                        title={showAnomaly && delta != null ? `Δ ${delta.toFixed(1)} jam/hari` : undefined}
+                        title={showAnomaly && delta != null
+                          ? delta < 0
+                            ? `ANOMALI: HM mundur ${delta.toFixed(1)} jam/hari`
+                            : `Δ ${delta.toFixed(1)} jam/hari`
+                          : undefined}
                       >
                         {hm != null ? hm.toLocaleString() : '·'}
                       </td>
@@ -235,7 +244,7 @@ export default function YazuPage() {
 
       <p className="mt-2 text-theme-xs text-gray-400">
         Sumber: Google Sheets checklist inspeksi unit. Sel berisi HM terakhir pada tanggal tersebut. Kolom hari ini di-highlight.
-        {showAnomaly && ' Mode anomali: warna = kenaikan HM rata-rata per hari dari hari sebelumnya.'}
+        {showAnomaly && ' Mode anomali: warna = kenaikan HM rata-rata per hari. HM mundur (delta < 0) = background merah.'}
       </p>
     </div>
   )
