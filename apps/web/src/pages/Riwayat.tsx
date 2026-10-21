@@ -244,13 +244,15 @@ function IssueDetail({ id, onBack }: { id: number; onBack: () => void }) {
                     <button className="shrink-0 rounded-lg p-1 text-gray-400 hover:text-blue-500" onClick={() => setEditProgress(pr)} title="Ubah">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
                     </button>
-                    <button className="shrink-0 rounded-lg p-1 text-gray-400 hover:text-red-500" onClick={async () => {
-                      if (!confirm('Hapus progress ini?')) return
-                      try { await deleteRiwayatProgress(pr.id); load() }
-                      catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
-                    }} title="Hapus">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
-                    </button>
+                    {isAdmin() && (
+                      <button className="shrink-0 rounded-lg p-1 text-gray-400 hover:text-red-500" onClick={async () => {
+                        if (!confirm('Hapus progress ini?')) return
+                        try { await deleteRiwayatProgress(pr.id); load() }
+                        catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+                      }} title="Hapus">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -289,13 +291,22 @@ function IssueDetail({ id, onBack }: { id: number; onBack: () => void }) {
                   </div>
                   <PartPhotos ptid={pt.id} key={`pp-${pt.id}`} />
                 </div>
-                {canEdit() && (
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button className="rounded-lg p-1 text-gray-400 hover:text-gray-600" onClick={() => setEditPart(pt)} title="Ubah">
+                <div className="flex shrink-0 items-center gap-1">
+                  {canEdit() && (
+                    <button className="rounded-lg p-1 text-gray-400 hover:text-blue-500" onClick={() => setEditPart(pt)} title="Ubah">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                     </button>
-                  </div>
-                )}
+                  )}
+                  {isAdmin() && (
+                    <button className="rounded-lg p-1 text-gray-400 hover:text-red-500" onClick={async () => {
+                      if (!confirm('Hapus part ini?')) return
+                      try { await deleteRiwayatPart(pt.id); load() }
+                      catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+                    }} title="Hapus">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -683,7 +694,7 @@ function ProgressParts({ pid }: { pid: number }) {
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
                 </button>
               )}
-              {can('riwayat', 'delete') && (
+              {isAdmin() && (
                 <button className="rounded p-1 text-gray-400 hover:text-red-500"
                   onClick={async () => { if (confirm('Hapus part ini?')) { try { await deleteRiwayatPart(p.id); load() } catch (e) { setMsg(`gagal: ${errMsg(e)}`) } } }}
                   title="Hapus">

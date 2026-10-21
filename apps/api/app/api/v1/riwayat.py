@@ -214,7 +214,7 @@ async def patch_progress(pid: int, body: ProgressPatch, db: AsyncSession = Depen
     return {"ok": True}
 
 
-@router.delete("/progress/{pid}", dependencies=[Depends(require_role("inputer", "admin", "mekanik"))])
+@router.delete("/progress/{pid}", dependencies=[Depends(require_role("admin"))])
 async def delete_progress(pid: int, db: AsyncSession = Depends(get_db),
                           user=Depends(get_current_user)):
     res = await db.execute(text("DELETE FROM riwayat_progress WHERE id=:id"), {"id": pid})
@@ -268,7 +268,7 @@ async def patch_part(ptid: int, body: PartPatch, db: AsyncSession = Depends(get_
     return {"ok": True}
 
 
-@router.delete("/parts/{ptid}", dependencies=[Depends(require_role("inputer", "admin", "mekanik"))])
+@router.delete("/parts/{ptid}", dependencies=[Depends(require_role("admin"))])
 async def delete_part(ptid: int, db: AsyncSession = Depends(get_db),
                       user=Depends(get_current_user)):
     res = await db.execute(text("DELETE FROM riwayat_parts WHERE id=:id"), {"id": ptid})
