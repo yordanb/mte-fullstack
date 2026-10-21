@@ -40,7 +40,7 @@ export default function YazuPage() {
   const todayDay = today.getDate()
 
   return (
-    <div className="w-full px-2">
+    <div className="flex h-[calc(100vh-112px)] w-full flex-col overflow-hidden px-2">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-theme-xl font-semibold">Yazu</h2>
@@ -103,10 +103,7 @@ export default function YazuPage() {
       {loading && !pivot ? (
         <div className="rounded-2xl border bg-white p-10 text-center text-theme-sm text-gray-500">Memuat…</div>
       ) : pivot && pivot.units.length > 0 ? (
-        <div
-          className="overflow-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
-          style={{ height: 'calc(100vh - 280px)' }}
-        >
+        <div className="min-h-0 min-w-0 flex-1 overflow-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
           <table className="border-collapse text-theme-xs" style={{ width: 'max-content' }}>
             <thead className="sticky top-0 z-30">
               <tr className="border-b bg-gray-50 dark:bg-gray-800">
@@ -142,7 +139,7 @@ export default function YazuPage() {
         </div>
       )}
 
-      <p className="mt-3 text-theme-xs text-gray-400">
+      <p className="mt-3 shrink-0 text-theme-xs text-gray-400">
         Sumber: Google Sheets checklist inspeksi unit. Sel berisi HM terakhir pada tanggal tersebut. Kolom hari ini di-highlight.
       </p>
     </div>
