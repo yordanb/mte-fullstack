@@ -861,6 +861,19 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
     if (!confirm('Hapus foto ini?')) return
     try { await deleteActivityPhoto(row.id, pid); onPhotoDeleted() } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
+  const photos = row.photos ?? []
+  const [photoIdx, setPhotoIdx] = useState<number | null>(null)
+  // Lightbox: Esc tutup, ←/→ navigasi
+  useEffect(() => {
+    if (photoIdx === null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPhotoIdx(null)
+      if (e.key === 'ArrowLeft' && photoIdx > 0) setPhotoIdx(photoIdx - 1)
+      if (e.key === 'ArrowRight' && photoIdx < photos.length - 1) setPhotoIdx(photoIdx + 1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [photoIdx, photos.length])
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
@@ -874,16 +887,114 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
         {row.description && <p className="mt-3 whitespace-pre-wrap text-theme-sm">{row.description}</p>}
         {(row.photos ?? []).length > 0 && (
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {(row.photos ?? []).map((p) => (
+            {(row.photos ?? []).map((p, idx) => (
               <div key={p.id} className="group relative">
-                <a href={activityPhotoUrl(row.id, p.id)} target="_blank" rel="noreferrer">
-                  <img src={activityPhotoUrl(row.id, p.id)} alt={p.orig_name ?? ''} className="h-32 w-full rounded-lg object-cover" loading="lazy" />
-                </a>
-                {can('activity', 'delete') && (
-                  <button onClick={() => delPhoto(p.id)} title="Hapus foto"
-                    className="absolute top-1 right-1 rounded-lg bg-black/60 px-2 py-0.5 text-white opacity-0 group-hover:opacity-100">×</button>
-                )}              </div>
+                <img
+                  src={activityPhotoUrl(row.id, p.id)}
+                  alt={p.orig_name ?? ''}
+                  className="h-32 w-full cursor-zoom-in rounded-lg object-cover transition-opacity hover:opacity-90"
+                  loading="lazy"
+                  onClick={() => setPhotoIdx(idx)}
+                />
+                <div className="absolute top-1 right-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <a
+                    href={activityPhotoUrl(row.id, p.id)}
+                    download={p.orig_name ?? ''}
+                    onClick={(e) => e.stopPropagation()}
+                    title="Download foto"
+                    className="flex h-6 w-6 items-center justify-center rounded-lg bg-black/60 text-white hover:bg-black/80"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                  </a>
+                  {can('activity', 'delete') && (
+                    <button
+                      onClick={() => delPhoto(p.id)}
+                      title="Hapus foto"
+                      className="flex h-6 w-6 items-center justify-center rounded-lg bg-black/60 text-white hover:bg-red-600"
+                    >×</button>
+                  )}
+                </div>
+              </div>
             ))}
+          </div>
+        )}
+
+        {/* Lightbox review foto */}
+        {photoIdx !== null && photos[photoIdx] && (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4"
+            onClick={() => setPhotoIdx(null)}
+          >
+            {/* Aksi kanan atas: download + hapus + tutup */}
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+              <a
+                href={activityPhotoUrl(row.id, photos[photoIdx].id)}
+                download={photos[photoIdx].orig_name ?? ''}
+                title="Download foto"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+              </a>
+              {can('activity', 'delete') && (
+                <button
+                  title="Hapus foto"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white hover:bg-red-600"
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    if (!confirm('Hapus foto ini?')) return
+                    try { await deleteActivityPhoto(row.id, photos[photoIdx].id); setPhotoIdx(null); onPhotoDeleted() }
+                    catch (err) { setMsg(`gagal: ${errMsg(err)}`) }
+                  }}
+                >×</button>
+              )}
+              <button
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl text-white hover:bg-white/25"
+                onClick={(e) => { e.stopPropagation(); setPhotoIdx(null) }}
+                title="Tutup (Esc)"
+              >×</button>
+            </div>
+
+            {/* Nama file */}
+            <div className="absolute top-4 left-4 z-10 max-w-[60%] truncate rounded-full bg-white/10 px-3 py-1 text-theme-sm text-white/80">
+              {photos[photoIdx].orig_name}
+            </div>
+
+            {photos.length > 1 && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-theme-xs text-white">
+                {photoIdx + 1} / {photos.length}
+              </div>
+            )}
+
+            {photos.length > 1 && photoIdx > 0 && (
+              <button
+                className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center text-white hover:text-white/60"
+                onClick={(e) => { e.stopPropagation(); setPhotoIdx(photoIdx - 1) }}
+                title="Sebelumnya (←)"
+              >
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
+            )}
+            {photos.length > 1 && photoIdx < photos.length - 1 && (
+              <button
+                className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center text-white hover:text-white/60"
+                onClick={(e) => { e.stopPropagation(); setPhotoIdx(photoIdx + 1) }}
+                title="Berikutnya (→)"
+              >
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+              </button>
+            )}
+
+            <img
+              src={activityPhotoUrl(row.id, photos[photoIdx].id)}
+              alt={photos[photoIdx].orig_name ?? ''}
+              className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         )}
         {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
