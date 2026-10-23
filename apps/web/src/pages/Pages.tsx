@@ -921,6 +921,11 @@ function ActForm({ date, initial, onClose, onSaved }: {
       setMsg('')
       if (!title.trim()) { setMsg('Judul wajib diisi.'); return }
       if (!crew.trim()) { setMsg('Crew wajib diisi.'); return }
+      if (category === 'Daily Check Dragflow') {
+        if (!cn.trim()) { setMsg('Unit / CN wajib dipilih untuk Daily Check Dragflow.'); return }
+        if (!hm.trim()) { setMsg('Hourmeter wajib diisi untuk Daily Check Dragflow.'); return }
+        if (shift == null) { setMsg('Shift wajib dipilih untuk Daily Check Dragflow.'); return }
+      }
       setBusy(true); setPct(0)
       if (initial) {
         await patchActivity(initial.id, { date: d, title, category: category || null, crew: crew.trim(), cn: cn || null, hm: hm.trim() || null, shift: shift != null ? String(shift) : null, description: desc || null })
@@ -982,7 +987,21 @@ function ActForm({ date, initial, onClose, onSaved }: {
           <datalist id="act-crew-form">{ACT_CREWS.map((c) => (<option key={c} value={c} />))}</datalist>
           <datalist id="act-cat-form">{ACT_CATS.map((c) => (<option key={c} value={c} />))}</datalist>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-theme-sm">Unit / CN<input className={inp} value={cn} onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="cth WP855" /></label>
+            {category === 'Daily Check Dragflow' ? (
+              <label className="text-theme-sm">Unit / CN
+                <select className={inp} value={cn} onChange={(e) => setCn(e.target.value)}>
+                  <option value="">— pilih unit —</option>
+                  {DRAGFLOW_PAIRS.map((p) => (
+                    <option key={p.wp} value={p.wp}>{p.ex} - {p.wp}</option>
+                  ))}
+                  {cn && !DRAGFLOW_PAIRS.some((p) => p.wp === cn) && (
+                    <option value={cn}>{cn} (data lama)</option>
+                  )}
+                </select>
+              </label>
+            ) : (
+              <label className="text-theme-sm">Unit / CN<input className={inp} value={cn} onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="cth WP855" /></label>
+            )}
             <label className="text-theme-sm">Hourmeter<input type="number" min="0" step="any" className={inp} value={hm} onChange={(e) => setHm(e.target.value)} placeholder="cth 12500" /></label>
           </div>
           <label className="text-theme-sm">Keterangan<textarea className={inp} rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} /></label>
