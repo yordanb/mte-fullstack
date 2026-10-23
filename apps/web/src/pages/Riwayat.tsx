@@ -42,7 +42,10 @@ function fmtDate(v?: string | null) {
 }
 function fmtDateTime(v?: string | null) {
   if (!v) return ''
-  return v.slice(0, 10).split('-').reverse().join('/') + ' ' + v.slice(11, 16)
+  const d = new Date(v)
+  if (isNaN(d.getTime())) return ''
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 function daysSince(d?: string | null) {
   if (!d) return 0
@@ -119,6 +122,21 @@ export default function RiwayatPage() {
                 <div className="text-theme-sm text-gray-500">
                   {iss.cn && `${iss.cn} • `}{iss.category} • {fmtDate(iss.start_date)}
                 </div>
+                {iss.last_progress ? (
+                  <div className="mt-1 flex items-baseline gap-1.5 text-theme-xs">
+                    <span className="shrink-0 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                      Progress
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-gray-600 dark:text-gray-400" title={iss.last_progress}>
+                      {iss.last_progress}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-gray-400">
+                      {fmtDateTime(iss.last_progress_date)}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-1 text-theme-xs italic text-gray-400">Belum ada progress</div>
+                )}
               </div>
               <div className="shrink-0 text-right">
                 <span className={`rounded-full px-2 py-0.5 text-theme-xs ${stCls(iss.status)}`}>{stLabel(iss.status)}</span>

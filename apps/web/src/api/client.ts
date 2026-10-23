@@ -732,6 +732,8 @@ export type RiwayatIssue = {
   start_date: string; end_date?: string | null; description?: string | null
   created_by?: string | null; created_at?: string; updated_at?: string
   progress_count?: number; open_parts?: number
+  last_progress?: string | null; last_progress_date?: string | null
+  last_progress_by?: string | null
 }
 
 export type RiwayatProgress = {

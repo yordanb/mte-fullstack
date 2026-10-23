@@ -88,8 +88,18 @@ async def list_issues(status: str | None = Query(None),
         SELECT i.*,
                (SELECT COUNT(*) FROM riwayat_progress p WHERE p.issue_id = i.id) AS progress_count,
                (SELECT COUNT(*) FROM riwayat_parts pt WHERE pt.issue_id = i.id
-                AND pt.status NOT IN ('installed','cancelled')) AS open_parts
+                AND pt.status NOT IN ('installed','cancelled')) AS open_parts,
+               lp.description AS last_progress,
+               lp.log_date    AS last_progress_date,
+               lp.created_by  AS last_progress_by
         FROM riwayat_issues i
+        LEFT JOIN LATERAL (
+            SELECT p.description, p.log_date, p.created_by
+            FROM riwayat_progress p
+            WHERE p.issue_id = i.id
+            ORDER BY p.log_date DESC, p.seq DESC, p.id DESC
+            LIMIT 1
+        ) lp ON TRUE
         {where}
         ORDER BY i.start_date DESC, i.id DESC
     """), p)).mappings().all()
