@@ -915,6 +915,10 @@ function ActForm({ date, initial, onClose, onSaved }: {
   const [busy, setBusy] = useState(false)
   const [pct, setPct] = useState(0)
   const inp = 'w-full rounded-lg border px-3 py-2'
+  // Crew: hanya pilih dari daftar. Sertakan crew lama saat edit bila di luar daftar.
+  const crewOpts = initial?.crew && initial.crew.trim() && !ACT_CREWS.includes(initial.crew.trim())
+    ? [...ACT_CREWS, initial.crew.trim()]
+    : ACT_CREWS
   const save = async () => {
     if (busy) return
     try {
@@ -953,13 +957,18 @@ function ActForm({ date, initial, onClose, onSaved }: {
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5">
         <h3 className="font-semibold">{initial ? 'Ubah aktivitas' : 'Tambah aktivitas'}</h3>
         <div className="mt-3 flex flex-col gap-2">
-          <label className="text-theme-sm">Tanggal<input type="date" className={inp} value={d} onChange={(e) => setD(e.target.value)} /></label>
+          <label className="text-theme-sm">Tanggal
+            <div className="mt-1"><DatePicker value={d} onChange={(v) => setD(v)} /></div>
+          </label>
           <label className="text-theme-sm">Judul<input className={inp} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="cth Perbaikan pompa WP855" /></label>
           {category === 'Daily Check Dragflow' ? (
             <>
               <div className="grid grid-cols-3 gap-2">
                 <label className="text-theme-sm">Crew (wajib)
-                  <input className={inp} list="act-crew-form" value={crew} onChange={(e) => setCrew(e.target.value)} placeholder="pilih / ketik manual" />
+                  <select className={inp} value={crew} onChange={(e) => setCrew(e.target.value)}>
+                    <option value="">— pilih crew —</option>
+                    {crewOpts.map((c) => (<option key={c} value={c}>{c}</option>))}
+                  </select>
                 </label>
                 <label className="text-theme-sm">Kategori
                   <input className={`${inp} bg-gray-100 dark:bg-gray-800`} value="Daily Check Dragflow" readOnly />
@@ -977,14 +986,16 @@ function ActForm({ date, initial, onClose, onSaved }: {
           ) : (
             <div className="grid grid-cols-2 gap-2">
               <label className="text-theme-sm">Crew (wajib)
-                <input className={inp} list="act-crew-form" value={crew} onChange={(e) => setCrew(e.target.value)} placeholder="pilih / ketik manual" />
+                <select className={inp} value={crew} onChange={(e) => setCrew(e.target.value)}>
+                  <option value="">— pilih crew —</option>
+                  {crewOpts.map((c) => (<option key={c} value={c}>{c}</option>))}
+                </select>
               </label>
               <label className="text-theme-sm">Kategori
                 <input className={inp} list="act-cat-form" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="pilih / ketik manual" />
               </label>
             </div>
           )}
-          <datalist id="act-crew-form">{ACT_CREWS.map((c) => (<option key={c} value={c} />))}</datalist>
           <datalist id="act-cat-form">{ACT_CATS.map((c) => (<option key={c} value={c} />))}</datalist>
           <div className="grid grid-cols-2 gap-2">
             {category === 'Daily Check Dragflow' ? (
