@@ -49,7 +49,13 @@ export default function EwacsPage() {
     setMsg('importing...')
     try {
       const r = await importEwacsCsv(file)
-      setMsg(`import OK: ${r.inserted} rows dari ${r.total_rows} (${r.skipped} skip)`)
+      setMsg(
+        `import OK: ${r.inserted} baru, ${r.updated} diperbarui` +
+        (r.deleted ? `, ${r.deleted} dibuang (tidak ada di file)` : '') +
+        (r.duplicates ? `, ${r.duplicates} duplikat di file` : '') +
+        (r.skipped ? `, ${r.skipped} skip` : '') +
+        ` — total ${r.total_rows} baris`,
+      )
       load()
     } catch (e) { setMsg(`import gagal: ${errMsg(e)}`) }
   }
@@ -160,6 +166,7 @@ export default function EwacsPage() {
               className="shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600"
               onClick={() => fileRef.current?.click()}
               disabled={loading}
+              title="Upload CSV: data lama diperbarui & data baru ditambahkan — data tanggal/unit lain tidak dihapus"
             >
               Import CSV
             </button>

@@ -930,7 +930,16 @@ export type EwacsDetail = {
 }
 export type EwacsFilters = { egi: string[]; crew: string[]; cn: string[] }
 
-export async function importEwacsCsv(file: File): Promise<{ inserted: number; skipped: number; total_rows: number }> {
+export type EwacsImportResult = {
+  inserted: number
+  updated: number
+  deleted: number
+  skipped: number
+  duplicates: number
+  total_rows: number
+}
+
+export async function importEwacsCsv(file: File): Promise<EwacsImportResult> {
   const form = new FormData()
   form.append('file', file)
   const r = await api.post(`/v1/ewacs/import`, form, { headers: { 'Content-Type': 'multipart/form-data' } })

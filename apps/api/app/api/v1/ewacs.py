@@ -74,10 +74,17 @@ async def import_csv(
     missing = required - set(rows[0].keys())
     if missing:
         raise HTTPException(400, f"Kolom wajib hilang: {missing}")
-    # Hapus semua data lama lalu insert baru — asumsi CSV berisi data periode lengkap
-    await db.execute(text("DELETE FROM ewacs_breakdown"))
-    # Batch insert
-    values = []
+    # UPSERT — data lama TIDAK dihapus semua lagi.
+    # Natural key satu baris breakdown: (tanggal, cn, shift, kode, start_bd).
+    #   - baris dengan key sama  → di-UPDATE (crew, durasi, HM, action, dll)
+    #   - baris baru             → di-INSERT
+    #   - baris "basi"           → hanya dihapus kalau berada di dalam scope file
+    #     (pasangan tanggal+cn yang ikut terkirim) tapi key-nya sudah tidak ada
+    #     di CSV. Ini menangani koreksi/penghapusan baris di sumber, tanpa
+    #     menyentuh tanggal atau unit lain yang tidak ada di file.
+    values: list[dict] = []
+    index: dict[tuple, int] = {}
+    duplicates = 0
     skip = 0
     for row in rows:
         d = _parse_tanggal(row.get('tanggal', ''))
@@ -87,7 +94,7 @@ async def import_csv(
             skip += 1
             continue
         durasi = _parse_numeric(row.get('Durasi_2', ''))
-        values.append({
+        v = {
             "tanggal": d,
             "crew": (row.get('Crew') or '').strip() or None,
             "cn": cn,
@@ -109,27 +116,102 @@ async def import_csv(
             "mekanik": (row.get('Mekanik_1') or '').strip() or None,
             "action": (row.get('Action_1') or '').strip() or None,
             "id_lastupdate": (row.get('ID_lastupdate') or '').strip() or None,
-        })
+        }
+        # Dedupe dalam file: key sama → baris terakhir menang (satu baris = satu key).
+        key = (d, cn, v["shift"] or '', kode, v["start_bd"] or '')
+        if key in index:
+            duplicates += 1
+            values[index[key]] = v
+        else:
+            index[key] = len(values)
+            values.append(v)
     if not values:
         raise HTTPException(400, "Tidak ada row valid")
-    # Bulk insert
-    insert_sql = text("""
-        INSERT INTO ewacs_breakdown
-          (tanggal,crew,cn,egi,trouble_desc,shift,kode,wo,lokasi,
-           start_bd,mekanik_datang,rfu,operator_datang,durasi,
-           hm_start,hm_rfu_mek,hm_rfu_opt,gl_plant,mekanik,action,id_lastupdate)
-        VALUES
-          (:tanggal,:crew,:cn,:egi,:trouble_desc,:shift,:kode,:wo,:lokasi,
-           :start_bd,:mekanik_datang,:rfu,:operator_datang,:durasi,
-           :hm_start,:hm_rfu_mek,:hm_rfu_opt,:gl_plant,:mekanik,:action,:id_lastupdate)
-    """)
-    for v in values:
-        await db.execute(insert_sql, v)
+
+    cols = ("tanggal,crew,cn,egi,trouble_desc,shift,kode,wo,lokasi,"
+            "start_bd,mekanik_datang,rfu,operator_datang,durasi,"
+            "hm_start,hm_rfu_mek,hm_rfu_opt,gl_plant,mekanik,action,id_lastupdate")
+    named = (":tanggal,:crew,:cn,:egi,:trouble_desc,:shift,:kode,:wo,:lokasi,"
+             ":start_bd,:mekanik_datang,:rfu,:operator_datang,:durasi,"
+             ":hm_start,:hm_rfu_mek,:hm_rfu_opt,:gl_plant,:mekanik,:action,:id_lastupdate")
+
+    # Staging per-transaksi: tidak menyentuh tabel utama sampai semua valid.
+    await db.execute(text("DROP TABLE IF EXISTS ewacs_import_stage"))
+    await db.execute(text("""
+        CREATE TEMP TABLE ewacs_import_stage (
+          tanggal date, crew text, cn text, egi text, trouble_desc text, shift text,
+          kode text, wo text, lokasi text, start_bd text, mekanik_datang text,
+          rfu text, operator_datang text, durasi numeric, hm_start numeric,
+          hm_rfu_mek numeric, hm_rfu_opt numeric, gl_plant text, mekanik text,
+          action text, id_lastupdate text
+        ) ON COMMIT DROP
+    """))
+    await db.execute(
+        text(f"INSERT INTO ewacs_import_stage ({cols}) VALUES ({named})"), values)
+
+    key_match = ("e.tanggal = s.tanggal AND e.cn = s.cn AND e.kode = s.kode "
+                 "AND COALESCE(e.shift,'') = COALESCE(s.shift,'') "
+                 "AND COALESCE(e.start_bd,'') = COALESCE(s.start_bd,'')")
+
+    # 1) Buang baris basi di dalam scope file (tanggal+cn ada di CSV, key tidak).
+    deleted = await db.execute(text(f"""
+        DELETE FROM ewacs_breakdown e
+        WHERE EXISTS (
+                SELECT 1 FROM ewacs_import_stage s
+                WHERE s.tanggal = e.tanggal AND s.cn = e.cn
+              )
+          AND NOT EXISTS (
+                SELECT 1 FROM ewacs_import_stage s
+                WHERE {key_match}
+              )
+    """))
+
+    # 2) UPDATE baris yang key-nya sudah ada.
+    updated = await db.execute(text(f"""
+        UPDATE ewacs_breakdown e SET
+          crew            = s.crew,
+          egi             = s.egi,
+          trouble_desc    = s.trouble_desc,
+          wo              = s.wo,
+          lokasi          = s.lokasi,
+          mekanik_datang  = s.mekanik_datang,
+          rfu             = s.rfu,
+          operator_datang = s.operator_datang,
+          durasi          = s.durasi,
+          hm_start        = s.hm_start,
+          hm_rfu_mek      = s.hm_rfu_mek,
+          hm_rfu_opt      = s.hm_rfu_opt,
+          gl_plant        = s.gl_plant,
+          mekanik         = s.mekanik,
+          action          = s.action,
+          id_lastupdate   = s.id_lastupdate,
+          imported_at     = now()
+        FROM ewacs_import_stage s
+        WHERE {key_match}
+    """))
+
+    # 3) INSERT baris yang benar-benar baru.
+    inserted = await db.execute(text(f"""
+        INSERT INTO ewacs_breakdown ({cols})
+        SELECT {cols} FROM ewacs_import_stage s
+        WHERE NOT EXISTS (
+                SELECT 1 FROM ewacs_breakdown e
+                WHERE {key_match}
+              )
+    """))
+
     await db.commit()
-    log.info("ewacs import: %d rows by %s (%d skipped)", len(values), user["username"], skip)
+    n_updated = updated.rowcount or 0
+    n_inserted = inserted.rowcount or 0
+    n_deleted = deleted.rowcount or 0
+    log.info("ewacs import: %d updated, %d inserted, %d deleted, %d skipped, %d dup by %s",
+             n_updated, n_inserted, n_deleted, skip, duplicates, user["username"])
     return {
-        "inserted": len(values),
+        "inserted": n_inserted,
+        "updated": n_updated,
+        "deleted": n_deleted,
         "skipped": skip,
+        "duplicates": duplicates,
         "total_rows": len(rows),
     }
 
