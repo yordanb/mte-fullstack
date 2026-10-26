@@ -18,13 +18,16 @@ const fmtTgl = (v?: string | null) => {
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : String(v)
 }
 
-/** Nama staff disingkat: kata pertama utuh, kata berikutnya hanya huruf awal.
- *  "TRI PUJIYANTO" → "TRI P"  ·  "WAHYU PRIO UTOMO" → "WAHYU P U"
+/** Nama staff disingkat: kata pertama utuh, kata berikutnya hanya huruf awal,
+ *  lalu ditulis Title Case.
+ *  "TRI PUJIYANTO" → "Tri P"  ·  "WAHYU PRIO UTOMO" → "Wahyu P U"
  */
 const shortStaff = (v?: string | null) => {
   const parts = String(v ?? '').trim().split(/\s+/).filter(Boolean)
   if (!parts.length) return ''
-  return [parts[0], ...parts.slice(1).map((p) => p[0].toUpperCase())].join(' ')
+  return [parts[0], ...parts.slice(1).map((p) => p[0])]
+    .map((t) => t[0].toUpperCase() + t.slice(1).toLowerCase())
+    .join(' ')
 }
 
 function Thumb({ fid, label }: { fid?: string | null; label: string }) {
