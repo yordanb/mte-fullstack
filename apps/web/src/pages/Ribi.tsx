@@ -30,6 +30,16 @@ const shortStaff = (v?: string | null) => {
     .join(' ')
 }
 
+/** Nama orang → Title Case: "YOGA GALEH WAHIDDIAN" → "Yoga Galeh Wahiddian".
+ *  Apostrof & tanda hubung tetap di dalam kata ("SYAFI'I" → "Syafi'i").
+ */
+const titleName = (v?: string | null) => String(v ?? '')
+  .trim()
+  .split(/\s+/)
+  .filter(Boolean)
+  .map((w) => w.split('-').map((s) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s)).join('-'))
+  .join(' ')
+
 function Thumb({ fid, label }: { fid?: string | null; label: string }) {
   const [err, setErr] = useState(false)
   if (!fid || err) return null
@@ -124,7 +134,7 @@ export default function RibiView({ toggle }: { toggle?: ReactNode }) {
         `Data R1BI ${sec || 'semua'} :`,
         ...ex.data.map((r, i) => {
           const staff = shortStaff(r.staff_ribi)
-          const nama = (String(r.nama ?? '-')).trim()
+          const nama = titleName(r.nama) || '-'
           return `${i + 1}. ${nama} - ${dd(String(r.tanggal ?? ''))}${staff ? ` by ${staff}` : ''}`
         }),
         `Last data update: ${syncD}`,

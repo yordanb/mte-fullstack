@@ -33,6 +33,16 @@ const shortName = (v?: string | null) => {
   return v ?? ''
 }
 
+/** Nama orang → Title Case: "YOGA GALEH WAHIDDIAN" → "Yoga Galeh Wahiddian".
+ *  Apostrof & tanda hubung tetap di dalam kata ("SYAFI'I" → "Syafi'i").
+ */
+const titleName = (v?: string | null) => String(v ?? '')
+  .trim()
+  .split(/\s+/)
+  .filter(Boolean)
+  .map((w) => w.split('-').map((s) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : s)).join('-'))
+  .join(' ')
+
 const okBadge = (good: boolean, title: string, short: string) => (
   <span title={title} className={`rounded-full px-2 py-0.5 text-theme-xs ${good ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
     {good ? `✓${short}` : `!${short}`}
@@ -122,7 +132,7 @@ export default function SafetyPage() {
       })()
       const lines = [
         `Data Bomak ${sec || 'semua'} :`,
-        ...ex.data.map((r, i) => `${i + 1}. ${(r.mekanik_nama ?? '-').trim()} - ${dd(r.submitted_at)}`),
+        ...ex.data.map((r, i) => `${i + 1}. ${titleName(r.mekanik_nama) || '-'} - ${dd(r.submitted_at)}`),
         `Last data update: ${syncD}`,
       ]
       const text = lines.join('\n')
