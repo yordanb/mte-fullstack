@@ -10,7 +10,7 @@ Backend **FastAPI + PostgreSQL**, web **React + Vite + Tailwind**,
 mobile **Flutter Android** (`apps/mobile`, Riverpod + GoRouter),
 semua berjalan sebagai container Docker di VPS dan diupdate via `git pull`.
 
-> Terakhir diperbarui: 25 Okt 2026 — migrasi terakhir `V37`.
+> Terakhir diperbarui: 26 Okt 2026 — migrasi terakhir `V38`.
 
 ## Arsitektur & Port
 
@@ -140,6 +140,7 @@ Error selalu `{detail: "..."}` dan ditampilkan verbatim oleh web (helper `errMsg
 | `V35__ewacs.sql` | `ewacs_breakdown` + index + menu `ewacs` |
 | `V36__tar_support.sql` | Menu `tarsupport` (grup Technical Expert) |
 | `V37__ewacs_upsert.sql` | Dedupe + unique index natural key Ewacs (`tanggal, cn, shift, kode, start_bd`) |
+| `V38__yazu_timezone_fix.sql` | Koreksi data Yazu lama: `waktu` digeser −8 jam (naive WITA yang tersimpan sebagai UTC); idempoten dengan guard |
 
 Fresh install: otomatis via `/docker-entrypoint-initdb.d` (urut abjad = urut versi).
 Database lama: jalankan manual file yang belum diterapkan (lihat riwayat di bawah).
@@ -189,7 +190,9 @@ docker-compose.yml  db:5446, api:8802, web:8803 (+ volume uploads)
   `YYYYMMDD`, `Durasi_2` dalam jam, `Kode_1` SCM/USM/TSM/TUM/ICM/ISM.
   PA = `(24 × unit × hari − (durasi SCM+USM)) / (24 × unit × hari) × 100%`.
 - **Yazu**: HM harian dari checklist inspeksi; anomali delta `< 0` (HM mundur) atau `> 24`
-  ditandai merah, 14–24 oranye, 10–14 hijau.
+  ditandai merah, 14–24 oranye, 10–14 hijau. Kolom `Waktu` di sheet = **jam lokal WITA
+  (GMT+8)**, di-parse sebagai datetime **tz-aware** (`Asia/Makassar`) sebelum masuk
+  `TIMESTAMPTZ` — naive datetime akan dibaca sebagai UTC dan menggeser tanggal +8 jam.
 - **Safety**: timestamp form dayfirst zona WITA (+8); kunci upsert tanggal+NRP+nama;
   thumbnail Drive fallback ke link bila tak publik.
 - Batas upload default 50 MB (`MAX_UPLOAD_MB`); avatar 5 MB.
@@ -217,7 +220,7 @@ docker compose up -d --build api web
 
 Riwayat migrasi VPS: V3+V4 → V5 → V6+V7 → V8 → V9+V10+V11 → V12+V13 →
 V14+V15+V16 → V17 → V18 → V19 → V20 → V21+V22 → V23+V24 → V25+V26 →
-V27..V31 → V32 → V33 → V34 → V35 → V36 → V37.
+V27..V31 → V32 → V33 → V34 → V35 → V36 → V37 → V38.
 Rerun aman (semua `IF NOT EXISTS`/upsert).
 
 Catatan: menambah menu baru berarti memperbarui `role_permissions_menu_check`

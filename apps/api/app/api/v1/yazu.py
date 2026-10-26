@@ -66,11 +66,17 @@ def _to_str(v: str | None) -> str | None:
 
 
 def _parse_waktu(v: str) -> datetime | None:
-    """Parse '04/05/2026 18:27:50' ke datetime naive, kembalikan None kalau gagal."""
+    """Parse '04/05/2026 18:27:50' → datetime **tz-aware WITA**.
+
+    Kolom `Waktu` di Google Sheets berisi jam lokal site (WITA/GMT+8), bukan UTC.
+    Sebelumnya hasil parse dikembalikan naive; saat masuk kolom TIMESTAMPTZ
+    asyncpg/PostgreSQL membacanya sebagai UTC → seluruh jam bergeser +8 jam
+    (entri setelah 16:00 WITA jatuh ke tanggal berikutnya).
+    """
     if not v or not v.strip():
         return None
     try:
-        return datetime.strptime(v.strip(), WAKTU_FMT)
+        return datetime.strptime(v.strip(), WAKTU_FMT).replace(tzinfo=TZ)
     except ValueError:
         return None
 
