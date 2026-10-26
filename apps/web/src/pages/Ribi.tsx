@@ -18,6 +18,15 @@ const fmtTgl = (v?: string | null) => {
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : String(v)
 }
 
+/** Nama staff disingkat: kata pertama utuh, kata berikutnya hanya huruf awal.
+ *  "TRI PUJIYANTO" → "TRI P"  ·  "WAHYU PRIO UTOMO" → "WAHYU P U"
+ */
+const shortStaff = (v?: string | null) => {
+  const parts = String(v ?? '').trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return ''
+  return [parts[0], ...parts.slice(1).map((p) => p[0].toUpperCase())].join(' ')
+}
+
 function Thumb({ fid, label }: { fid?: string | null; label: string }) {
   const [err, setErr] = useState(false)
   if (!fid || err) return null
@@ -110,7 +119,11 @@ export default function RibiView({ toggle }: { toggle?: ReactNode }) {
       const syncD = p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : lastSyncDate
       const lines = [
         `Data R1BI ${sec || 'semua'} :`,
-        ...ex.data.map((r, i) => `${i + 1}. ${(String(r.nama ?? '-')).trim()} - ${dd(String(r.tanggal ?? ''))}`),
+        ...ex.data.map((r, i) => {
+          const staff = shortStaff(r.staff_ribi)
+          const nama = (String(r.nama ?? '-')).trim()
+          return `${i + 1}. ${nama} - ${dd(String(r.tanggal ?? ''))}${staff ? ` by ${staff}` : ''}`
+        }),
         `Last data update: ${syncD}`,
       ]
       const text = lines.join('\n')

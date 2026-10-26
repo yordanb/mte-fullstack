@@ -311,7 +311,7 @@ export async function fetchRibiLatestSync() {
 
 export async function fetchRibiExport(params: Record<string, string | undefined>) {
   const r = await api.get('/v1/r1bi/export', { params })
-  return r.data as { total: number; data: { nama?: string | null; tanggal: string }[] }
+  return r.data as { total: number; data: { nama?: string | null; tanggal: string; staff_ribi?: string | null }[] }
 }
 
 export async function fetchResults(vesselid: string, unit_id?: string): Promise<LabRow[]> {

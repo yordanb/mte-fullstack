@@ -118,6 +118,6 @@ async def export_all(date_from: datetime.date | None = None,
         p["s"] = f"%{search}%"
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
     rows = (await db.execute(text(
-        f"SELECT nama, tanggal FROM safety_r1bi {where} "
+        f"SELECT nama, tanggal, staff_ribi FROM safety_r1bi {where} "
         f"ORDER BY tanggal DESC LIMIT 5000"), p)).mappings().all()
     return {"total": len(rows), "data": [dict(r) for r in rows]}
