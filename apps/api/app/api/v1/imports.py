@@ -163,7 +163,7 @@ async def latest_import(db: AsyncSession = Depends(get_db),
     row = (await db.execute(text(
         "SELECT id, filename, status, total_rows, ok_rows, fail_rows, "
         "processed_rows, uploaded_by, created_at FROM imports "
-        "WHERE sheet != 'DBR' "
+        "WHERE sheet NOT IN ('DBR', 'SS') "
         "ORDER BY created_at DESC LIMIT 1"))).mappings().first()
     return dict(row) if row else {}
 

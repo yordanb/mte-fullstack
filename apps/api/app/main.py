@@ -17,6 +17,7 @@ from app.api.v1.mom import router as mom_router
 from app.api.v1.riwayat import router as riwayat_router
 from app.api.v1.yazu import router as yazu_router, do_sync
 from app.api.v1.ewacs import router as ewacs_router
+from app.api.v1.ss import router as ss_router
 from app.core.config import settings
 from app.core.security import hash_pw
 from app.core.audit import write_log
@@ -113,6 +114,7 @@ app.include_router(mom_router)
 app.include_router(riwayat_router)
 app.include_router(yazu_router)
 app.include_router(ewacs_router)
+app.include_router(ss_router)
 
 # ─── Scheduler: yazu sync 06:00 & 18:00 Asia/Makassar (GMT+8) ───
 from apscheduler.schedulers.asyncio import AsyncIOScheduler

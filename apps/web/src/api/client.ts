@@ -961,3 +961,149 @@ export async function fetchEwacsDetail(params: { start?: string; end?: string; e
   const r = await api.get(`/v1/ewacs/detail`, { params })
   return r.data
 }
+
+// --- Suggestion System (SS) ---------------------------------------------
+export type SsBasis = 'menilai' | 'laporan'
+
+export type SsParams = {
+  date_basis?: SsBasis
+  start?: string
+  end?: string
+  dept?: string
+  kategori?: string
+  grade?: string
+  status?: string
+  search?: string
+}
+
+export type SsKpi = {
+  total: number
+  reward: number
+  manfaat: number
+  manfaat_rows: number
+  pencetus: number
+  avg_per_pencetus: number
+  grade_a: number
+  grade_ab: number
+  grade_f: number
+}
+
+export type SsTrend = { period: string; total: number; reward: number; manfaat: number }
+export type SsBreak = { label: string; total: number; reward: number }
+export type SsTop = { key: string; nama: string; total: number; reward: number }
+
+export type SsFilters = {
+  dept: string[]
+  kategori: string[]
+  grade: string[]
+  status: string[]
+  min_menilai: string | null
+  max_menilai: string | null
+  min_laporan: string | null
+  max_laporan: string | null
+  total: number
+}
+
+export type SsRecord = {
+  id: number
+  no_ss: string
+  tgl_laporan: string | null
+  judul: string | null
+  pencetus: string | null
+  nrp: string | null
+  dept: string | null
+  distrik: string | null
+  manfaat_fin: number | null
+  tgl_menilai: string | null
+  dinilai_oleh: string | null
+  grade: string | null
+  kualitas: string | null
+  kategori: string | null
+  kategori_norm: string | null
+  reward: number
+  status_karyawan: string | null
+}
+
+export type SsRecordPage = {
+  total: number
+  page: number
+  page_size: number
+  data: SsRecord[]
+}
+
+export type SsImportStart = { import_id: string; status: string; files: number }
+export type SsImportStatus = {
+  id: string
+  filename: string
+  status: string
+  total_rows: number
+  ok_rows: number
+  fail_rows: number
+  processed_rows: number
+  uploaded_by?: string | null
+  created_at?: string
+  errors?: {
+    inserted?: number
+    updated?: number
+    duplicates?: number
+    skipped?: number
+    total_rows?: number
+    files?: string[]
+    errors?: unknown[]
+    error?: string
+  } | null
+}
+
+export async function importSsXlsx(files: File[]): Promise<SsImportStart> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/ss/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchSsImportStatus(id: string): Promise<SsImportStatus> {
+  const r = await api.get(`/v1/ss/import/${id}`)
+  return r.data
+}
+
+export async function fetchSsFilters(): Promise<SsFilters> {
+  const r = await api.get('/v1/ss/filters')
+  return r.data
+}
+
+export async function fetchSsKpi(params: SsParams): Promise<SsKpi> {
+  const r = await api.get('/v1/ss/kpi', { params })
+  return r.data
+}
+
+export async function fetchSsTrend(params: SsParams & { granularity?: 'month' | 'year' }): Promise<SsTrend[]> {
+  const r = await api.get('/v1/ss/trend', { params })
+  return r.data
+}
+
+export async function fetchSsBreakdown(params: SsParams & { by: 'grade' | 'kategori' | 'dept' | 'status' | 'kualitas' }): Promise<SsBreak[]> {
+  const r = await api.get('/v1/ss/breakdown', { params })
+  return r.data
+}
+
+export async function fetchSsTop(params: SsParams & { by: 'pencetus' | 'penilai'; limit?: number }): Promise<SsTop[]> {
+  const r = await api.get('/v1/ss/top', { params })
+  return r.data
+}
+
+export async function fetchSsRecords(params: SsParams & { page?: number; page_size?: number; sort?: string; dir?: 'asc' | 'desc' }): Promise<SsRecordPage> {
+  const r = await api.get('/v1/ss/records', { params })
+  return r.data
+}
+
+export async function exportSsCsv(params: SsParams): Promise<void> {
+  const r = await api.get('/v1/ss/export', { params, responseType: 'blob' })
+  const url = URL.createObjectURL(r.data as Blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `ss_report_${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}

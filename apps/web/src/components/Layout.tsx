@@ -33,6 +33,9 @@ const GROUPS: MenuGroup[] = [
     { key: 'ewacs', label: 'Ewacs Performance' },
     { key: 'tarsupport', label: 'TAR Support' },
   ] },
+  { title: 'Agent', items: [
+    { key: 'ss', label: 'Sugestion System' },
+  ] },
   { title: 'Administrasi', items: [
     { key: 'users', label: 'Users', admin: true },
     { key: 'audit', label: 'Audit Log', admin: true },
@@ -93,6 +96,9 @@ const ICONS: Record<string, ReactNode> = {
   ),
   audit: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 13.5" /></svg>
+  ),
+  ss: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6" /><path d="M10 21h4" /><path d="M12 3a6 6 0 0 0-3.5 10.9c.3.2.5.6.5 1V16h6v-1.1c0-.4.2-.8.5-1A6 6 0 0 0 12 3z" /></svg>
   ),
 }
 
