@@ -34,6 +34,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'tarsupport', label: 'TAR Support' },
     { key: 'proker', label: 'Proker Midlife Eng CAT' },
     { key: 'prokerbooster', label: 'Proker Midlife Eng Booster' },
+    { key: 'prokerinjector', label: 'Proker Midlife Injector Primer' },
   ] },
   { title: 'Agent', items: [
     { key: 'ss', label: 'Sugestion System' },
@@ -107,6 +108,9 @@ const ICONS: Record<string, ReactNode> = {
   ),
   prokerbooster: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a9 9 0 1 0 9 9" /><path d="M12 12l4.5-4.5" /><path d="M12 3v2M3 12h2M5.6 5.6 7 7" /><circle cx="12" cy="12" r="1.6" /></svg>
+  ),
+  prokerinjector: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6l1 5H8l1-5Z" /><path d="M8 8h8l-1 6H9L8 8Z" /><path d="M12 14v5" /><path d="M9.5 21h5" /><path d="M6 11H3M21 11h-3" /></svg>
   ),
 }
 

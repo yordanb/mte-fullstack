@@ -1458,3 +1458,193 @@ export async function fetchBoosterImportStatus(id: string): Promise<BoosterImpor
   const r = await api.get(`/v1/booster/import/${id}`)
   return r.data
 }
+
+// --- Proker Midlife Injector Primer --------------------------------------
+export type InjectorStatus = 'DONE' | 'PLAN'
+
+export type InjectorReplacement = {
+  id: number
+  cn: string
+  seq: number
+  position: number
+  hm: number | null
+  status: InjectorStatus
+  note: string | null
+}
+
+export type InjectorUnitRow = {
+  cn: string
+  no: number | null
+  unit_model: string | null
+  product: string | null
+  unit_type: string | null
+  hm_now: number | null
+  interval_hm: number
+}
+
+export type InjectorUnit = InjectorUnitRow & {
+  repl_count: number
+  done_count: number
+  plan_count: number
+  last_hm: number | null
+  last_seq: number | null
+  age_hm: number | null
+  next_plan_hm: number
+  hours_to_go: number | null
+}
+
+export type InjectorPosition = {
+  position: number
+  seq: number | null
+  hm: number | null
+  status: InjectorStatus | null
+  age: number | null
+}
+
+export type InjectorDetail = {
+  unit: InjectorUnit
+  replacements: InjectorReplacement[]
+  positions: InjectorPosition[]
+  stats: {
+    replacements: number
+    done: number
+    plan: number
+    hm_now: number | null
+    interval_hm: number
+    last_hm: number | null
+    last_seq: number | null
+    age_hm: number | null
+    next_plan_hm: number
+    hours_to_go: number | null
+    due: boolean
+  }
+}
+
+export type InjectorKpi = {
+  units: number
+  total: number
+  done: number
+  plan: number
+  unit_with_repl: number
+  due: number
+  interval: number
+  positions: number
+}
+
+export type InjectorFilters = {
+  product: string[]
+  model: string[]
+  type: string[]
+  interval: number
+  positions: number
+}
+
+export type InjectorUnitPage = {
+  total: number
+  page: number
+  page_size: number
+  data: InjectorUnit[]
+}
+
+export type InjectorImportStatus = {
+  id: string
+  filename: string
+  status: string
+  total_rows: number
+  ok_rows: number
+  fail_rows: number
+  processed_rows: number
+  uploaded_by?: string | null
+  created_at?: string
+  errors?: {
+    units?: number
+    replacements?: number
+    done?: number
+    plan?: number
+    unit_with_repl?: number
+    inserted?: number
+    updated?: number
+    duplicates?: number
+    total_rows?: number
+    files?: string[]
+    errors?: unknown[]
+    error?: string
+  } | null
+}
+
+export async function fetchInjectorStats(): Promise<InjectorKpi> {
+  const r = await api.get('/v1/injector/stats')
+  return r.data
+}
+
+export async function fetchInjectorFilters(): Promise<InjectorFilters> {
+  const r = await api.get('/v1/injector/filters')
+  return r.data
+}
+
+export async function fetchInjectorUnits(params: {
+  search?: string; product?: string; model?: string; due?: boolean
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<InjectorUnitPage> {
+  const r = await api.get('/v1/injector/units', { params })
+  return r.data
+}
+
+export async function fetchInjectorUnit(cn: string): Promise<InjectorDetail> {
+  const r = await api.get(`/v1/injector/units/${encodeURIComponent(cn)}`)
+  return r.data
+}
+
+export async function createInjectorUnit(body: Partial<InjectorUnitRow>): Promise<InjectorUnitRow> {
+  const r = await api.post('/v1/injector/units', body)
+  return r.data
+}
+
+export async function updateInjectorUnit(cn: string, body: Partial<InjectorUnitRow>): Promise<InjectorUnitRow> {
+  const r = await api.patch(`/v1/injector/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+
+export type InjectorReplacementInput = {
+  seq: number
+  positions: number[]
+  hm?: number | null
+  status?: InjectorStatus
+  note?: string | null
+}
+
+export async function createInjectorReplacements(
+  cn: string,
+  body: InjectorReplacementInput,
+): Promise<{ cn: string; seq: number; created: number; data: InjectorReplacement[] }> {
+  const r = await api.post(`/v1/injector/units/${encodeURIComponent(cn)}/replacements`, body)
+  return r.data
+}
+
+export async function updateInjectorReplacement(
+  id: number,
+  body: { seq?: number; position?: number; hm?: number | null; status?: InjectorStatus; note?: string | null },
+): Promise<InjectorReplacement> {
+  const r = await api.patch(`/v1/injector/replacements/${id}`, body)
+  return r.data
+}
+
+export async function deleteInjectorReplacement(id: number): Promise<void> {
+  await api.delete(`/v1/injector/replacements/${id}`)
+}
+
+export async function deleteInjectorGroup(cn: string, seq: number): Promise<void> {
+  await api.delete(`/v1/injector/units/${encodeURIComponent(cn)}/replacements/${seq}`)
+}
+
+export async function importInjectorXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/injector/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchInjectorImportStatus(id: string): Promise<InjectorImportStatus> {
+  const r = await api.get(`/v1/injector/import/${id}`)
+  return r.data
+}
