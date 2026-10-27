@@ -339,43 +339,35 @@ async def get_filters(db: AsyncSession = Depends(get_db)):
     }
 
 
-def _where(
-    date_basis: str,
-    start: datetime.date | None,
-    end: datetime.date | None,
-    dept: str | None,
-    kategori: str | None,
-    grade: str | None,
-    status: str | None,
-    search: str | None,
-) -> tuple[str, dict]:
-    col = "tgl_laporan" if date_basis == "laporan" else "tgl_menilai"
+def _where(f: dict, with_date: bool = True) -> tuple[str, dict]:
     parts: list[str] = []
     p: dict = {}
-    if start:
-        parts.append(f"{col} >= :start")
-        p["start"] = start
-    if end:
-        parts.append(f"{col} <= :end")
-        p["end"] = end
-    if dept:
+    if with_date:
+        col = "tgl_laporan" if f["date_basis"] == "laporan" else "tgl_menilai"
+        if f["start"]:
+            parts.append(f"{col} >= :start")
+            p["start"] = f["start"]
+        if f["end"]:
+            parts.append(f"{col} <= :end")
+            p["end"] = f["end"]
+    if f["dept"]:
         parts.append("dept = :dept")
-        p["dept"] = dept
-    if kategori:
+        p["dept"] = f["dept"]
+    if f["kategori"]:
         parts.append("kategori_norm = :kat")
-        p["kat"] = kategori
-    if grade:
+        p["kat"] = f["kategori"]
+    if f["grade"]:
         parts.append("grade = :grade")
-        p["grade"] = grade
-    if status == "__EMPTY__":
+        p["grade"] = f["grade"]
+    if f["status"] == "__EMPTY__":
         parts.append("(status_karyawan IS NULL OR status_karyawan = '')")
-    elif status:
+    elif f["status"]:
         parts.append("status_karyawan = :status")
-        p["status"] = status
-    if search:
+        p["status"] = f["status"]
+    if f["search"]:
         parts.append("(no_ss ILIKE :q OR judul ILIKE :q OR pencetus ILIKE :q "
                      "OR nrp ILIKE :q OR dinilai_oleh ILIKE :q)")
-        p["q"] = f"%{search}%"
+        p["q"] = f"%{f['search']}%"
     return (" AND ".join(parts) if parts else "TRUE"), p
 
 
@@ -393,9 +385,8 @@ def _params(
             "kategori": kategori, "grade": grade, "status": status, "search": search}
 
 
-def _filters(f: dict) -> tuple[str, dict]:
-    return _where(f["date_basis"], f["start"], f["end"], f["dept"],
-                  f["kategori"], f["grade"], f["status"], f["search"])
+def _filters(f: dict, with_date: bool = True) -> tuple[str, dict]:
+    return _where(f, with_date=with_date)
 
 
 @router.get("/kpi", dependencies=[Depends(require_role("admin"))])
@@ -433,16 +424,43 @@ async def get_trend(
     granularity: str = Query("month", pattern="^(month|year)$"),
     db: AsyncSession = Depends(get_db),
 ):
-    where, p = _filters(f)
-    col = "tgl_laporan" if f["date_basis"] == "laporan" else "tgl_menilai"
+    """Jumlah SS per periode dari dua sudut: tanggal laporan vs tanggal menilai.
+
+    Filter rentang tanggal diterapkan pada masing-masing kolom tanggalnya sendiri
+    supaya kedua seri bisa dibandingkan adil; filter non-tanggal (dept, kategori,
+    grade, status, cari) berlaku untuk keduanya.
+    """
+    where, p = _filters(f, with_date=False)
     fmt = "YYYY-MM" if granularity == "month" else "YYYY"
+    cond_l = ["tgl_laporan IS NOT NULL"]
+    cond_m = ["tgl_menilai IS NOT NULL"]
+    if f["start"]:
+        p["start"] = f["start"]
+        cond_l.append("tgl_laporan >= :start")
+        cond_m.append("tgl_menilai >= :start")
+    if f["end"]:
+        p["end"] = f["end"]
+        cond_l.append("tgl_laporan <= :end")
+        cond_m.append("tgl_menilai <= :end")
     rows = (await db.execute(text(f"""
-        SELECT to_char(date_trunc('{granularity}', {col}), '{fmt}') AS period,
-               COUNT(*) AS total,
-               COALESCE(SUM(reward), 0)::float8 AS reward,
-               COALESCE(SUM(manfaat_fin), 0)::float8 AS manfaat
-        FROM ss_report WHERE {where} AND {col} IS NOT NULL
-        GROUP BY 1 ORDER BY 1
+        WITH l AS (
+          SELECT to_char(date_trunc('{granularity}', tgl_laporan), '{fmt}') AS period,
+                 COUNT(*) AS n
+          FROM ss_report
+          WHERE {where} AND {' AND '.join(cond_l)}
+          GROUP BY 1
+        ), m AS (
+          SELECT to_char(date_trunc('{granularity}', tgl_menilai), '{fmt}') AS period,
+                 COUNT(*) AS n
+          FROM ss_report
+          WHERE {where} AND {' AND '.join(cond_m)}
+          GROUP BY 1
+        )
+        SELECT COALESCE(l.period, m.period) AS period,
+               COALESCE(l.n, 0) AS laporan,
+               COALESCE(m.n, 0) AS menilai
+        FROM l FULL OUTER JOIN m ON l.period = m.period
+        ORDER BY 1
     """), p)).mappings().all()
     return [dict(r) for r in rows]
 

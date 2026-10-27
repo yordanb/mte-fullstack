@@ -988,7 +988,7 @@ export type SsKpi = {
   grade_f: number
 }
 
-export type SsTrend = { period: string; total: number; reward: number; manfaat: number }
+export type SsTrend = { period: string; laporan: number; menilai: number }
 export type SsBreak = { label: string; total: number; reward: number }
 export type SsTop = { key: string; nama: string; total: number; reward: number }
 

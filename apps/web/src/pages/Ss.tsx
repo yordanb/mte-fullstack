@@ -199,38 +199,25 @@ export default function SsPage() {
   const textColor = dark ? '#9ca3af' : '#6b7280'
 
   const trendSeries = [
-    { name: 'Jumlah SS', type: 'column', data: trend.map((t) => t.total) },
-    { name: 'Reward', type: 'line', data: trend.map((t) => t.reward) },
+    { name: 'Tanggal Laporan', data: trend.map((t) => t.laporan) },
+    { name: 'Tanggal Menilai', data: trend.map((t) => t.menilai) },
   ]
   const trendOpts = {
-    chart: { type: 'line' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
+    chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
     colors: ['#465fff', '#12b76a'],
-    stroke: { width: [0, 2], curve: 'smooth' as const },
-    plotOptions: { bar: { columnWidth: '58%', borderRadius: 3 } },
+    plotOptions: { bar: { columnWidth: '62%', borderRadius: 3 } },
     dataLabels: { enabled: false },
     xaxis: {
       categories: trend.map((t) => t.period),
       labels: { rotate: -45, style: { colors: textColor, fontSize: '11px' } },
     },
-    yaxis: [
-      {
-        labels: { style: { colors: textColor }, formatter: (v: number) => fmtNum(v) },
-        title: { text: 'Jumlah SS', style: { color: textColor, fontSize: '11px' } },
-      },
-      {
-        opposite: true,
-        labels: { style: { colors: textColor }, formatter: (v: number) => fmtRp(v) },
-        title: { text: 'Reward', style: { color: textColor, fontSize: '11px' } },
-      },
-    ],
+    yaxis: {
+      labels: { style: { colors: textColor }, formatter: (v: number) => fmtNum(v) },
+      title: { text: 'Jumlah SS', style: { color: textColor, fontSize: '11px' } },
+    },
     grid: { borderColor: gridColor },
     legend: { labels: { colors: textColor } },
-    tooltip: {
-      y: [
-        { formatter: (v: number) => `${fmtNum(v)} SS` },
-        { formatter: (v: number) => fmtRp(v) },
-      ],
-    },
+    tooltip: { y: { formatter: (v: number) => `${fmtNum(v)} SS` } },
   }
 
   const gradeSeries = byGrade.map((g) => g.total)
@@ -480,10 +467,13 @@ export default function SsPage() {
       <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
           <h3 className="mb-2 font-semibold text-theme-sm">
-            Tren SS &amp; Reward per Bulan ({basis === 'laporan' ? 'tanggal laporan' : 'tanggal menilai'})
+            Tren Jumlah SS per Bulan — Tanggal Laporan vs Tanggal Menilai
           </h3>
+          <p className="mb-2 text-theme-xs text-gray-400">
+            Tiap seri dihitung dari kolom tanggalnya sendiri; filter dept/kategori/grade/status/cari berlaku untuk keduanya.
+          </p>
           {trend.length > 0
-            ? <ReactApexChart key={dark ? 'td' : 'tl'} type="line" height={320} series={trendSeries} options={trendOpts} />
+            ? <ReactApexChart key={dark ? 'td' : 'tl'} type="bar" height={320} series={trendSeries} options={trendOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data pada filter ini.</p>}
         </div>
         <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
