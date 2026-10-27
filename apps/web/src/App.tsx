@@ -17,6 +17,7 @@ import EwacsPage from './pages/Ewacs'
 import TarSupportPage from './pages/TarSupport'
 import SsPage from './pages/Ss'
 import ProkerPage from './pages/Proker'
+import ProkerBoosterPage from './pages/ProkerBooster'
 import { fetchMe, can } from './api/client'
 
 // ApexCharts berat (~700KB): muat hanya saat menu Performance dibuka.
@@ -79,6 +80,7 @@ export default function App() {
       {page === 'tarsupport' && can('tarsupport', 'view') && <TarSupportPage />}
       {page === 'ss' && can('ss', 'view') && <SsPage />}
       {page === 'proker' && can('proker', 'view') && <ProkerPage />}
+      {page === 'prokerbooster' && can('prokerbooster', 'view') && <ProkerBoosterPage />}
       {page === 'import' && <ImportPage />}
       {page === 'users' && me.role === 'admin' && <UsersPage />}
       {page === 'audit' && me.role === 'admin' && <AuditPage />}

@@ -33,6 +33,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'ewacs', label: 'Ewacs Performance' },
     { key: 'tarsupport', label: 'TAR Support' },
     { key: 'proker', label: 'Proker Midlife Eng CAT' },
+    { key: 'prokerbooster', label: 'Proker Midlife Eng Booster' },
   ] },
   { title: 'Agent', items: [
     { key: 'ss', label: 'Sugestion System' },
@@ -103,6 +104,9 @@ const ICONS: Record<string, ReactNode> = {
   ),
   proker: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M8 2v4M16 2v4" /><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 10h18" /><path d="m9 15 2 2 4-4" /></svg>
+  ),
+  prokerbooster: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a9 9 0 1 0 9 9" /><path d="M12 12l4.5-4.5" /><path d="M12 3v2M3 12h2M5.6 5.6 7 7" /><circle cx="12" cy="12" r="1.6" /></svg>
   ),
 }
 

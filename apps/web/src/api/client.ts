@@ -1282,3 +1282,179 @@ export async function fetchProkerImportStatus(id: string): Promise<ProkerImportS
   const r = await api.get(`/v1/proker/import/${id}`)
   return r.data
 }
+
+// --- Proker Midlife Eng Booster ------------------------------------------
+export type BoosterKind = 'OVH' | 'MIDLIFE'
+
+export type BoosterUnitRow = {
+  cn: string
+  no: number | null
+  unit_model: string | null
+  product: string | null
+  unit_type: string | null
+  hm_now: number | null
+  interval_hm: number
+  remarks: string | null
+}
+
+export type BoosterUnit = BoosterUnitRow & {
+  event_count: number
+  ovh_hm: number | null
+  ovh_date: string | null
+  ml_hm: number | null
+  ml_date: string | null
+  last_hm: number | null
+  last_kind: BoosterKind | null
+  last_date: string | null
+  next_plan_hm: number
+  hours_to_go: number | null
+  lifetime_eg: number | null
+  lifetime_mid: number | null
+}
+
+export type BoosterEvent = {
+  id: number
+  cn: string
+  kind: BoosterKind
+  hm: number
+  service_date: string | null
+  note: string | null
+}
+
+export type BoosterDetail = {
+  unit: BoosterUnit
+  events: BoosterEvent[]
+  stats: {
+    events: number
+    ovh: number
+    midlife: number
+    hm_now: number | null
+    interval_hm: number
+    last_hm: number | null
+    last_kind: BoosterKind | null
+    last_date: string | null
+    next_plan_hm: number
+    hours_to_go: number | null
+    lifetime_eg: number | null
+    lifetime_mid: number | null
+    due: boolean
+  }
+}
+
+export type BoosterKpi = {
+  units: number
+  total: number
+  ovh: number
+  midlife: number
+  unit_event: number
+  due: number
+  last_date: string | null
+  interval: number
+}
+
+export type BoosterFilters = {
+  product: string[]
+  model: string[]
+  type: string[]
+  interval: number
+  min_date: string | null
+  max_date: string | null
+}
+
+export type BoosterUnitPage = {
+  total: number
+  page: number
+  page_size: number
+  data: BoosterUnit[]
+}
+
+export type BoosterImportStatus = {
+  id: string
+  filename: string
+  status: string
+  total_rows: number
+  ok_rows: number
+  fail_rows: number
+  processed_rows: number
+  uploaded_by?: string | null
+  created_at?: string
+  errors?: {
+    units?: number
+    events?: number
+    ovh?: number
+    midlife?: number
+    inserted?: number
+    updated?: number
+    duplicates?: number
+    total_rows?: number
+    files?: string[]
+    errors?: unknown[]
+    error?: string
+  } | null
+}
+
+export async function fetchBoosterStats(): Promise<BoosterKpi> {
+  const r = await api.get('/v1/booster/stats')
+  return r.data
+}
+
+export async function fetchBoosterFilters(): Promise<BoosterFilters> {
+  const r = await api.get('/v1/booster/filters')
+  return r.data
+}
+
+export async function fetchBoosterUnits(params: {
+  search?: string; product?: string; model?: string; due?: boolean
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<BoosterUnitPage> {
+  const r = await api.get('/v1/booster/units', { params })
+  return r.data
+}
+
+export async function fetchBoosterUnit(cn: string): Promise<BoosterDetail> {
+  const r = await api.get(`/v1/booster/units/${encodeURIComponent(cn)}`)
+  return r.data
+}
+
+export async function createBoosterUnit(body: Partial<BoosterUnitRow>): Promise<BoosterUnitRow> {
+  const r = await api.post('/v1/booster/units', body)
+  return r.data
+}
+
+export async function updateBoosterUnit(cn: string, body: Partial<BoosterUnitRow>): Promise<BoosterUnitRow> {
+  const r = await api.patch(`/v1/booster/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+
+export type BoosterEventInput = {
+  kind?: BoosterKind
+  hm?: number | null
+  service_date?: string | null
+  note?: string | null
+}
+
+export async function createBoosterEvent(cn: string, body: BoosterEventInput): Promise<BoosterEvent> {
+  const r = await api.post(`/v1/booster/units/${encodeURIComponent(cn)}/events`, body)
+  return r.data
+}
+
+export async function updateBoosterEvent(id: number, body: BoosterEventInput): Promise<BoosterEvent> {
+  const r = await api.patch(`/v1/booster/events/${id}`, body)
+  return r.data
+}
+
+export async function deleteBoosterEvent(id: number): Promise<void> {
+  await api.delete(`/v1/booster/events/${id}`)
+}
+
+export async function importBoosterXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/booster/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchBoosterImportStatus(id: string): Promise<BoosterImportStatus> {
+  const r = await api.get(`/v1/booster/import/${id}`)
+  return r.data
+}

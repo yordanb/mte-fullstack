@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchUsers, createUser, patchUser, deleteUser, fetchPerms, setPerm, fetchMe, errMsg, type PermRow } from '../api/client'
 
 const ROLES = ['admin', 'inputer', 'mekanik', 'viewer', 'planner', 'group leader', 'section head', 'adm te']
-const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'equipment', 'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak', 'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement', 'yazu', 'ewacs', 'tarsupport', 'ss', 'proker']
+const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'equipment', 'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak', 'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement', 'yazu', 'ewacs', 'tarsupport', 'ss', 'proker', 'prokerbooster']
 const ACTS = [
   { key: 'can_view', label: 'Lihat' },
   { key: 'can_add', label: 'Tambah' },
@@ -107,7 +107,7 @@ export default function UsersPage() {
                   if (!row) return null
                   return (
                     <tr key={m} className="border-t">
-                      <td className="border px-2 py-2 text-left">{m === 'proker' ? 'proker — midlife eng CAT' : m}</td>
+                      <td className="border px-2 py-2 text-left">{m === 'proker' ? 'proker — midlife eng CAT' : m === 'prokerbooster' ? 'prokerbooster — midlife eng booster' : m}</td>
                       {ACTS.map((a) => (
                         <td key={a.key} className="border px-2 py-2">
                           <input type="checkbox" checked={row[a.key]}
