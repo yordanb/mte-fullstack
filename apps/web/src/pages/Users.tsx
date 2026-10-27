@@ -107,7 +107,7 @@ export default function UsersPage() {
                   if (!row) return null
                   return (
                     <tr key={m} className="border-t">
-                      <td className="border px-2 py-2 text-left">{m}</td>
+                      <td className="border px-2 py-2 text-left">{m === 'proker' ? 'proker — midlife eng CAT' : m}</td>
                       {ACTS.map((a) => (
                         <td key={a.key} className="border px-2 py-2">
                           <input type="checkbox" checked={row[a.key]}

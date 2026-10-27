@@ -1,11 +1,14 @@
-"""Proker (program kerja pompa primer 2.000 hours).
+"""Proker Midlife Eng CAT (program kerja midlife engine Caterpillar, 2.000 jam).
 
 Sumber Excel: `gmc pompa primer.xlsx`, sheet `02. GMC` — matriks 49 unit x N periode.
 Tiap periode memakai 3 kolom berurutan: `HM | DATE | MEKANIK`.
 
 Import memecah matriks menjadi:
-  * `proker_unit`      — identitas unit (cn, model, product, type, hm_now)
+  * `proker_unit`      — identitas unit (cn, model, product, type, engine, hm_now)
   * `proker_execution` — riwayat eksekusi (period, hm, tanggal, mekanik, status)
+
+Menu ini khusus engine CAT: seluruh data tetap disimpan saat import (agar upload
+ulang idempoten), tetapi endpoint baca hanya menampilkan `engine_merk = 'CAT'`.
 
 Upsert berbasis (cn, period), jadi meng-upload file yang sama/lebih baru akan
 memperbarui baris lama tanpa menghapus data di luar file.
@@ -101,6 +104,42 @@ def _norm_status(raw, hm: float | None) -> str:
     if s in STATUSES:
         return s
     return "DONE" if hm is not None else "PLAN"
+
+
+# --------------------------------------------------------------------------- engine
+# Menu ini khusus "Midlife Eng CAT": hanya unit ber-engine Caterpillar yang tampil.
+_TYPE_ENGINE_RE = re.compile(r"(C27|C32|C7\.?1)", re.IGNORECASE)
+
+
+def _engine_from_type(unit_type: str | None) -> str | None:
+    """'MF-420EXXHV-C32' -> 'C32', 'MFV290C C7.1' -> 'C7.1'."""
+    m = _TYPE_ENGINE_RE.search(unit_type or "")
+    return m.group(1).upper() if m else None
+
+
+def _norm_engine(merk, model, unit_type) -> tuple[str | None, str | None]:
+    """Normalisasi engine: ('CATERPILLAR', 'CAT C7,1') -> ('CAT', 'C7.1').
+
+    Teks 'NULL'/'N/A'/'-' dianggap kosong (kadang muncul dari ekspor Excel).
+    Merk kosong diturunkan dari tipe unit (C27 / C32 / C7.1 = Caterpillar).
+    """
+    def clean(v) -> str:
+        s = re.sub(r"\s+", " ", (v or "").strip().upper())
+        return "" if s in ("NULL", "N/A", "NA", "-", "--") else s
+
+    m = clean(merk)
+    if m.startswith("CAT"):
+        m = "CAT"
+    mdl = clean(model)
+    derived = _engine_from_type(unit_type)
+    if not m and derived:
+        m = "CAT"
+    if m == "CAT":
+        if mdl:
+            mdl = re.sub(r"^CAT\s+", "", mdl).replace(",", ".")
+        else:
+            mdl = derived
+    return m or None, mdl or None
 
 
 # --------------------------------------------------------------------------- parser
@@ -224,16 +263,20 @@ def _parse(content: bytes, fname: str) -> tuple[dict, list[dict], list[dict]]:
 
 # --------------------------------------------------------------------------- import
 _UNIT_UPSERT = text("""
-INSERT INTO proker_unit (cn, no, unit_model, product, unit_type, hm_now, import_id)
-VALUES (:cn, :no, :unit_model, :product, :unit_type, :hm_now, :import_id)
+INSERT INTO proker_unit
+  (cn, no, unit_model, product, unit_type, hm_now, engine_model, engine_merk, import_id)
+VALUES
+  (:cn, :no, :unit_model, :product, :unit_type, :hm_now, :engine_model, :engine_merk, :import_id)
 ON CONFLICT (cn) DO UPDATE SET
-  no         = COALESCE(EXCLUDED.no, proker_unit.no),
-  unit_model = COALESCE(EXCLUDED.unit_model, proker_unit.unit_model),
-  product    = COALESCE(EXCLUDED.product, proker_unit.product),
-  unit_type  = COALESCE(EXCLUDED.unit_type, proker_unit.unit_type),
-  hm_now     = COALESCE(EXCLUDED.hm_now, proker_unit.hm_now),
-  import_id  = EXCLUDED.import_id,
-  updated_at = now()
+  no           = COALESCE(EXCLUDED.no, proker_unit.no),
+  unit_model   = COALESCE(EXCLUDED.unit_model, proker_unit.unit_model),
+  product      = COALESCE(EXCLUDED.product, proker_unit.product),
+  unit_type    = COALESCE(EXCLUDED.unit_type, proker_unit.unit_type),
+  hm_now       = COALESCE(EXCLUDED.hm_now, proker_unit.hm_now),
+  engine_model = COALESCE(EXCLUDED.engine_model, proker_unit.engine_model),
+  engine_merk  = COALESCE(EXCLUDED.engine_merk, proker_unit.engine_merk),
+  import_id    = EXCLUDED.import_id,
+  updated_at   = now()
 """)
 
 _EXEC_UPSERT = text("""
@@ -294,6 +337,23 @@ async def _run(import_id: str, files: list[tuple[str, bytes]]):
                 raise ValueError("tidak ada baris unit yang terbaca (C/N kosong semua)")
 
             units = list(merged_units.values())
+
+            # Lengkapi engine dari master equipment; fallback dari unit_type.
+            cns = sorted(u["cn"] for u in units)
+            engine: dict[str, tuple] = {}
+            if cns:
+                for row in (await db.execute(text(
+                    "SELECT cn, engine_merk, engine_model FROM equipment "
+                    "WHERE cn = ANY(:cns)"), {"cns": cns})).mappings():
+                    engine[row["cn"]] = (row["engine_merk"], row["engine_model"])
+            non_cat = 0
+            for u in units:
+                merk, model = engine.get(u["cn"], (None, None))
+                u["engine_merk"], u["engine_model"] = _norm_engine(
+                    merk, model, u["unit_type"])
+                if u["engine_merk"] != "CAT":
+                    non_cat += 1
+
             for i in range(0, len(units), BATCH):
                 await db.execute(_UNIT_UPSERT, [
                     {**u, "import_id": import_id} for u in units[i:i + BATCH]])
@@ -313,8 +373,10 @@ async def _run(import_id: str, files: list[tuple[str, bytes]]):
                 await db.commit()
 
             summary = {
-                "units": len(units), "inserted": inserted, "updated": updated,
-                "duplicates": duplicates, "files": [f for f, _ in files],
+                "units": len(units), "cat_units": len(units) - non_cat,
+                "inserted": inserted, "updated": updated,
+                "duplicates": duplicates, "non_cat": non_cat,
+                "files": [f for f, _ in files],
                 "total_rows": len(execs), "errors": errors[:50],
             }
             await db.execute(text(
@@ -379,7 +441,7 @@ async def import_status(import_id: str, db: AsyncSession = Depends(get_db)):
 _SORT = {
     "cn": "u.cn", "no": "u.no", "unit_model": "u.unit_model", "product": "u.product",
     "unit_type": "u.unit_type", "hm_now": "u.hm_now", "exec_count": "exec_count",
-    "last_date": "last_date",
+    "last_date": "last_date", "engine_model": "u.engine_model",
 }
 
 _AGG = """
@@ -400,19 +462,24 @@ async def get_filters(db: AsyncSession = Depends(get_db)):
     async def distinct(col: str) -> list[str]:
         return list((await db.execute(text(
             f"SELECT DISTINCT {col} FROM proker_unit "
-            f"WHERE {col} IS NOT NULL AND {col} <> '' ORDER BY 1"))).scalars().all())
+            f"WHERE engine_merk = 'CAT' AND {col} IS NOT NULL AND {col} <> '' "
+            f"ORDER BY 1"))).scalars().all())
 
     span = (await db.execute(text(
-        "SELECT MIN(service_date) AS min_date, MAX(service_date) AS max_date, "
-        "MIN(period_year) AS min_year, MAX(period_year) AS max_year "
-        "FROM proker_execution"))).mappings().first()
+        "SELECT MIN(x.service_date) AS min_date, MAX(x.service_date) AS max_date, "
+        "MIN(x.period_year) AS min_year, MAX(x.period_year) AS max_year "
+        "FROM proker_execution x JOIN proker_unit u ON u.cn = x.cn "
+        "WHERE u.engine_merk = 'CAT'"))).mappings().first()
     years = list((await db.execute(text(
-        "SELECT DISTINCT period_year FROM proker_execution "
-        "WHERE period_year IS NOT NULL ORDER BY 1 DESC"))).scalars().all())
+        "SELECT DISTINCT x.period_year FROM proker_execution x "
+        "JOIN proker_unit u ON u.cn = x.cn "
+        "WHERE u.engine_merk = 'CAT' AND x.period_year IS NOT NULL "
+        "ORDER BY 1 DESC"))).scalars().all())
     return {
         "product": await distinct("product"),
         "model": await distinct("unit_model"),
         "type": await distinct("unit_type"),
+        "engine": await distinct("engine_model"),
         "years": years,
         "min_date": str(span["min_date"]) if span and span["min_date"] else None,
         "max_date": str(span["max_date"]) if span and span["max_date"] else None,
@@ -423,26 +490,30 @@ async def get_filters(db: AsyncSession = Depends(get_db)):
 
 @router.get("/stats", dependencies=[Depends(require_menu("proker", "view"))])
 async def get_stats(db: AsyncSession = Depends(get_db)):
-    unit = (await db.execute(text("SELECT COUNT(*) FROM proker_unit"))).scalar() or 0
+    unit = (await db.execute(text(
+        "SELECT COUNT(*) FROM proker_unit WHERE engine_merk = 'CAT'"))).scalar() or 0
     row = (await db.execute(text("""
         SELECT COUNT(*) AS total,
-               COUNT(*) FILTER (WHERE status = 'DONE') AS done,
-               COUNT(*) FILTER (WHERE status = 'PLAN') AS plan,
-               COUNT(*) FILTER (WHERE status = 'LATE') AS late,
-               COUNT(*) FILTER (WHERE status = 'MISSED') AS missed,
-               COUNT(DISTINCT cn) FILTER (WHERE status = 'DONE') AS unit_done,
-               MAX(service_date) AS last_date
-        FROM proker_execution
+               COUNT(*) FILTER (WHERE x.status = 'DONE') AS done,
+               COUNT(*) FILTER (WHERE x.status = 'PLAN') AS plan,
+               COUNT(*) FILTER (WHERE x.status = 'LATE') AS late,
+               COUNT(*) FILTER (WHERE x.status = 'MISSED') AS missed,
+               COUNT(DISTINCT x.cn) FILTER (WHERE x.status = 'DONE') AS unit_done,
+               MAX(x.service_date) AS last_date
+        FROM proker_execution x JOIN proker_unit u ON u.cn = x.cn
+        WHERE u.engine_merk = 'CAT'
     """))).mappings().first()
     year = datetime.date.today().year
     this_year = (await db.execute(text(
-        "SELECT COUNT(*) FROM proker_execution "
-        "WHERE status = 'DONE' AND EXTRACT(YEAR FROM service_date) = :y"),
+        "SELECT COUNT(*) FROM proker_execution x JOIN proker_unit u ON u.cn = x.cn "
+        "WHERE u.engine_merk = 'CAT' AND x.status = 'DONE' "
+        "AND EXTRACT(YEAR FROM x.service_date) = :y"),
         {"y": year})).scalar() or 0
     per_year = (await db.execute(text("""
-        SELECT period_year AS year, COUNT(*) AS total,
-               COUNT(*) FILTER (WHERE status = 'DONE') AS done
-        FROM proker_execution WHERE period_year IS NOT NULL
+        SELECT x.period_year AS year, COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE x.status = 'DONE') AS done
+        FROM proker_execution x JOIN proker_unit u ON u.cn = x.cn
+        WHERE u.engine_merk = 'CAT' AND x.period_year IS NOT NULL
         GROUP BY 1 ORDER BY 1
     """))).mappings().all()
     return {
@@ -459,16 +530,17 @@ async def list_units(
     search: str | None = None,
     product: str | None = None,
     model: str | None = None,
+    engine: str | None = None,
     sort: str = Query("cn"),
     order: str = Query("asc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ):
-    conds, p = [], {"lim": page_size, "off": (page - 1) * page_size}
+    conds, p = ["u.engine_merk = 'CAT'"], {"lim": page_size, "off": (page - 1) * page_size}
     if search:
         conds.append("(u.cn ILIKE :s OR u.unit_model ILIKE :s OR u.product ILIKE :s "
-                     "OR u.unit_type ILIKE :s)")
+                     "OR u.unit_type ILIKE :s OR u.engine_model ILIKE :s)")
         p["s"] = f"%{search.strip()}%"
     if product:
         conds.append("u.product = :prod")
@@ -476,12 +548,16 @@ async def list_units(
     if model:
         conds.append("u.unit_model = :model")
         p["model"] = model
+    if engine:
+        conds.append("u.engine_model = :engine")
+        p["engine"] = engine
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
     col = _SORT.get(sort, "u.cn")
     total = (await db.execute(text(f"SELECT COUNT(*) FROM proker_unit u {where}"), p)).scalar() or 0
     rows = (await db.execute(text(f"""
         WITH e AS ({_AGG})
         SELECT u.cn, u.no, u.unit_model, u.product, u.unit_type, u.hm_now,
+               u.engine_model, u.engine_merk,
                COALESCE(e.exec_count, 0) AS exec_count,
                COALESCE(e.done_count, 0) AS done_count,
                e.last_date, e.last_hm
@@ -497,10 +573,11 @@ async def list_units(
 @router.get("/units/{cn}", dependencies=[Depends(require_menu("proker", "view"))])
 async def unit_detail(cn: str, db: AsyncSession = Depends(get_db)):
     key = (cn or "").strip().upper().replace(" ", "")
-    unit = (await db.execute(text("SELECT * FROM proker_unit WHERE cn = :c"),
-                             {"c": key})).mappings().first()
+    unit = (await db.execute(text(
+        "SELECT * FROM proker_unit WHERE cn = :c AND engine_merk = 'CAT'"),
+        {"c": key})).mappings().first()
     if not unit:
-        raise HTTPException(404, f"{key} tidak ditemukan")
+        raise HTTPException(404, f"{key} tidak ditemukan di Proker Midlife Eng CAT")
     rows = (await db.execute(text("""
         SELECT * FROM proker_execution WHERE cn = :c
         ORDER BY service_date DESC NULLS LAST, period_year DESC NULLS LAST,
@@ -539,13 +616,20 @@ async def create_unit(body: dict, db: AsyncSession = Depends(get_db)):
         raise HTTPException(400, "cn wajib diisi")
     if (await db.execute(text("SELECT 1 FROM proker_unit WHERE cn=:c"), {"c": cn})).scalar():
         raise HTTPException(409, f"{cn} sudah ada")
+    unit_type = _txt(body.get("unit_type"))
+    merk, model = _norm_engine(body.get("engine_merk"), body.get("engine_model"), unit_type)
+    if merk != "CAT":
+        raise HTTPException(400, "menu ini khusus unit ber-engine CAT (Caterpillar)")
     row = (await db.execute(text("""
-        INSERT INTO proker_unit (cn, no, unit_model, product, unit_type, hm_now)
-        VALUES (:cn, :no, :unit_model, :product, :unit_type, :hm_now) RETURNING *
+        INSERT INTO proker_unit
+          (cn, no, unit_model, product, unit_type, hm_now, engine_model, engine_merk)
+        VALUES (:cn, :no, :unit_model, :product, :unit_type, :hm_now, :em, :ek)
+        RETURNING *
     """), {
         "cn": cn, "no": _int(body.get("no")),
         "unit_model": _txt(body.get("unit_model")), "product": _txt(body.get("product")),
-        "unit_type": _txt(body.get("unit_type")), "hm_now": _num(body.get("hm_now")),
+        "unit_type": unit_type, "hm_now": _num(body.get("hm_now")),
+        "em": model, "ek": merk,
     })).mappings().first()
     await db.commit()
     return dict(row)
@@ -564,7 +648,8 @@ async def update_unit(cn: str, body: dict, db: AsyncSession = Depends(get_db)):
     if not sets:
         raise HTTPException(400, "tidak ada field yang diubah")
     res = await db.execute(text(
-        f"UPDATE proker_unit SET {', '.join(sets)} WHERE cn=:c"), params)
+        f"UPDATE proker_unit SET {', '.join(sets)} "
+        f"WHERE cn=:c AND engine_merk = 'CAT'"), params)
     if res.rowcount == 0:
         raise HTTPException(404, f"{key} tidak ditemukan")
     await db.commit()
@@ -577,8 +662,10 @@ async def update_unit(cn: str, body: dict, db: AsyncSession = Depends(get_db)):
              dependencies=[Depends(require_menu("proker", "add"))], status_code=201)
 async def create_execution(cn: str, body: dict, db: AsyncSession = Depends(get_db)):
     key = cn.strip().upper()
-    if not (await db.execute(text("SELECT 1 FROM proker_unit WHERE cn=:c"), {"c": key})).scalar():
-        raise HTTPException(404, f"{key} belum ada di master unit")
+    if not (await db.execute(text(
+            "SELECT 1 FROM proker_unit WHERE cn=:c AND engine_merk = 'CAT'"),
+            {"c": key})).scalar():
+        raise HTTPException(404, f"{key} belum ada di master unit Proker Midlife Eng CAT")
     period = _txt(body.get("period"))
     if not period:
         raise HTTPException(400, "periode wajib diisi")

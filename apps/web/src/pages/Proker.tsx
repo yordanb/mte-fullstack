@@ -1,5 +1,5 @@
-// Proker — program kerja pompa primer (2.000 hours).
-// Master unit di kiri; pilih C/N -> riwayat eksekusi proker muncul di kanan.
+// Proker Midlife Eng CAT — program kerja midlife engine Caterpillar (2.000 jam).
+// Master unit CAT di kiri; pilih C/N -> riwayat eksekusi proker muncul di kanan.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DatePicker } from '../components/DatePicker'
 import {
@@ -52,6 +52,7 @@ export default function ProkerPage() {
   const [search, setSearch] = useState('')
   const [product, setProduct] = useState('')
   const [model, setModel] = useState('')
+  const [engine, setEngine] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize] = useState(50)
 
@@ -82,7 +83,7 @@ export default function ProkerPage() {
     return () => window.clearTimeout(t)
   }, [q])
 
-  useEffect(() => { setPage(1) }, [search, product, model])
+  useEffect(() => { setPage(1) }, [search, product, model, engine])
 
   useEffect(() => {
     Promise.all([fetchProkerFilters(), fetchProkerStats()])
@@ -95,7 +96,8 @@ export default function ProkerPage() {
     setLoadingUnits(true)
     fetchProkerUnits({
       search: search || undefined, product: product || undefined,
-      model: model || undefined, page, page_size: pageSize,
+      model: model || undefined, engine: engine || undefined,
+      page, page_size: pageSize,
     })
       .then((r) => {
         if (!alive) return
@@ -105,7 +107,7 @@ export default function ProkerPage() {
       .catch((e) => { if (alive) setMsg(`gagal memuat unit: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoadingUnits(false) })
     return () => { alive = false }
-  }, [search, product, model, page, pageSize, reload]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [search, product, model, engine, page, pageSize, reload]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!cn) { setDetail(null); return }
@@ -133,7 +135,13 @@ export default function ProkerPage() {
           if (s.status === 'FAILED') {
             setMsg(`import gagal: ${s.errors?.error ?? 'tidak diketahui'}`)
           } else {
-            setMsg(`import selesai: ${fmtNum(s.errors?.inserted)} baru, ${fmtNum(s.errors?.updated)} diperbarui`)
+            setMsg(
+              `import selesai: ${fmtNum(s.errors?.cat_units ?? s.errors?.units)} unit CAT dari ${fmtNum(s.errors?.inserted)} eksekusi baru`
+              + ` + ${fmtNum(s.errors?.updated)} diperbarui`
+              + (s.errors?.non_cat
+                ? ` · ${fmtNum(s.errors.non_cat)} unit non-CAT disimpan tetapi tidak ditampilkan`
+                : ''),
+            )
             setReload((x) => x + 1)
           }
         }
@@ -276,7 +284,7 @@ export default function ProkerPage() {
     } finally { setSaving(false) }
   }
 
-  const resetFilter = () => { setQ(''); setSearch(''); setProduct(''); setModel('') }
+  const resetFilter = () => { setQ(''); setSearch(''); setProduct(''); setModel(''); setEngine('') }
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const s = detail?.stats
   const progPct = prog && prog.total_rows > 0
@@ -290,7 +298,7 @@ export default function ProkerPage() {
         <div>
           <label className="block text-theme-xs text-gray-500">Cari unit</label>
           <input className={`${inp} w-48`} value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder="C/N / model / product" />
+            placeholder="C/N / model / product / engine" />
         </div>
         <div>
           <label className="block text-theme-xs text-gray-500">Product</label>
@@ -304,6 +312,13 @@ export default function ProkerPage() {
           <select className={inp} value={model} onChange={(e) => setModel(e.target.value)}>
             <option value="">Semua</option>
             {(filters?.model ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-theme-xs text-gray-500">Engine CAT</label>
+          <select className={inp} value={engine} onChange={(e) => setEngine(e.target.value)}>
+            <option value="">Semua</option>
+            {(filters?.engine ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>
         <button onClick={resetFilter}
@@ -320,7 +335,7 @@ export default function ProkerPage() {
               }} />
             <button onClick={() => fileRef.current?.click()} disabled={importing}
               className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-              title="Upload file proker (.xlsx) format GMC. Data diperbarui per C/N + periode.">
+              title="Upload file proker (.xlsx) format GMC POMPA PRIMER (2.000 HOURS). Data diperbarui per C/N + periode; hanya unit ber-engine CAT yang tampil.">
               {importing ? 'Mengimpor…' : 'Import Excel'}
             </button>
           </>
@@ -343,7 +358,8 @@ export default function ProkerPage() {
             </span>
             <span className="text-theme-xs text-gray-500">
               {prog.errors && prog.status === 'COMMITTED'
-                ? `${fmtNum(prog.errors.units)} unit · ${fmtNum(prog.errors.inserted)} baru · ${fmtNum(prog.errors.updated)} diperbarui`
+                ? `${fmtNum(prog.errors.cat_units ?? prog.errors.units)} unit CAT · ${fmtNum(prog.errors.inserted)} baru · ${fmtNum(prog.errors.updated)} diperbarui`
+                  + (prog.errors.non_cat ? ` · ${fmtNum(prog.errors.non_cat)} non-CAT diabaikan` : '')
                 : prog.errors?.error ?? ''}
             </span>
           </div>
@@ -357,9 +373,14 @@ export default function ProkerPage() {
 
       {/* KPI */}
       {stats && (
+        <>
+        <p className="mb-2 text-theme-xs text-gray-500">
+          Program kerja <span className="font-semibold text-gray-600 dark:text-gray-300">Midlife Engine Caterpillar (2.000 jam)</span> —
+          hanya unit ber-engine CAT yang ditampilkan.
+        </p>
         <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-            <p className="text-theme-xs text-gray-500">Unit terdaftar</p>
+            <p className="text-theme-xs text-gray-500">Unit CAT</p>
             <p className="text-theme-2xl font-bold text-brand-600">{fmtNum(stats.units)}</p>
             <p className="text-theme-xs text-gray-400">{fmtNum(stats.unit_done)} unit sudah pernah proker</p>
           </div>
@@ -381,13 +402,14 @@ export default function ProkerPage() {
             <p className="text-theme-xs text-gray-400">terakhir: {fmtDate(stats.last_date)}</p>
           </div>
         </div>
+        </>
       )}
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
         {/* Daftar unit */}
         <div className="rounded-2xl border border-gray-200 bg-white lg:col-span-2 dark:border-gray-700 dark:bg-gray-900">
           <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2">
-            <span className="text-theme-sm font-semibold">Daftar Unit</span>
+            <span className="text-theme-sm font-semibold">Daftar Unit CAT</span>
             <span className="text-theme-xs text-gray-500">{fmtNum(total)} unit · hal {page}/{totalPages}</span>
             <div className="ml-auto flex items-center gap-1">
               <button className="rounded-lg border px-2 py-1 text-theme-xs disabled:opacity-40"
@@ -402,7 +424,7 @@ export default function ProkerPage() {
                 <tr className="border-b">
                   <th className="px-2 py-2 text-left font-semibold">C/N</th>
                   <th className="px-2 py-2 text-left font-semibold">Model</th>
-                  <th className="px-2 py-2 text-left font-semibold">Product</th>
+                  <th className="px-2 py-2 text-left font-semibold" title="Engine / Product">Engine</th>
                   <th className="px-2 py-2 text-right font-semibold">HM now</th>
                   <th className="px-2 py-2 text-center font-semibold">Proker</th>
                 </tr>
@@ -421,7 +443,12 @@ export default function ProkerPage() {
                         {u.unit_type ?? ''}
                       </span>
                     </td>
-                    <td className="px-2 py-1.5 whitespace-nowrap">{u.product ?? '-'}</td>
+                    <td className="max-w-[110px] px-2 py-1.5 whitespace-nowrap">
+                      <span className="font-semibold">{u.engine_model ?? '-'}</span>
+                      <span className="block truncate text-theme-xs text-gray-400" title={u.product ?? ''}>
+                        {u.product ?? ''}
+                      </span>
+                    </td>
                     <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{fmtHm(u.hm_now)}</td>
                     <td className="px-2 py-1.5 text-center">
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
@@ -433,7 +460,7 @@ export default function ProkerPage() {
                 ))}
                 {units.length === 0 && (
                   <tr><td colSpan={5} className="px-4 py-10 text-center text-theme-sm text-gray-400">
-                    Belum ada unit. Import file proker (.xlsx) lewat tombol di atas.
+                    Belum ada unit CAT. Import file GMC POMPA PRIMER (2.000 HOURS) (.xlsx) lewat tombol di atas.
                   </td></tr>
                 )}
               </tbody>
@@ -445,7 +472,7 @@ export default function ProkerPage() {
         <div className="rounded-2xl border border-gray-200 bg-white lg:col-span-3 dark:border-gray-700 dark:bg-gray-900">
           {!detail ? (
             <p className="px-4 py-16 text-center text-theme-sm text-gray-400">
-              Pilih salah satu C/N di kiri untuk melihat riwayat proker.
+              Pilih salah satu C/N di kiri untuk melihat riwayat proker midlife engine-nya.
             </p>
           ) : (
             <>
@@ -456,6 +483,11 @@ export default function ProkerPage() {
                     {detail.unit.unit_model ?? '-'} · {detail.unit.product ?? '-'}
                     <span className="text-gray-400"> · {detail.unit.unit_type ?? '-'}</span>
                   </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    <span className="rounded-full bg-brand-50 px-2 py-0.5 text-theme-xs font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300">
+                      Midlife Eng {detail.unit.engine_merk ?? 'CAT'} {detail.unit.engine_model ?? ''}
+                    </span>
+                  </div>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                   {can('proker', 'edit') && (
@@ -611,6 +643,10 @@ export default function ProkerPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-5 dark:bg-gray-900">
             <h3 className="font-semibold">Edit unit {unitForm.cn}</h3>
+            <p className="mt-1 text-theme-xs text-gray-500">
+              Engine: <span className="font-semibold">{detail?.unit.engine_merk ?? 'CAT'} {detail?.unit.engine_model ?? ''}</span>
+              {' '}— hanya unit ber-engine CAT yang masuk menu ini.
+            </p>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <label className="text-theme-sm">NO
                 <input className={`${inp} mt-1 w-full`} type="number" value={unitForm.no}

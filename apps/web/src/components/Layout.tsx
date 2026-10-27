@@ -32,7 +32,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'yazu', label: 'Yazu' },
     { key: 'ewacs', label: 'Ewacs Performance' },
     { key: 'tarsupport', label: 'TAR Support' },
-    { key: 'proker', label: 'Proker' },
+    { key: 'proker', label: 'Proker Midlife Eng CAT' },
   ] },
   { title: 'Agent', items: [
     { key: 'ss', label: 'Sugestion System' },

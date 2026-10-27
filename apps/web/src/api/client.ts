@@ -1117,6 +1117,9 @@ export type ProkerUnitRow = {
   unit_model: string | null
   product: string | null
   unit_type: string | null
+  /* di API selalu 'CAT' karena menu ini khusus engine Caterpillar */
+  engine_merk: string | null
+  engine_model: string | null
   hm_now: number | null
   aktif: boolean
 }
@@ -1174,6 +1177,7 @@ export type ProkerFilters = {
   product: string[]
   model: string[]
   type: string[]
+  engine: string[]
   years: number[]
   min_date: string | null
   max_date: string | null
@@ -1200,9 +1204,11 @@ export type ProkerImportStatus = {
   created_at?: string
   errors?: {
     units?: number
+    cat_units?: number
     inserted?: number
     updated?: number
     duplicates?: number
+    non_cat?: number
     total_rows?: number
     files?: string[]
     errors?: unknown[]
@@ -1221,7 +1227,7 @@ export async function fetchProkerFilters(): Promise<ProkerFilters> {
 }
 
 export async function fetchProkerUnits(params: {
-  search?: string; product?: string; model?: string
+  search?: string; product?: string; model?: string; engine?: string
   sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
 }): Promise<ProkerUnitPage> {
   const r = await api.get('/v1/proker/units', { params })
