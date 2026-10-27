@@ -11,4 +11,5 @@ apps/web/vite.config.js
 data sample excel/data_staging_pompa.xlsx
 scripts/analyze_staging_pompa.py
 data sample excel/data ss/
+data sample excel/data program kerja/
 apps/mobile/android/build/

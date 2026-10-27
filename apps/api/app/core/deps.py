@@ -46,3 +46,35 @@ def require_role(*roles: str):
             return user
         raise HTTPException(403, "Akses ditolak")
     return _check
+
+# Nama kolom matriks izin untuk tiap aksi halaman.
+_MENU_COL = {"view": "can_view", "add": "can_add", "edit": "can_edit", "delete": "can_delete"}
+
+def require_menu(menu: str, action: str = "view"):
+    """Cek izin per menu pada tabel role_permissions (admin selalu lolos).
+
+    Berbeda dari require_role (berbasis nama role), dependency ini mengikuti
+    centang di halaman Users sehingga menu baru tidak perlu aturan role baru.
+    Role turunan (ROLE_INHERITS) ikut diwarisi bila belum punya baris sendiri.
+    """
+    col = _MENU_COL.get(action)
+    if not col:
+        raise ValueError(f"action tidak dikenal: {action}")
+
+    async def _check(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+        if user["role"] == "admin":
+            return user
+        roles = [user["role"]]
+        base = ROLE_INHERITS.get(user["role"])
+        if base:
+            roles.append(base)
+        params = {f"r{i}": r for i, r in enumerate(roles)}
+        ph = ",".join(f":r{i}" for i in range(len(roles)))
+        ok = (await db.execute(
+            text(f"SELECT bool_or({col}) FROM role_permissions "
+                 f"WHERE menu=:m AND role IN ({ph})"),
+            {**params, "m": menu})).scalar()
+        if not ok:
+            raise HTTPException(403, "Akses ditolak")
+        return user
+    return _check

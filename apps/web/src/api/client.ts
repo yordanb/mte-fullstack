@@ -1107,3 +1107,172 @@ export async function exportSsCsv(params: SsParams): Promise<void> {
   a.remove()
   URL.revokeObjectURL(url)
 }
+
+// --- Proker (program kerja) ----------------------------------------------
+export type ProkerStatus = 'DONE' | 'PLAN' | 'LATE' | 'MISSED'
+
+export type ProkerUnitRow = {
+  cn: string
+  no: number | null
+  unit_model: string | null
+  product: string | null
+  unit_type: string | null
+  hm_now: number | null
+  aktif: boolean
+}
+
+export type ProkerUnit = Omit<ProkerUnitRow, 'aktif'> & {
+  exec_count: number
+  done_count: number
+  last_date: string | null
+  last_hm: number | null
+}
+
+export type ProkerExecution = {
+  id: number
+  cn: string
+  period: string
+  period_year: number | null
+  period_seq: number | null
+  hm: number | null
+  service_date: string | null
+  mekanik: string | null
+  status: ProkerStatus
+}
+
+export type ProkerDetail = {
+  unit: ProkerUnitRow
+  executions: ProkerExecution[]
+  stats: {
+    total: number
+    done: number
+    plan: number
+    missed: number
+    last_date: string | null
+    last_hm: number | null
+    interval: number
+    due_hm: number | null
+    sisa_hm: number | null
+  }
+}
+
+export type ProkerStats = {
+  units: number
+  total: number
+  done: number
+  plan: number
+  late: number
+  missed: number
+  unit_done: number
+  last_date: string | null
+  this_year: number
+  year: number
+  per_year: { year: number; total: number; done: number }[]
+}
+
+export type ProkerFilters = {
+  product: string[]
+  model: string[]
+  type: string[]
+  years: number[]
+  min_date: string | null
+  max_date: string | null
+  min_year: number | null
+  max_year: number | null
+}
+
+export type ProkerUnitPage = {
+  total: number
+  page: number
+  page_size: number
+  data: ProkerUnit[]
+}
+
+export type ProkerImportStatus = {
+  id: string
+  filename: string
+  status: string
+  total_rows: number
+  ok_rows: number
+  fail_rows: number
+  processed_rows: number
+  uploaded_by?: string | null
+  created_at?: string
+  errors?: {
+    units?: number
+    inserted?: number
+    updated?: number
+    duplicates?: number
+    total_rows?: number
+    files?: string[]
+    errors?: unknown[]
+    error?: string
+  } | null
+}
+
+export async function fetchProkerStats(): Promise<ProkerStats> {
+  const r = await api.get('/v1/proker/stats')
+  return r.data
+}
+
+export async function fetchProkerFilters(): Promise<ProkerFilters> {
+  const r = await api.get('/v1/proker/filters')
+  return r.data
+}
+
+export async function fetchProkerUnits(params: {
+  search?: string; product?: string; model?: string
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<ProkerUnitPage> {
+  const r = await api.get('/v1/proker/units', { params })
+  return r.data
+}
+
+export async function fetchProkerUnit(cn: string): Promise<ProkerDetail> {
+  const r = await api.get(`/v1/proker/units/${encodeURIComponent(cn)}`)
+  return r.data
+}
+
+export async function createProkerUnit(body: Partial<ProkerUnitRow>): Promise<ProkerUnitRow> {
+  const r = await api.post('/v1/proker/units', body)
+  return r.data
+}
+
+export async function updateProkerUnit(cn: string, body: Partial<ProkerUnitRow>): Promise<ProkerUnitRow> {
+  const r = await api.patch(`/v1/proker/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+
+export type ProkerExecInput = {
+  period?: string
+  hm?: number | null
+  service_date?: string | null
+  mekanik?: string | null
+  status?: ProkerStatus
+}
+
+export async function createProkerExecution(cn: string, body: ProkerExecInput): Promise<ProkerExecution> {
+  const r = await api.post(`/v1/proker/units/${encodeURIComponent(cn)}/executions`, body)
+  return r.data
+}
+
+export async function updateProkerExecution(id: number, body: ProkerExecInput): Promise<ProkerExecution> {
+  const r = await api.patch(`/v1/proker/executions/${id}`, body)
+  return r.data
+}
+
+export async function deleteProkerExecution(id: number): Promise<void> {
+  await api.delete(`/v1/proker/executions/${id}`)
+}
+
+export async function importProkerXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/proker/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchProkerImportStatus(id: string): Promise<ProkerImportStatus> {
+  const r = await api.get(`/v1/proker/import/${id}`)
+  return r.data
+}
