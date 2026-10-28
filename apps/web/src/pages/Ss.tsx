@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import ReactApexChart from 'react-apexcharts'
 import { DatePicker } from '../components/DatePicker'
 import {
-  errMsg, isAdmin, todayLocal,
+  errMsg, isAdmin, todayLocal, monthStartLocal,
   importSsXlsx, fetchSsImportStatus, fetchSsFilters, fetchSsKpi, fetchSsTrend,
   fetchSsBreakdown, fetchSsTop, fetchSsRecords, exportSsCsv,
   type SsBasis, type SsBreak, type SsFilters, type SsImportStatus, type SsKpi,
@@ -46,10 +46,11 @@ const inp = 'rounded-lg border px-2 py-1.5 text-theme-sm'
 
 export default function SsPage() {
   const today = todayLocal()
-  const ytd = `${new Date().getFullYear()}-01-01`
+  // Default rentang: tanggal 1 bulan berjalan s/d hari ini.
+  const monthStart = monthStartLocal()
 
   const [basis, setBasis] = useState<SsBasis>('menilai')
-  const [start, setStart] = useState(ytd)
+  const [start, setStart] = useState(monthStart)
   const [end, setEnd] = useState(today)
   const [dept, setDept] = useState('')
   const [kat, setKat] = useState('')
@@ -189,7 +190,7 @@ export default function SsPage() {
   }
 
   const resetFilter = () => {
-    setBasis('menilai'); setStart(ytd); setEnd(today)
+    setBasis('menilai'); setStart(monthStart); setEnd(today)
     setDept(''); setKat(''); setGrade(''); setStatus(''); setTahap('')
     setQ(''); setSearch('')
   }

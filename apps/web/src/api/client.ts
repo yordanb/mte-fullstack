@@ -18,6 +18,13 @@ export function todayLocal(daysAgo = 0) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
+/** Tanggal 1 bulan berjalan (format YYYY-MM-DD, waktu lokal). */
+export function monthStartLocal() {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-01`
+}
+
 api.interceptors.request.use((c) => {
   const t = localStorage.getItem('mte_token')
   if (t) c.headers.Authorization = `Bearer ${t}`
