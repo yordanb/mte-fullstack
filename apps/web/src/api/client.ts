@@ -973,6 +973,7 @@ export type SsParams = {
   kategori?: string
   grade?: string
   status?: string
+  tahap?: 'outstanding' | 'approved'
   search?: string
 }
 
@@ -986,6 +987,8 @@ export type SsKpi = {
   grade_a: number
   grade_ab: number
   grade_f: number
+  outstanding: number
+  pending: number
 }
 
 export type SsTrend = { period: string; laporan: number; menilai: number }
@@ -997,6 +1000,9 @@ export type SsFilters = {
   kategori: string[]
   grade: string[]
   status: string[]
+  status_ss: string[]
+  outstanding: number
+  approved: number
   min_menilai: string | null
   max_menilai: string | null
   min_laporan: string | null
@@ -1013,6 +1019,10 @@ export type SsRecord = {
   nrp: string | null
   dept: string | null
   distrik: string | null
+  divisi: string | null
+  management: string | null
+  status_ss: string | null
+  outstanding: boolean
   manfaat_fin: number | null
   tgl_menilai: string | null
   dinilai_oleh: string | null
@@ -1047,6 +1057,9 @@ export type SsImportStatus = {
     updated?: number
     duplicates?: number
     skipped?: number
+    closed?: number
+    outstanding?: number
+    now_approved?: number
     total_rows?: number
     files?: string[]
     errors?: unknown[]

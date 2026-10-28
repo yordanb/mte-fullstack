@@ -34,6 +34,10 @@ HEADERS = [
     "MANFAAT FINANCIAL", "TANGGAL MENILAI", "DINILAI OLEH", "GRADE SS",
     "KUALITAS SS", "KATEGORI SS", "REWARD SS", "STATUS KARYAWAN",
 ]
+# ReportOutstandingSS — SS yang belum dinilai (kolom penilaian belum ada).
+OUTSTANDING_HEADERS = [
+    "NO SS", "TANGGAL LAPORAN", "NAMA", "NRP", "DEPT", "DISTRIK", "JUDUL", "STATUS",
+]
 COLS = [
     "no_ss", "tgl_laporan", "judul", "pencetus", "nrp", "dept", "distrik",
     "manfaat_fin", "tgl_menilai", "dinilai_oleh", "grade", "kualitas",
@@ -123,7 +127,13 @@ def _num(v) -> float | None:
 
 
 def _data_rows(content: bytes, fname: str) -> tuple[list[dict], list[dict]]:
-    """Baca satu workbook -> (rows, errors). Raises ValueError bila header kurang."""
+    """Baca satu workbook -> (rows, errors). Raises ValueError bila header kurang.
+
+    Mendukung dua format:
+      * ReportSSClosedDistrict (SS sudah dinilai) — 15 kolom penilaian lengkap.
+      * ReportOutstandingSS    (SS masih berjalan) — 10 kolom, status workflow.
+    Tiap baris diberi penanda `_kind` = 'closed' | 'outstanding'.
+    """
     wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
     try:
         sheet = SHEET if SHEET in wb.sheetnames else wb.sheetnames[0]
@@ -134,9 +144,17 @@ def _data_rows(content: bytes, fname: str) -> tuple[list[dict], list[dict]]:
         for i, h in enumerate(header):
             if h and h not in idx:
                 idx[h] = i
-        missing = [h for h in HEADERS if h not in idx]
-        if missing:
-            raise ValueError(f"kolom wajib hilang: {', '.join(missing)}")
+        if all(h in idx for h in HEADERS):
+            kind = "closed"
+        elif all(h in idx for h in OUTSTANDING_HEADERS) and "PENCETUS IDE" not in idx:
+            kind = "outstanding"
+        else:
+            missing = [h for h in HEADERS if h not in idx]
+            raise ValueError(
+                "format tidak dikenali. Untuk ReportSSClosedDistrict kolom wajib hilang: "
+                f"{', '.join(missing)}; untuk ReportOutstandingSS dibutuhkan: "
+                f"{', '.join(OUTSTANDING_HEADERS)}"
+            )
         rows: list[dict] = []
         errors: list[dict] = []
         for rno, r in enumerate(it, start=2):
@@ -154,9 +172,25 @@ def _data_rows(content: bytes, fname: str) -> tuple[list[dict], list[dict]]:
                 errors.append({"file": fname, "row": rno, "error": "NO SS kosong"})
                 continue
             try:
+                if kind == "outstanding":
+                    rows.append({
+                        "_kind": "outstanding",
+                        "no_ss": no_ss,
+                        "tgl_laporan": _date(g("TANGGAL LAPORAN")),
+                        "judul": _txt(g("JUDUL")),
+                        "pencetus": _txt(g("NAMA")),
+                        "nrp": _txt(g("NRP")),
+                        "dept": (_txt(g("DEPT")) or "").upper() or None,
+                        "distrik": _txt(g("DISTRIK")),
+                        "divisi": (_txt(g("DIVISI")) or "").upper() or None,
+                        "management": _txt(g("MANAGEMENT")),
+                        "status_ss": _txt(g("STATUS")),
+                    })
+                    continue
                 kategori = _txt(g("KATEGORI SS"))
                 grade = (_txt(g("GRADE SS")) or "").upper()[:2] or None
                 rows.append({
+                    "_kind": "closed",
                     "no_ss": no_ss,
                     "tgl_laporan": _date(g("TANGGAL LAPORAN")),
                     "judul": _txt(g("JUDUL")),
@@ -181,11 +215,58 @@ def _data_rows(content: bytes, fname: str) -> tuple[list[dict], list[dict]]:
         wb.close()
 
 
-_UPSERT = text(f"""
-INSERT INTO ss_report ({', '.join(COLS)}, import_id)
-VALUES ({', '.join(':' + c for c in COLS)}, :import_id)
+# --- upsert ReportSSClosedDistrict: SS sudah dinilai -> approved -------------
+_UPSERT_CLOSED = text(f"""
+INSERT INTO ss_report ({', '.join(COLS)}, import_id, outstanding, status_ss)
+VALUES ({', '.join(':' + c for c in COLS)}, :import_id, FALSE, NULL)
 ON CONFLICT (no_ss) DO UPDATE SET
-  {', '.join(f'{c}=EXCLUDED.{c}' for c in COLS if c != 'no_ss')},
+  tgl_laporan=COALESCE(EXCLUDED.tgl_laporan, ss_report.tgl_laporan),
+  judul=COALESCE(EXCLUDED.judul, ss_report.judul),
+  pencetus=COALESCE(EXCLUDED.pencetus, ss_report.pencetus),
+  nrp=COALESCE(EXCLUDED.nrp, ss_report.nrp),
+  dept=COALESCE(EXCLUDED.dept, ss_report.dept),
+  distrik=COALESCE(EXCLUDED.distrik, ss_report.distrik),
+  manfaat_fin=COALESCE(EXCLUDED.manfaat_fin, ss_report.manfaat_fin),
+  tgl_menilai=COALESCE(EXCLUDED.tgl_menilai, ss_report.tgl_menilai),
+  dinilai_oleh=COALESCE(EXCLUDED.dinilai_oleh, ss_report.dinilai_oleh),
+  grade=COALESCE(EXCLUDED.grade, ss_report.grade),
+  kualitas=COALESCE(EXCLUDED.kualitas, ss_report.kualitas),
+  kategori=COALESCE(EXCLUDED.kategori, ss_report.kategori),
+  kategori_norm=COALESCE(EXCLUDED.kategori_norm, ss_report.kategori_norm),
+  reward=CASE WHEN EXCLUDED.reward > 0 THEN EXCLUDED.reward ELSE ss_report.reward END,
+  status_karyawan=COALESCE(EXCLUDED.status_karyawan, ss_report.status_karyawan),
+  outstanding=FALSE,
+  status_ss=NULL,
+  outstanding_at=NULL,
+  import_id=EXCLUDED.import_id,
+  updated_at=now()
+""")
+
+# --- upsert ReportOutstandingSS: SS masih berjalan --------------------------
+# Kolom penilaian (grade/kategori/reward/tgl_menilai/...) TIDAK disentuh, supaya
+# upload outstanding berikutnya tidak menghapus hasil penilaian yang sudah ada.
+# Bila baris sudah punya grade (approved), status outstanding tidak dihidupkan.
+_UPSERT_OUTSTANDING = text("""
+INSERT INTO ss_report
+  (no_ss, tgl_laporan, judul, pencetus, nrp, dept, distrik,
+   divisi, management, status_ss, outstanding, outstanding_at, import_id)
+VALUES
+  (:no_ss, :tgl_laporan, :judul, :pencetus, :nrp, :dept, :distrik,
+   :divisi, :management, :status_ss, TRUE, now(), :import_id)
+ON CONFLICT (no_ss) DO UPDATE SET
+  tgl_laporan=COALESCE(EXCLUDED.tgl_laporan, ss_report.tgl_laporan),
+  judul=COALESCE(EXCLUDED.judul, ss_report.judul),
+  pencetus=COALESCE(EXCLUDED.pencetus, ss_report.pencetus),
+  nrp=COALESCE(EXCLUDED.nrp, ss_report.nrp),
+  dept=COALESCE(EXCLUDED.dept, ss_report.dept),
+  distrik=COALESCE(EXCLUDED.distrik, ss_report.distrik),
+  divisi=COALESCE(EXCLUDED.divisi, ss_report.divisi),
+  management=COALESCE(EXCLUDED.management, ss_report.management),
+  status_ss=CASE WHEN ss_report.grade IS NULL THEN EXCLUDED.status_ss
+                 ELSE ss_report.status_ss END,
+  outstanding=CASE WHEN ss_report.grade IS NULL THEN TRUE ELSE FALSE END,
+  outstanding_at=CASE WHEN ss_report.grade IS NULL THEN now()
+                      ELSE ss_report.outstanding_at END,
   import_id=EXCLUDED.import_id,
   updated_at=now()
 """)
@@ -198,6 +279,21 @@ async def _existing(db: AsyncSession, keys: list[str]) -> int:
     ph = ",".join(f":k{i}" for i in range(len(keys)))
     return (await db.execute(
         text(f"SELECT count(*) FROM ss_report WHERE no_ss IN ({ph})"), params)).scalar() or 0
+
+
+async def _count_flag(db: AsyncSession, keys: list[str], cond: str) -> int:
+    """Hitung baris existing yang memenuhi kondisi tetap (mis. masih outstanding)."""
+    if not keys:
+        return 0
+    params = {f"k{i}": k for i, k in enumerate(keys)}
+    ph = ",".join(f":k{i}" for i in range(len(keys)))
+    return (await db.execute(text(
+        f"SELECT count(*) FROM ss_report WHERE no_ss IN ({ph}) AND {cond}"), params)).scalar() or 0
+
+
+def _bind(row: dict, import_id: str) -> dict:
+    """Buang penanda internal `_kind` sebelum dikirim sebagai parameter SQL."""
+    return {**{k: v for k, v in row.items() if not k.startswith("_")}, "import_id": import_id}
 
 
 async def _run(import_id: str, files: list[tuple[str, bytes]]):
@@ -216,8 +312,12 @@ async def _run(import_id: str, files: list[tuple[str, bytes]]):
                 total += len(rows) + len(errs)
                 errors.extend(errs[:50])
                 for row in rows:
-                    if row["no_ss"] in merged:
+                    prev = merged.get(row["no_ss"])
+                    if prev is not None:
                         duplicates += 1
+                        # File closed (sudah dinilai) menang atas outstanding.
+                        if prev["_kind"] == "closed" and row["_kind"] == "outstanding":
+                            continue
                     merged[row["no_ss"]] = row
                 await db.execute(text(
                     "UPDATE imports SET total_rows=:t, processed_rows=:p WHERE id=:i"),
@@ -226,24 +326,44 @@ async def _run(import_id: str, files: list[tuple[str, bytes]]):
 
             values = list(merged.values())
             inserted = updated = 0
+            approved_now = 0
             done = 0
             for i in range(0, len(values), BATCH):
                 batch = values[i:i + BATCH]
-                upd = await _existing(db, [b["no_ss"] for b in batch])
-                await db.execute(_UPSERT, [{**b, "import_id": import_id} for b in batch])
-                inserted += len(batch) - upd
-                updated += upd
+                closed = [b for b in batch if b["_kind"] == "closed"]
+                outs = [b for b in batch if b["_kind"] == "outstanding"]
+
+                if closed:
+                    keys = [b["no_ss"] for b in closed]
+                    upd = await _existing(db, keys)
+                    # Baris yang tadinya outstanding kini punya grade di file closed.
+                    approved_now += await _count_flag(db, keys, "outstanding = TRUE")
+                    await db.execute(_UPSERT_CLOSED, [_bind(b, import_id) for b in closed])
+                    inserted += len(closed) - upd
+                    updated += upd
+
+                if outs:
+                    keys = [b["no_ss"] for b in outs]
+                    upd = await _existing(db, keys)
+                    await db.execute(_UPSERT_OUTSTANDING, [_bind(b, import_id) for b in outs])
+                    inserted += len(outs) - upd
+                    updated += upd
+
                 done += len(batch)
                 await db.execute(text(
                     "UPDATE imports SET processed_rows=:p, ok_rows=:o WHERE id=:i"),
                     {"p": done, "o": done, "i": import_id})
                 await db.commit()
 
+            out_rows = sum(1 for v in values if v["_kind"] == "outstanding")
             summary = {
                 "inserted": inserted,
                 "updated": updated,
                 "duplicates": duplicates,
                 "skipped": max(0, total - len(values) - len(errors)),
+                "closed": len(values) - out_rows,
+                "outstanding": out_rows,
+                "now_approved": approved_now,
                 "files": [f for f, _ in files],
                 "total_rows": total,
                 "errors": errors[:50],
@@ -254,8 +374,10 @@ async def _run(import_id: str, files: list[tuple[str, bytes]]):
                 {"t": total, "o": len(values), "f": len(errors), "p": len(values),
                  "e": json.dumps(summary), "i": import_id})
             await db.commit()
-            log.info("ss import %s: %s inserted, %s updated, %s dup, %s error(s)",
-                     import_id, inserted, updated, duplicates, len(errors))
+            log.info("ss import %s: %s inserted, %s updated, %s dup, %s outstanding, "
+                     "%s berubah approved, %s error(s)",
+                     import_id, inserted, updated, duplicates, out_rows, approved_now,
+                     len(errors))
         except Exception as e:  # noqa: BLE001
             await db.rollback()
             await db.execute(text(
@@ -328,9 +450,19 @@ async def get_filters(db: AsyncSession = Depends(get_db)):
         "MIN(tgl_laporan) AS min_laporan, MAX(tgl_laporan) AS max_laporan, "
         "COUNT(*) AS total FROM ss_report"
     ))).mappings().first()
+    status_ss = (await db.execute(text(
+        "SELECT DISTINCT status_ss FROM ss_report "
+        "WHERE status_ss IS NOT NULL AND status_ss <> '' ORDER BY 1"
+    ))).scalars().all()
+    counts = (await db.execute(text(
+        "SELECT COUNT(*) FILTER (WHERE outstanding) AS outstanding, "
+        "COUNT(*) FILTER (WHERE grade IS NOT NULL) AS approved FROM ss_report"
+    ))).mappings().first()
     return {
         "dept": list(depts), "kategori": list(kats), "grade": list(grades),
-        "status": list(statuses),
+        "status": list(statuses), "status_ss": list(status_ss),
+        "outstanding": counts["outstanding"] if counts else 0,
+        "approved": counts["approved"] if counts else 0,
         "min_menilai": str(span["min_menilai"]) if span and span["min_menilai"] else None,
         "max_menilai": str(span["max_menilai"]) if span and span["max_menilai"] else None,
         "min_laporan": str(span["min_laporan"]) if span and span["min_laporan"] else None,
@@ -344,12 +476,24 @@ def _where(f: dict, with_date: bool = True) -> tuple[str, dict]:
     p: dict = {}
     if with_date:
         col = "tgl_laporan" if f["date_basis"] == "laporan" else "tgl_menilai"
+        conds: list[str] = []
         if f["start"]:
-            parts.append(f"{col} >= :start")
+            conds.append(f"{col} >= :start")
             p["start"] = f["start"]
         if f["end"]:
-            parts.append(f"{col} <= :end")
+            conds.append(f"{col} <= :end")
             p["end"] = f["end"]
+        date_sql = " AND ".join(conds) if conds else "TRUE"
+        if col == "tgl_menilai":
+            # SS outstanding belum punya tanggal menilai — tetap tampilkan agar
+            # bisa dipantau, apa pun rentang tanggal pada filter.
+            parts.append(f"(({date_sql}) OR (tgl_menilai IS NULL AND outstanding = TRUE))")
+        else:
+            parts.append(f"({date_sql})")
+    if f.get("tahap") == "outstanding":
+        parts.append("outstanding = TRUE")
+    elif f.get("tahap") == "approved":
+        parts.append("grade IS NOT NULL")
     if f["dept"]:
         parts.append("dept = :dept")
         p["dept"] = f["dept"]
@@ -379,10 +523,12 @@ def _params(
     kategori: str | None = Query(None),
     grade: str | None = Query(None),
     status: str | None = Query(None),
+    tahap: str | None = Query(None, pattern="^(outstanding|approved)$"),
     search: str | None = Query(None),
 ) -> dict:
     return {"date_basis": date_basis, "start": start, "end": end, "dept": dept,
-            "kategori": kategori, "grade": grade, "status": status, "search": search}
+            "kategori": kategori, "grade": grade, "status": status, "tahap": tahap,
+            "search": search}
 
 
 def _filters(f: dict, with_date: bool = True) -> tuple[str, dict]:
@@ -400,7 +546,9 @@ async def get_kpi(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)
                COUNT(*) FILTER (WHERE grade = 'A') AS grade_a,
                COUNT(*) FILTER (WHERE grade IN ('A', 'B')) AS grade_ab,
                COUNT(*) FILTER (WHERE grade = 'F') AS grade_f,
-               COUNT(*) FILTER (WHERE manfaat_fin IS NOT NULL AND manfaat_fin <> 0) AS manfaat_rows
+               COUNT(*) FILTER (WHERE manfaat_fin IS NOT NULL AND manfaat_fin <> 0) AS manfaat_rows,
+               COUNT(*) FILTER (WHERE outstanding) AS outstanding,
+               COUNT(*) FILTER (WHERE grade IS NULL) AS pending
         FROM ss_report WHERE {where}
     """), p)).mappings().first()
     total = row["total"] or 0
@@ -415,6 +563,8 @@ async def get_kpi(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)
         "grade_a": row["grade_a"] or 0,
         "grade_ab": row["grade_ab"] or 0,
         "grade_f": row["grade_f"] or 0,
+        "outstanding": row["outstanding"] or 0,
+        "pending": row["pending"] or 0,
     }
 
 
@@ -527,9 +677,9 @@ async def get_top(
 
 
 _SORTS = ("tgl_menilai", "tgl_laporan", "reward", "no_ss")
-_SELECT = ("id, no_ss, tgl_laporan, judul, pencetus, nrp, dept, distrik, manfaat_fin, "
-           "tgl_menilai, dinilai_oleh, grade, kualitas, kategori, kategori_norm, "
-           "reward, status_karyawan")
+_SELECT = ("id, no_ss, tgl_laporan, judul, pencetus, nrp, dept, distrik, divisi, "
+           "manfaat_fin, tgl_menilai, dinilai_oleh, grade, kualitas, kategori, "
+           "kategori_norm, reward, status_karyawan, management, status_ss, outstanding")
 
 
 @router.get("/records", dependencies=[Depends(require_role("admin"))])
@@ -557,9 +707,10 @@ async def get_records(
 
 
 EXPORT_HEADERS = [
-    "NO SS", "TANGGAL LAPORAN", "JUDUL", "PENCETUS IDE", "NRP", "DEPT", "DISTRIK",
-    "MANFAAT FINANCIAL", "TANGGAL MENILAI", "DINILAI OLEH", "GRADE SS",
+    "NO SS", "TANGGAL LAPORAN", "JUDUL", "PENCETUS IDE", "NRP", "DEPT", "DIVISI",
+    "DISTRIK", "MANFAAT FINANCIAL", "TANGGAL MENILAI", "DINILAI OLEH", "GRADE SS",
     "KUALITAS SS", "KATEGORI SS", "KATEGORI NORMAL", "REWARD SS", "STATUS KARYAWAN",
+    "STATUS SS", "OUTSTANDING",
 ]
 
 
@@ -580,9 +731,10 @@ async def export_csv(
     for r in rows:
         w.writerow([
             r["no_ss"], r["tgl_laporan"], r["judul"], r["pencetus"], r["nrp"],
-            r["dept"], r["distrik"], r["manfaat_fin"], r["tgl_menilai"],
+            r["dept"], r["divisi"], r["distrik"], r["manfaat_fin"], r["tgl_menilai"],
             r["dinilai_oleh"], r["grade"], r["kualitas"], r["kategori"],
             r["kategori_norm"], r["reward"], r["status_karyawan"],
+            r["status_ss"], r["outstanding"],
         ])
     body = "\ufeff" + buf.getvalue()
     fname = f"ss_report_{datetime.date.today().isoformat()}.csv"

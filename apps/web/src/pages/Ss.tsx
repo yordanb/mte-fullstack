@@ -55,6 +55,7 @@ export default function SsPage() {
   const [kat, setKat] = useState('')
   const [grade, setGrade] = useState('')
   const [status, setStatus] = useState('')
+  const [tahap, setTahap] = useState<'' | 'outstanding' | 'approved'>('')
   const [q, setQ] = useState('')
   const [search, setSearch] = useState('')
 
@@ -106,8 +107,9 @@ export default function SsPage() {
     kategori: kat || undefined,
     grade: grade || undefined,
     status: status || undefined,
+    tahap: tahap || undefined,
     search: search || undefined,
-  }), [basis, start, end, dept, kat, grade, status, search])
+  }), [basis, start, end, dept, kat, grade, status, tahap, search])
 
   useEffect(() => { setPage(1) }, [params])
 
@@ -188,7 +190,8 @@ export default function SsPage() {
 
   const resetFilter = () => {
     setBasis('menilai'); setStart(ytd); setEnd(today)
-    setDept(''); setKat(''); setGrade(''); setStatus(''); setQ(''); setSearch('')
+    setDept(''); setKat(''); setGrade(''); setStatus(''); setTahap('')
+    setQ(''); setSearch('')
   }
 
   const sortBy = (key: string) => {
@@ -382,6 +385,15 @@ export default function SsPage() {
           </select>
         </div>
         <div>
+          <label className="block text-theme-xs text-gray-500">Tahap</label>
+          <select className={inp} value={tahap}
+            onChange={(e) => setTahap(e.target.value as '' | 'outstanding' | 'approved')}>
+            <option value="">Semua</option>
+            <option value="outstanding">Outstanding (belum dinilai)</option>
+            <option value="approved">Approved (sudah dinilai)</option>
+          </select>
+        </div>
+        <div>
           <label className="block text-theme-xs text-gray-500">Cari</label>
           <input
             className={`${inp} w-52`}
@@ -422,7 +434,7 @@ export default function SsPage() {
               className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
               onClick={() => fileRef.current?.click()}
               disabled={importing}
-              title="Upload 1 atau beberapa file ReportSS (.xlsx). Data diperbarui berdasarkan NO SS."
+              title="Upload ReportSSClosedDistrict (sudah dinilai) atau ReportOutstandingSS (belum dinilai), .xlsx. Data diperbarui berdasarkan NO SS."
             >
               {importing ? 'Mengimpor…' : 'Import Excel'}
             </button>
@@ -445,7 +457,11 @@ export default function SsPage() {
             </span>
             <span className="text-theme-xs text-gray-500">
               {prog.errors && prog.status === 'COMMITTED'
-                ? `${fmtNum(prog.errors.inserted ?? 0)} baru · ${fmtNum(prog.errors.updated ?? 0)} diperbarui · ${fmtNum(prog.errors.duplicates ?? 0)} duplikat`
+                ? `${fmtNum(prog.errors.inserted ?? 0)} baru · ${fmtNum(prog.errors.updated ?? 0)} diperbarui`
+                  + ` · ${fmtNum(prog.errors.outstanding ?? 0)} outstanding`
+                  + ((prog.errors.now_approved ?? 0) > 0
+                    ? ` · ${fmtNum(prog.errors.now_approved)} berubah approved` : '')
+                  + ` · ${fmtNum(prog.errors.duplicates ?? 0)} duplikat`
                 : prog.errors?.error ?? ''}
             </span>
           </div>
@@ -465,7 +481,9 @@ export default function SsPage() {
           <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
             <p className="text-theme-xs text-gray-500">Total SS</p>
             <p className="text-theme-2xl font-bold text-brand-600">{fmtNum(kpi.total)}</p>
-            <p className="text-theme-xs text-gray-400">sesuai filter</p>
+            <p className="text-theme-xs text-gray-400">
+              {fmtNum(kpi.outstanding)} outstanding · {fmtNum(kpi.pending)} belum dinilai
+            </p>
           </div>
           <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
             <p className="text-theme-xs text-gray-500">Total Reward</p>
@@ -602,6 +620,7 @@ export default function SsPage() {
                 <th className="cursor-pointer px-2 py-2 text-left font-semibold" onClick={() => sortBy('no_ss')}>
                   No SS{sortMark('no_ss')}
                 </th>
+                <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Tahap</th>
                 <th className="cursor-pointer px-2 py-2 text-left font-semibold whitespace-nowrap" onClick={() => sortBy('tgl_laporan')}>
                   Tgl Laporan{sortMark('tgl_laporan')}
                 </th>
@@ -624,6 +643,26 @@ export default function SsPage() {
               {rows.map((r, i) => (
                 <tr key={r.no_ss} className={i % 2 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''}>
                   <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.no_ss}</td>
+                  <td className="max-w-[190px] px-2 py-1.5 whitespace-nowrap">
+                    {r.outstanding ? (
+                      <>
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                          Outstanding
+                        </span>
+                        {r.status_ss && (
+                          <span className="mt-0.5 block truncate text-theme-xs text-gray-400" title={r.status_ss}>
+                            {r.status_ss}
+                          </span>
+                        )}
+                      </>
+                    ) : r.grade ? (
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                        Approved
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
                   <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{fmtDate(r.tgl_laporan)}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{fmtDate(r.tgl_menilai)}</td>
                   <td className="max-w-[380px] truncate px-2 py-1.5" title={r.judul ?? ''}>
@@ -655,8 +694,8 @@ export default function SsPage() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-10 text-center text-theme-sm text-gray-400">
-                    Belum ada data. Import file ReportSS (.xlsx) lewat tombol di atas.
+                  <td colSpan={12} className="px-4 py-10 text-center text-theme-sm text-gray-400">
+                    Belum ada data. Import file ReportSSClosedDistrict / ReportOutstandingSS (.xlsx) lewat tombol di atas.
                   </td>
                 </tr>
               )}
