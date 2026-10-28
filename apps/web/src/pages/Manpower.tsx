@@ -195,10 +195,6 @@ export default function ManpowerPage() {
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-theme-xl font-semibold">Manpower Inovasi</h1>
-          <p className="text-theme-xs text-gray-500">
-            Snapshot manpower per bulan (RptInnovatorMonthly). Dipakai menghitung coverage pembuatan SS
-            dengan manpower bulan yang bersangkutan.
-          </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div>
