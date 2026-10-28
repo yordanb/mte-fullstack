@@ -193,9 +193,6 @@ export default function ManpowerPage() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-theme-xl font-semibold">Manpower Inovasi</h1>
-        </div>
         <div className="flex flex-wrap items-end gap-2">
           <div>
             <label className="block text-theme-xs text-gray-500">Bulan</label>
