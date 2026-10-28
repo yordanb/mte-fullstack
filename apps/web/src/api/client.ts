@@ -1670,3 +1670,129 @@ export async function fetchInjectorImportStatus(id: string): Promise<InjectorImp
   const r = await api.get(`/v1/injector/import/${id}`)
   return r.data
 }
+
+// --- Manpower Inovasi (snapshot bulanan RptInnovatorMonthly) ---------------
+export type ManpowerPeriod = {
+  periode: string
+  manpower: number
+  innovator_ss: number
+  ss_closed: number
+  coverage_pct: number
+  updated_at?: string | null
+}
+
+export type ManpowerDept = {
+  dept: string
+  manpower: number
+  innovator_ss: number
+  coverage_pct: number
+  ss_closed: number
+  ss_per_manpower: number
+}
+
+export type ManpowerSummary = {
+  periode: string
+  manpower: number
+  innovator_ss: number
+  innovator_qcc: number
+  innovator_all: number
+  coverage_pct: number
+  ss_closed: number
+  ss_per_manpower: number
+  dt_closed: number
+  qcp_closed: number
+  qcc_closed: number
+  updated_at?: string | null
+  dept: ManpowerDept[]
+}
+
+export type ManpowerRecord = {
+  nrp: string
+  nama: string | null
+  jabatan: string | null
+  dept: string | null
+  divisi: string | null
+  distrik: string | null
+  dt_closed: number
+  qcp_closed: number
+  qcc_closed: number
+  ss_a: number
+  ss_b: number
+  ss_c: number
+  ss_d: number
+  ss_e: number
+  ss_f: number
+  ss_closed: number
+  innovator_ss: number
+  innovator_qcc: number
+  innovator_all: number
+}
+
+export type ManpowerRecordPage = {
+  total: number
+  page: number
+  page_size: number
+  data: ManpowerRecord[]
+}
+
+export type ManpowerImportStatus = {
+  id: string
+  filename: string
+  status: string
+  total_rows: number
+  ok_rows: number
+  fail_rows: number
+  processed_rows: number
+  uploaded_by?: string | null
+  created_at?: string
+  errors?: {
+    inserted?: number
+    updated?: number
+    deleted?: number
+    duplicates?: number
+    periods?: string[]
+    files?: string[]
+    total_rows?: number
+    errors?: unknown[]
+    error?: string
+  } | null
+}
+
+export async function importManpowerXlsx(
+  files: File[], periode?: string,
+): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  if (periode) form.append('periode', periode)
+  const r = await api.post('/v1/manpower/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchManpowerImportStatus(id: string): Promise<ManpowerImportStatus> {
+  const r = await api.get(`/v1/manpower/import/${id}`)
+  return r.data
+}
+
+export async function fetchManpowerPeriods(): Promise<ManpowerPeriod[]> {
+  const r = await api.get('/v1/manpower/periods')
+  return r.data
+}
+
+export async function fetchManpowerSummary(params: { periode: string; dept?: string; divisi?: string }): Promise<ManpowerSummary> {
+  const r = await api.get('/v1/manpower/summary', { params })
+  return r.data
+}
+
+export async function fetchManpowerTrend(params: { dept?: string; divisi?: string }): Promise<ManpowerPeriod[]> {
+  const r = await api.get('/v1/manpower/trend', { params })
+  return r.data
+}
+
+export async function fetchManpowerRecords(params: {
+  periode: string; dept?: string; divisi?: string; search?: string
+  innovator?: boolean; page?: number; page_size?: number; sort?: string; dir?: 'asc' | 'desc'
+}): Promise<ManpowerRecordPage> {
+  const r = await api.get('/v1/manpower/records', { params })
+  return r.data
+}
+
