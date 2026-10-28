@@ -237,7 +237,7 @@ export default function ManpowerPage() {
                 className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
                 onClick={() => fileRef.current?.click()}
                 disabled={importing}
-                title="Upload 1 atau beberapa file RptInnovatorMonthly (.xlsx). Periode dibaca dari nama file (mis. 'Agt 26'); import ulang bulan yang sama akan mengganti snapshot bulan tsb."
+                title="Upload 1 atau beberapa file RptInnovatorMonthly (.xlsx). Hanya baris DEPT SPL2 yang disimpan; periode dibaca dari nama file (mis. 'Agt 26'); import ulang bulan yang sama akan mengganti snapshot bulan tsb."
               >
                 {importing ? 'Mengimpor…' : 'Import Excel'}
               </button>
@@ -262,6 +262,9 @@ export default function ManpowerPage() {
               {prog.errors && prog.status === 'COMMITTED'
                 ? `${fmtNum(prog.errors.inserted ?? 0)} baru · ${fmtNum(prog.errors.updated ?? 0)} diperbarui`
                   + ((prog.errors.deleted ?? 0) > 0 ? ` · ${fmtNum(prog.errors.deleted)} dihapus` : '')
+                  + ((prog.errors.skipped_dept ?? 0) > 0
+                    ? ` · ${fmtNum(prog.errors.skipped_dept)} dilewati (DEPT ${(prog.errors.dept_filter ?? []).join('/') || '-'})`
+                    : '')
                   + ` · periode ${(prog.errors.periods ?? []).map(fmtPeriode).join(', ') || '-'}`
                 : prog.errors?.error ?? ''}
             </span>

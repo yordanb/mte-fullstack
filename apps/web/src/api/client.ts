@@ -1750,6 +1750,8 @@ export type ManpowerImportStatus = {
     updated?: number
     deleted?: number
     duplicates?: number
+    skipped_dept?: number
+    dept_filter?: string[]
     periods?: string[]
     files?: string[]
     total_rows?: number

@@ -15,6 +15,8 @@ memuat bulan, periode bisa dikirim manual lewat form `periode` (YYYY-MM).
 Data ini dipakai untuk coverage pembuatan SS per bulan:
   * coverage innovator = COUNT(innovator_ss > 0) / COUNT(*) * 100
   * SS per manpower    = SUM(ss_closed) / COUNT(*)
+
+Kebijakan data: hanya baris DEPT = SPL2 yang disimpan (lihat `DEPT_ALLOW`).
 """
 import datetime as dt
 import io
@@ -35,6 +37,10 @@ from app.db.session import get_db, SessionLocal
 
 router = APIRouter(prefix="/v1/manpower", tags=["manpower"])
 log = logging.getLogger("manpower")
+
+# Kebijakan data: hanya DEPT SPL2 yang disimpan. Baris DEPT lain dilewati dan
+# dilaporkan sebagai `skipped_dept` pada ringkasan import.
+DEPT_ALLOW: set[str] = {"SPL2"}
 
 SHEET = "Report"
 HEADERS = [
@@ -160,8 +166,12 @@ def parse_period(value: str | None) -> dt.date | None:
 
 
 def _parse(content: bytes, fname: str, override: dt.date | None
-           ) -> tuple[dt.date, list[dict], list[dict], int]:
-    """Baca satu workbook -> (periode, rows, errors, duplicates)."""
+           ) -> tuple[dt.date, list[dict], list[dict], int, int]:
+    """Baca satu workbook -> (periode, rows, errors, duplicates, skipped).
+
+    Hanya baris dengan DEPT di `DEPT_ALLOW` yang dikembalikan; sisanya dihitung
+    sebagai `skipped` dan tidak masuk database.
+    """
     periode = override or period_from_filename(fname)
     if not periode:
         raise ValueError(
@@ -185,6 +195,7 @@ def _parse(content: bytes, fname: str, override: dt.date | None
         rows: dict[str, dict] = {}
         errors: list[dict] = []
         duplicates = 0
+        skipped = 0
         for rno, r in enumerate(it, start=2):
             if r is None:
                 continue
@@ -195,6 +206,11 @@ def _parse(content: bytes, fname: str, override: dt.date | None
                 i = idx[name]
                 return r[i] if i < len(r) else None
 
+            dept = (_txt(g("DEPT")) or "").strip().upper()
+            if DEPT_ALLOW and dept not in DEPT_ALLOW:
+                skipped += 1
+                continue
+
             nrp = (_txt(g("NRP")) or "").upper()
             if not nrp:
                 errors.append({"file": fname, "row": rno, "error": "NRP kosong"})
@@ -204,7 +220,7 @@ def _parse(content: bytes, fname: str, override: dt.date | None
                 "nrp": nrp,
                 "nama": _txt(g("NAME")),
                 "jabatan": _txt(g("JABATAN")),
-                "dept": (_txt(g("DEPT")) or "").upper() or None,
+                "dept": dept or None,
                 "divisi": (_txt(g("DIV")) or "").upper() or None,
                 "distrik": (_txt(g("DISTRIK")) or "").upper() or None,
             }
@@ -213,7 +229,7 @@ def _parse(content: bytes, fname: str, override: dt.date | None
             if nrp in rows:
                 duplicates += 1
             rows[nrp] = row
-        return periode, list(rows.values()), errors, duplicates
+        return periode, list(rows.values()), errors, duplicates, skipped
     finally:
         wb.close()
 
@@ -244,18 +260,20 @@ async def _run(import_id: str, files: list[tuple[str, bytes]], override: dt.date
             periods: set[dt.date] = set()
             errors: list[dict] = []
             duplicates = 0
+            skipped_dept = 0
             total = 0
 
             for fname, content in files:
                 try:
-                    periode, rows, errs, dup = _parse(content, fname, override)
+                    periode, rows, errs, dup, skipped = _parse(content, fname, override)
                 except Exception as e:  # noqa: BLE001
                     errors.append({"file": fname, "error": str(e)})
                     continue
                 periods.add(periode)
                 duplicates += dup
+                skipped_dept += skipped
                 errors.extend(errs[:50])
-                total += len(rows) + len(errs)
+                total += len(rows) + len(errs) + skipped
                 for row in rows:
                     merged[(periode, row["nrp"])] = row
                 await db.execute(text(
@@ -298,6 +316,8 @@ async def _run(import_id: str, files: list[tuple[str, bytes]], override: dt.date
                 "updated": updated,
                 "deleted": deleted,
                 "duplicates": duplicates,
+                "skipped_dept": skipped_dept,
+                "dept_filter": sorted(DEPT_ALLOW),
                 "periods": [p.strftime("%Y-%m") for p in sorted(periods)],
                 "files": [f for f, _ in files],
                 "total_rows": total,
@@ -306,11 +326,13 @@ async def _run(import_id: str, files: list[tuple[str, bytes]], override: dt.date
             await db.execute(text(
                 "UPDATE imports SET status='COMMITTED', total_rows=:t, ok_rows=:o, "
                 "fail_rows=:f, processed_rows=:p, errors=CAST(:e AS jsonb) WHERE id=:i"),
-                {"t": total, "o": len(values), "f": len(errors), "p": len(values),
+                {"t": total, "o": len(values), "f": len(errors), "p": total,
                  "e": json.dumps(summary, default=str), "i": import_id})
             await db.commit()
-            log.info("manpower import %s: %s periode, %s inserted, %s updated, %s deleted",
-                     import_id, len(periods), inserted, updated, deleted)
+            log.info("manpower import %s: %s periode, %s inserted, %s updated, %s deleted, "
+                     "%s dilewati (DEPT %s)",
+                     import_id, len(periods), inserted, updated, deleted, skipped_dept,
+                     sorted(DEPT_ALLOW))
         except Exception as e:  # noqa: BLE001
             await db.rollback()
             await db.execute(text(
