@@ -283,12 +283,33 @@ export default function ManpowerPage() {
 
       {summary && (
         <>
-          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
+              <p className="text-theme-xs text-gray-500">Karyawan Sudah Berinovasi</p>
+              <p className="text-theme-2xl font-bold text-brand-600">
+                {fmtNum(summary.innovator_all)}
+                <span className="text-theme-sm font-normal text-gray-400"> / {fmtNum(summary.manpower)} orang</span>
+              </p>
+              <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                <div
+                  className="h-full rounded-full bg-brand-500"
+                  style={{
+                    width: `${summary.manpower
+                      ? Math.min(100, (summary.innovator_all / summary.manpower) * 100)
+                      : 0}%`,
+                  }}
+                />
+              </div>
+              <p className="mt-1 text-theme-xs text-gray-400">
+                {fmtPct(summary.manpower ? (summary.innovator_all / summary.manpower) * 100 : 0)} dari total
+                karyawan · {fmtNum(summary.innovator_ss)} via SS
+              </p>
+            </div>
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
               <p className="text-theme-xs text-gray-500">Manpower — {fmtPeriode(summary.periode)}</p>
               <p className="text-theme-2xl font-bold text-brand-600">{fmtNum(summary.manpower)}</p>
               <p className="text-theme-xs text-gray-400">
-                {summary.dept.length} dept · {fmtNum(summary.innovator_all)} innovator all
+                {summary.dept.length} dept
               </p>
             </div>
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
