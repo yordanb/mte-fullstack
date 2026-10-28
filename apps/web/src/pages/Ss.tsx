@@ -434,7 +434,7 @@ export default function SsPage() {
               className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
               onClick={() => fileRef.current?.click()}
               disabled={importing}
-              title="Upload ReportSSClosedDistrict (sudah dinilai) atau ReportOutstandingSS (belum dinilai), .xlsx. Data diperbarui berdasarkan NO SS."
+              title="Upload ReportSSClosedDistrict / ReportOutstandingSS (.xlsx). Hanya baris dengan DEPT SPL2 yang disimpan; data diperbarui berdasarkan NO SS."
             >
               {importing ? 'Mengimpor…' : 'Import Excel'}
             </button>
@@ -462,6 +462,9 @@ export default function SsPage() {
                   + ((prog.errors.now_approved ?? 0) > 0
                     ? ` · ${fmtNum(prog.errors.now_approved)} berubah approved` : '')
                   + ` · ${fmtNum(prog.errors.duplicates ?? 0)} duplikat`
+                  + ((prog.errors.skipped_dept ?? 0) > 0
+                    ? ` · ${fmtNum(prog.errors.skipped_dept)} dilewati (DEPT ${(prog.errors.dept_filter ?? []).join('/') || '-'})`
+                    : '')
                 : prog.errors?.error ?? ''}
             </span>
           </div>

@@ -7,6 +7,9 @@ memakai tanggal menilai.
 
 Import bersifat UPSERT pada `no_ss` (0 duplikat NO SS di 4 file 2023-2026):
 baris baru ditambahkan, baris lama diperbarui, data di luar file tidak dihapus.
+
+Hanya baris dengan DEPT di `DEPT_ALLOW` (saat ini SPL2) yang disimpan; baris
+DEPT lain dilewati dan dilaporkan sebagai `skipped_dept` pada ringkasan import.
 """
 import csv
 import datetime
@@ -43,6 +46,11 @@ COLS = [
     "manfaat_fin", "tgl_menilai", "dinilai_oleh", "grade", "kualitas",
     "kategori", "kategori_norm", "reward", "status_karyawan",
 ]
+# Filter import: hanya baris dengan DEPT di daftar ini yang disimpan ke database.
+# Baris DEPT lain dilewati (dihitung di ringkasan import, bukan error).
+# Kosongkan set (set()) bila ingin menerima semua DEPT.
+DEPT_ALLOW: set[str] = {"SPL2"}
+
 BATCH = 2000
 MAX_EXPORT = 100000
 
@@ -126,13 +134,16 @@ def _num(v) -> float | None:
         return None
 
 
-def _data_rows(content: bytes, fname: str) -> tuple[list[dict], list[dict]]:
-    """Baca satu workbook -> (rows, errors). Raises ValueError bila header kurang.
+def _data_rows(content: bytes, fname: str) -> tuple[list[dict], list[dict], int]:
+    """Baca satu workbook -> (rows, errors, skipped). Raises ValueError bila header kurang.
 
     Mendukung dua format:
       * ReportSSClosedDistrict (SS sudah dinilai) — 15 kolom penilaian lengkap.
       * ReportOutstandingSS    (SS masih berjalan) — 10 kolom, status workflow.
     Tiap baris diberi penanda `_kind` = 'closed' | 'outstanding'.
+
+    Hanya baris dengan DEPT yang ada di `DEPT_ALLOW` yang dikembalikan; sisanya
+    dihitung sebagai `skipped` dan tidak masuk database.
     """
     wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
     try:
@@ -157,6 +168,7 @@ def _data_rows(content: bytes, fname: str) -> tuple[list[dict], list[dict]]:
             )
         rows: list[dict] = []
         errors: list[dict] = []
+        skipped = 0
         for rno, r in enumerate(it, start=2):
             if r is None:
                 continue
@@ -166,6 +178,11 @@ def _data_rows(content: bytes, fname: str) -> tuple[list[dict], list[dict]]:
             def g(name: str):
                 i = idx[name]
                 return r[i] if i < len(r) else None
+
+            dept = (_txt(g("DEPT")) or "").strip().upper()
+            if DEPT_ALLOW and dept not in DEPT_ALLOW:
+                skipped += 1
+                continue
 
             no_ss = (_txt(g("NO SS")) or "").upper()
             if not no_ss:
@@ -180,7 +197,7 @@ def _data_rows(content: bytes, fname: str) -> tuple[list[dict], list[dict]]:
                         "judul": _txt(g("JUDUL")),
                         "pencetus": _txt(g("NAMA")),
                         "nrp": _txt(g("NRP")),
-                        "dept": (_txt(g("DEPT")) or "").upper() or None,
+                        "dept": dept or None,
                         "distrik": _txt(g("DISTRIK")),
                         "divisi": (_txt(g("DIVISI")) or "").upper() or None,
                         "management": _txt(g("MANAGEMENT")),
@@ -196,7 +213,7 @@ def _data_rows(content: bytes, fname: str) -> tuple[list[dict], list[dict]]:
                     "judul": _txt(g("JUDUL")),
                     "pencetus": _txt(g("PENCETUS IDE")),
                     "nrp": _txt(g("NRP")),
-                    "dept": (_txt(g("DEPT")) or "").upper() or None,
+                    "dept": dept or None,
                     "distrik": _txt(g("DISTRIK")),
                     "manfaat_fin": _num(g("MANFAAT FINANCIAL")),
                     "tgl_menilai": _date(g("TANGGAL MENILAI")),
@@ -210,7 +227,7 @@ def _data_rows(content: bytes, fname: str) -> tuple[list[dict], list[dict]]:
                 })
             except Exception as e:  # noqa: BLE001
                 errors.append({"file": fname, "row": rno, "error": str(e)})
-        return rows, errors
+        return rows, errors, skipped
     finally:
         wb.close()
 
@@ -303,13 +320,15 @@ async def _run(import_id: str, files: list[tuple[str, bytes]]):
             errors: list[dict] = []
             total = 0
             duplicates = 0
+            skipped_dept = 0
             for fname, content in files:
                 try:
-                    rows, errs = _data_rows(content, fname)
+                    rows, errs, skipped = _data_rows(content, fname)
                 except Exception as e:  # noqa: BLE001
                     errors.append({"file": fname, "error": str(e)})
                     continue
-                total += len(rows) + len(errs)
+                total += len(rows) + len(errs) + skipped
+                skipped_dept += skipped
                 errors.extend(errs[:50])
                 for row in rows:
                     prev = merged.get(row["no_ss"])
@@ -320,8 +339,8 @@ async def _run(import_id: str, files: list[tuple[str, bytes]]):
                             continue
                     merged[row["no_ss"]] = row
                 await db.execute(text(
-                    "UPDATE imports SET total_rows=:t, processed_rows=:p WHERE id=:i"),
-                    {"t": total, "p": total, "i": import_id})
+                    "UPDATE imports SET total_rows=:t, processed_rows=0 WHERE id=:i"),
+                    {"t": total, "i": import_id})
                 await db.commit()
 
             values = list(merged.values())
@@ -352,7 +371,7 @@ async def _run(import_id: str, files: list[tuple[str, bytes]]):
                 done += len(batch)
                 await db.execute(text(
                     "UPDATE imports SET processed_rows=:p, ok_rows=:o WHERE id=:i"),
-                    {"p": done, "o": done, "i": import_id})
+                    {"p": skipped_dept + done, "o": done, "i": import_id})
                 await db.commit()
 
             out_rows = sum(1 for v in values if v["_kind"] == "outstanding")
@@ -361,6 +380,8 @@ async def _run(import_id: str, files: list[tuple[str, bytes]]):
                 "updated": updated,
                 "duplicates": duplicates,
                 "skipped": max(0, total - len(values) - len(errors)),
+                "skipped_dept": skipped_dept,
+                "dept_filter": sorted(DEPT_ALLOW),
                 "closed": len(values) - out_rows,
                 "outstanding": out_rows,
                 "now_approved": approved_now,
@@ -371,13 +392,13 @@ async def _run(import_id: str, files: list[tuple[str, bytes]]):
             await db.execute(text(
                 "UPDATE imports SET status='COMMITTED', total_rows=:t, ok_rows=:o, "
                 "fail_rows=:f, processed_rows=:p, errors=CAST(:e AS jsonb) WHERE id=:i"),
-                {"t": total, "o": len(values), "f": len(errors), "p": len(values),
+                {"t": total, "o": len(values), "f": len(errors), "p": total,
                  "e": json.dumps(summary), "i": import_id})
             await db.commit()
             log.info("ss import %s: %s inserted, %s updated, %s dup, %s outstanding, "
-                     "%s berubah approved, %s error(s)",
+                     "%s berubah approved, %s dilewati (DEPT %s), %s error(s)",
                      import_id, inserted, updated, duplicates, out_rows, approved_now,
-                     len(errors))
+                     skipped_dept, sorted(DEPT_ALLOW), len(errors))
         except Exception as e:  # noqa: BLE001
             await db.rollback()
             await db.execute(text(

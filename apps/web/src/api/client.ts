@@ -1057,6 +1057,8 @@ export type SsImportStatus = {
     updated?: number
     duplicates?: number
     skipped?: number
+    skipped_dept?: number
+    dept_filter?: string[]
     closed?: number
     outstanding?: number
     now_approved?: number
