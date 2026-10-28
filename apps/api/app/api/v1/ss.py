@@ -421,7 +421,7 @@ async def get_kpi(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)
 @router.get("/trend", dependencies=[Depends(require_role("admin"))])
 async def get_trend(
     f: dict = Depends(_params),
-    granularity: str = Query("month", pattern="^(month|year)$"),
+    granularity: str = Query("month", pattern="^(day|month|year)$"),
     db: AsyncSession = Depends(get_db),
 ):
     """Jumlah SS per periode dari dua sudut: tanggal laporan vs tanggal menilai.
@@ -431,7 +431,7 @@ async def get_trend(
     grade, status, cari) berlaku untuk keduanya.
     """
     where, p = _filters(f, with_date=False)
-    fmt = "YYYY-MM" if granularity == "month" else "YYYY"
+    fmt = {"day": "YYYY-MM-DD", "month": "YYYY-MM", "year": "YYYY"}[granularity]
     cond_l = ["tgl_laporan IS NOT NULL"]
     cond_m = ["tgl_menilai IS NOT NULL"]
     if f["start"]:

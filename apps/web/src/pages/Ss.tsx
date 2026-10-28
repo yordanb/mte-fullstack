@@ -61,6 +61,8 @@ export default function SsPage() {
   const [filters, setFilters] = useState<SsFilters | null>(null)
   const [kpi, setKpi] = useState<SsKpi | null>(null)
   const [trend, setTrend] = useState<SsTrend[]>([])
+  const [daily, setDaily] = useState<SsTrend[]>([])
+  const [lapBucket, setLapBucket] = useState<'hari' | 'bulan'>('hari')
   const [byGrade, setByGrade] = useState<SsBreak[]>([])
   const [byKat, setByKat] = useState<SsBreak[]>([])
   const [byDept, setByDept] = useState<SsBreak[]>([])
@@ -119,14 +121,16 @@ export default function SsPage() {
     Promise.all([
       fetchSsKpi(params),
       fetchSsTrend(params),
+      fetchSsTrend({ ...params, granularity: 'day' }),
       fetchSsBreakdown({ ...params, by: 'grade' }),
       fetchSsBreakdown({ ...params, by: 'kategori' }),
       fetchSsBreakdown({ ...params, by: 'dept' }),
       fetchSsTop({ ...params, by: 'pencetus', limit: 10 }),
     ])
-      .then(([k, t, g, ka, d, tp]) => {
+      .then(([k, t, dl, g, ka, d, tp]) => {
         if (!alive) return
-        setKpi(k); setTrend(t); setByGrade(g); setByKat(ka); setByDept(d); setTopP(tp)
+        setKpi(k); setTrend(t); setDaily(dl)
+        setByGrade(g); setByKat(ka); setByDept(d); setTopP(tp)
       })
       .catch((e) => { if (alive) setMsg(`gagal: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoading(false) })
@@ -217,6 +221,31 @@ export default function SsPage() {
     },
     grid: { borderColor: gridColor },
     legend: { labels: { colors: textColor } },
+    tooltip: { y: { formatter: (v: number) => `${fmtNum(v)} SS` } },
+  }
+
+  // Card khusus: jumlah judul SS menurut TANGGAL LAPORAN, mengikuti filter tanggal di atas.
+  const lapRows = lapBucket === 'hari'
+    ? daily.filter((d) => Number(d.laporan) > 0)
+    : trend
+  const lapTotal = lapRows.reduce((a, b) => a + Number(b.laporan ?? 0), 0)
+  const lapShort = (p: string) => (p.length === 10 ? `${p.slice(8, 10)}/${p.slice(5, 7)}` : p)
+  const lapSeries = [{ name: 'Jumlah SS', data: lapRows.map((r) => r.laporan) }]
+  const lapOpts = {
+    chart: { type: 'bar' as const, height: 300, toolbar: { show: false }, background: 'transparent' },
+    colors: ['#465fff'],
+    plotOptions: { bar: { columnWidth: '68%', borderRadius: 2 } },
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: lapRows.map((r) => (lapBucket === 'hari' ? lapShort(r.period) : r.period)),
+      labels: { show: lapRows.length <= 60, rotate: -90, style: { colors: textColor, fontSize: '10px' } },
+      tickAmount: lapRows.length > 60 ? 20 : undefined,
+    },
+    yaxis: {
+      labels: { style: { colors: textColor }, formatter: (v: number) => fmtNum(v) },
+      title: { text: 'Jumlah SS', style: { color: textColor, fontSize: '11px' } },
+    },
+    grid: { borderColor: gridColor },
     tooltip: { y: { formatter: (v: number) => `${fmtNum(v)} SS` } },
   }
 
@@ -465,6 +494,37 @@ export default function SsPage() {
 
       {/* Charts */}
       <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <div className="rounded-2xl border bg-white p-4 lg:col-span-3 dark:bg-gray-900">
+          <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h3 className="font-semibold text-theme-sm">Jumlah SS per Tanggal Laporan</h3>
+              <p className="text-theme-xs text-gray-400">
+                {fmtNum(lapTotal)} SS pada {fmtNum(lapRows.length)} {lapBucket === 'hari' ? 'tanggal laporan' : 'bulan'}
+                {' '}· rentang {fmtDate(start)} – {fmtDate(end)}
+                {basis === 'menilai' ? ' (filter non-tanggal tetap berlaku)' : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
+              {(['hari', 'bulan'] as const).map((b) => (
+                <button
+                  key={b}
+                  onClick={() => setLapBucket(b)}
+                  className={`rounded-lg border px-2 py-1 text-theme-xs ${
+                    lapBucket === b
+                      ? 'border-brand-300 bg-brand-50 font-semibold text-brand-600 dark:bg-brand-500/10'
+                      : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'
+                  }`}
+                  title={b === 'hari' ? 'Satu batang per tanggal laporan' : 'Dikelompokkan per bulan'}
+                >
+                  {b === 'hari' ? 'Harian' : 'Bulanan'}
+                </button>
+              ))}
+            </div>
+          </div>
+          {lapRows.length > 0
+            ? <ReactApexChart key={`lap-${lapBucket}-${daily.length}-${dark ? 'd' : 'l'}`} type="bar" height={300} series={lapSeries} options={lapOpts} />
+            : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada SS pada rentang tanggal ini.</p>}
+        </div>
         <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
           <h3 className="mb-2 font-semibold text-theme-sm">
             Tren Jumlah SS per Bulan — Tanggal Laporan vs Tanggal Menilai

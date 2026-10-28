@@ -1076,7 +1076,7 @@ export async function fetchSsKpi(params: SsParams): Promise<SsKpi> {
   return r.data
 }
 
-export async function fetchSsTrend(params: SsParams & { granularity?: 'month' | 'year' }): Promise<SsTrend[]> {
+export async function fetchSsTrend(params: SsParams & { granularity?: 'day' | 'month' | 'year' }): Promise<SsTrend[]> {
   const r = await api.get('/v1/ss/trend', { params })
   return r.data
 }
