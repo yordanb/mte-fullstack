@@ -5,10 +5,10 @@ import ReactApexChart from 'react-apexcharts'
 import { DatePicker } from '../components/DatePicker'
 import {
   errMsg, todayLocal, monthStartLocal,
-  fetchSsFilters, fetchSsKpi, fetchSsTrend, fetchSsEiictm,
+  fetchSsFilters, fetchSsKpi, fetchSsTrend, fetchSsEiictm, fetchSsTargetCrew,
   fetchSsBreakdown, fetchSsTop, fetchSsRecords, exportSsCsv,
   type SsBasis, type SsBreak, type SsEiictm, type SsFilters, type SsKpi,
-  type SsRecord, type SsTop, type SsTrend,
+  type SsRecord, type SsTargetCrew, type SsTop, type SsTrend,
 } from '../api/client'
 
 const fmtDate = (v?: string | null) => {
@@ -66,6 +66,7 @@ export default function SsPage() {
   const [filters, setFilters] = useState<SsFilters | null>(null)
   const [kpi, setKpi] = useState<SsKpi | null>(null)
   const [eiictm, setEiictm] = useState<SsEiictm | null>(null)
+  const [targetCrew, setTargetCrew] = useState<SsTargetCrew | null>(null)
   const [trend, setTrend] = useState<SsTrend[]>([])
   const [daily, setDaily] = useState<SsTrend[]>([])
   const [lapBucket, setLapBucket] = useState<'hari' | 'bulan'>('hari')
@@ -128,12 +129,13 @@ export default function SsPage() {
       fetchSsBreakdown({ ...params, by: 'dept' }),
       fetchSsTop({ ...params, by: 'pencetus', limit: 10 }),
       fetchSsEiictm(params),
+      fetchSsTargetCrew(params),
     ])
-      .then(([k, t, dl, g, ka, d, tp, ei]) => {
+      .then(([k, t, dl, g, ka, d, tp, ei, tc]) => {
         if (!alive) return
         setKpi(k); setTrend(t); setDaily(dl)
         setByGrade(g); setByKat(ka); setByDept(d); setTopP(tp)
-        setEiictm(ei)
+        setEiictm(ei); setTargetCrew(tc)
       })
       .catch((e) => { if (alive) setMsg(`gagal: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoading(false) })
@@ -215,6 +217,40 @@ export default function SsPage() {
   }
 
   const gradeSeries = byGrade.map((g) => g.total)
+
+  // Target SS per Crew (1 NRP = 3 SS) vs aktual (approved + outstanding).
+  const crewTarget = targetCrew?.data ?? []
+  const crewTargetPct = targetCrew && targetCrew.total_target
+    ? (targetCrew.total_aktual / targetCrew.total_target) * 100
+    : 0
+  const crewTargetSeries = [
+    { name: 'Target', data: crewTarget.map((c) => c.target) },
+    { name: 'Aktual', data: crewTarget.map((c) => c.aktual) },
+  ]
+  const crewTargetOpts = {
+    chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
+    colors: ['#98a2b3', '#465fff'],
+    plotOptions: { bar: { columnWidth: '55%', borderRadius: 3 } },
+    dataLabels: { enabled: false },
+    grid: { borderColor: gridColor },
+    legend: { position: 'bottom' as const, labels: { colors: textColor } },
+    xaxis: {
+      categories: crewTarget.map((c) => c.crew),
+      labels: { rotate: -30, style: { colors: textColor, fontSize: '11px' } },
+    },
+    yaxis: {
+      labels: { style: { colors: textColor }, formatter: (v: number) => fmtNum(v) },
+      title: { text: 'Jumlah SS', style: { color: textColor, fontSize: '11px' } },
+    },
+    tooltip: {
+      shared: true,
+      y: [
+        { formatter: (v: number) => `Target: ${fmtNum(v)} SS` },
+        { formatter: (v: number) => `Aktual: ${fmtNum(v)} SS` },
+      ],
+    },
+  }
+
   const gradeOpts = {
     chart: { type: 'donut' as const, height: 320, background: 'transparent' },
     labels: byGrade.map((g) => g.label),
@@ -497,6 +533,28 @@ export default function SsPage() {
           {lapRows.length > 0
             ? <ReactApexChart key={`lap-${lapBucket}-${daily.length}-${dark ? 'd' : 'l'}`} type="bar" height={300} series={lapSeries} options={lapOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada SS pada rentang tanggal ini.</p>}
+        </div>
+        <div className="rounded-2xl border bg-white p-4 lg:col-span-3 dark:bg-gray-900">
+          <h3 className="mb-1 font-semibold text-theme-sm">
+            Target SS per Crew — {fmtNum(targetCrew?.multiplier ?? 3)} SS per NRP
+          </h3>
+          <p className="mb-2 text-theme-xs text-gray-400">
+            Target = manpower aktif (General Crew tidak dihitung) × {fmtNum(targetCrew?.multiplier ?? 3)} SS
+            {targetCrew && targetCrew.month_count > 1 && <> × {fmtNum(targetCrew.month_count)} bulan</>}.
+            Aktual = jumlah judul SS berdasarkan Tanggal Laporan, approved maupun outstanding
+            {' '}· rentang {fmtDate(start)} – {fmtDate(end)}
+          </p>
+          <p className="mb-2 text-theme-xs text-gray-500">
+            Aktual <b className="text-brand-600">{fmtNum(targetCrew?.total_aktual)}</b> dari target{' '}
+            <b>{fmtNum(targetCrew?.total_target)}</b> SS
+            {crewTargetPct > 0 && <> · capaian {fmtPct(crewTargetPct)}</>}
+            {targetCrew && targetCrew.month_count === 0 && (
+              <span className="text-gray-400"> · belum ada data manpower</span>
+            )}
+          </p>
+          {crewTarget.length > 0
+            ? <ReactApexChart key={dark ? 'ctd' : 'ctl'} type="bar" height={320} series={crewTargetSeries} options={crewTargetOpts} />
+            : <p className="py-10 text-center text-theme-sm text-gray-400">Belum ada data manpower / pengelompokan crew.</p>}
         </div>
         <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
           <h3 className="mb-2 font-semibold text-theme-sm">

@@ -684,6 +684,82 @@ async def get_eiictm(f: dict = Depends(_params), db: AsyncSession = Depends(get_
     }
 
 
+# Target SS: setiap NRP aktif wajib membuat 3 SS.
+SS_TARGET_PER_NRP = 3
+
+
+@router.get("/target-crew", dependencies=[Depends(require_role("admin"))])
+async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
+    """Target SS per Crew (1 NRP = 3 SS) vs aktual.
+
+    Target : manpower aktif per Crew pada bulan-bulan dalam rentang filter
+             (General Crew tidak dihitung) x `SS_TARGET_PER_NRP`.
+    Aktual : jumlah judul SS — approved maupun outstanding — berdasarkan
+             TANGGAL LAPORAN dalam rentang filter, mengikuti filter
+             non-tanggal di halaman ini.
+
+    Crew dibaca dari pengelompokan manpower (`manpower_profile.crew`); judul
+    SS dari NRP tanpa crew masuk bucket "(belum diisi)" dengan target 0.
+    """
+    where, p = _filters(f, with_date=False)
+    p["gc"] = GENERAL_CREW
+    p["mult"] = SS_TARGET_PER_NRP
+    bounds = (await db.execute(text(
+        "SELECT MIN(periode) AS lo, MAX(periode) AS hi FROM manpower_month"
+    ))).mappings().first()
+    if not bounds or not bounds["lo"]:
+        return {"multiplier": SS_TARGET_PER_NRP, "month_count": 0, "total_target": 0,
+                "total_aktual": 0, "data": []}
+    lo = f["start"] or bounds["lo"]
+    hi = f["end"] or bounds["hi"]
+    if lo > hi:
+        lo, hi = hi, lo
+    p["lo"], p["hi"] = lo, hi
+
+    month_count = (await db.execute(text(
+        "SELECT COUNT(DISTINCT periode) FROM manpower_month "
+        "WHERE periode BETWEEN date_trunc('month', CAST(:lo AS date)) "
+        "AND date_trunc('month', CAST(:hi AS date))"), p)).scalar() or 0
+
+    rows = (await db.execute(text(f"""
+        WITH mp AS (
+          SELECT COALESCE(pr.crew, '(belum diisi)') AS crew, COUNT(*) AS manpower
+          FROM manpower_month m
+          LEFT JOIN manpower_profile pr ON pr.nrp = m.nrp
+          WHERE m.periode BETWEEN date_trunc('month', CAST(:lo AS date))
+                              AND date_trunc('month', CAST(:hi AS date))
+            AND pr.status IS DISTINCT FROM :gc
+          GROUP BY 1
+        ), ss AS (
+          SELECT COALESCE(pr.crew, '(belum diisi)') AS crew, COUNT(*) AS jumlah
+          FROM (
+            SELECT nrp FROM ss_report
+            WHERE {where} AND tgl_laporan IS NOT NULL
+              AND tgl_laporan BETWEEN :lo AND :hi
+          ) s
+          LEFT JOIN manpower_profile pr ON pr.nrp = s.nrp
+          GROUP BY 1
+        )
+        SELECT COALESCE(mp.crew, ss.crew) AS crew,
+               COALESCE(mp.manpower, 0) AS manpower,
+               COALESCE(mp.manpower, 0) * :mult AS target,
+               COALESCE(ss.jumlah, 0) AS aktual
+        FROM mp FULL OUTER JOIN ss ON mp.crew = ss.crew
+        ORDER BY target DESC, aktual DESC, crew
+    """), p)).mappings().all()
+
+    data = [{"crew": r["crew"], "manpower": int(r["manpower"] or 0),
+             "target": int(r["target"] or 0), "aktual": int(r["aktual"] or 0)}
+            for r in rows]
+    return {
+        "multiplier": SS_TARGET_PER_NRP,
+        "month_count": int(month_count),
+        "total_target": sum(d["target"] for d in data),
+        "total_aktual": sum(d["aktual"] for d in data),
+        "data": data,
+    }
+
+
 @router.get("/trend", dependencies=[Depends(require_role("admin"))])
 async def get_trend(
     f: dict = Depends(_params),

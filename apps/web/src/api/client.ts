@@ -1132,6 +1132,27 @@ export async function fetchSsEiictm(params: SsParams): Promise<SsEiictm> {
   return r.data
 }
 
+/** Target SS per Crew (1 NRP = target SS per NRP) vs aktual. */
+export type SsTargetCrewRow = {
+  crew: string
+  manpower: number
+  target: number
+  aktual: number
+}
+
+export type SsTargetCrew = {
+  multiplier: number
+  month_count: number
+  total_target: number
+  total_aktual: number
+  data: SsTargetCrewRow[]
+}
+
+export async function fetchSsTargetCrew(params: SsParams): Promise<SsTargetCrew> {
+  const r = await api.get('/v1/ss/target-crew', { params })
+  return r.data
+}
+
 export async function fetchSsBreakdown(params: SsParams & { by: 'grade' | 'kategori' | 'dept' | 'status' | 'kualitas' }): Promise<SsBreak[]> {
   const r = await api.get('/v1/ss/breakdown', { params })
   return r.data
