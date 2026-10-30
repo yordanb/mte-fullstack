@@ -79,7 +79,7 @@ export default function SsPage() {
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
-  const [sort, setSort] = useState('tgl_menilai')
+  const [sort, setSort] = useState('tgl_laporan')
   const [dir, setDir] = useState<'asc' | 'desc'>('desc')
 
   const [msg, setMsg] = useState('')
@@ -145,7 +145,9 @@ export default function SsPage() {
   useEffect(() => {
     let alive = true
     setLoadingRows(true)
-    fetchSsRecords({ ...params, page, page_size: pageSize, sort, dir })
+    // Detail SS selalu berdasarkan TANGGAL LAPORAN di periode terpilih,
+    // terlepas dari pilihan "Dasar tanggal" yang dipakai chart-kartu.
+    fetchSsRecords({ ...params, date_basis: 'laporan', page, page_size: pageSize, sort, dir })
       .then((r) => { if (!alive) return; setRows(r.data); setTotal(r.total) })
       .catch((e) => { if (alive) setMsg(`gagal: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoadingRows(false) })
@@ -409,8 +411,8 @@ export default function SsPage() {
         </button>
         <button
           className="rounded-lg border px-3 py-1.5 text-theme-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/5"
-          onClick={() => exportSsCsv(params).catch((e) => setMsg(`export gagal: ${errMsg(e)}`))}
-          title="Unduh CSV sesuai filter"
+          onClick={() => exportSsCsv({ ...params, date_basis: 'laporan' }).catch((e) => setMsg(`export gagal: ${errMsg(e)}`))}
+          title="Unduh CSV — data Tanggal Laporan pada rentang terpilih, filter lain tetap berlaku"
         >
           Export CSV
         </button>
@@ -620,7 +622,7 @@ export default function SsPage() {
         <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2">
           <span className="text-theme-sm font-semibold">Detail SS</span>
           <span className="text-theme-xs text-gray-500">
-            {fmtNum(total)} baris · halaman {page} / {totalPages}
+            berdasarkan Tanggal Laporan {fmtDate(start)} – {fmtDate(end)} · {fmtNum(total)} baris · halaman {page} / {totalPages}
           </span>
           <select
             className="ml-auto rounded-lg border px-2 py-1 text-theme-xs"
