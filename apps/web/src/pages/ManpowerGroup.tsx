@@ -308,7 +308,7 @@ export default function ManpowerGroupPage() {
       {data && data.manpower > 0 && (
         <>
           {/* KPI */}
-          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
               <p className="text-theme-xs text-gray-500">Total Manpower — {fmtPeriode(data.periode)}</p>
               <p className="text-theme-2xl font-bold text-brand-600">{fmtNum(data.manpower)}</p>
@@ -342,6 +342,13 @@ export default function ManpowerGroupPage() {
               </p>
             </div>
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
+              <p className="text-theme-xs text-gray-500">Repairman</p>
+              <p className="text-theme-2xl font-bold text-cyan-600">{fmtNum(data.repairman)}</p>
+              <p className="text-theme-xs text-gray-400">
+                {fmtPct(data.manpower ? (data.repairman / data.manpower) * 100 : 0)} dari manpower
+              </p>
+            </div>
+            <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
               <p className="text-theme-xs text-gray-500">Cakupan Crew</p>
               <p className="text-theme-2xl font-bold text-blue-600">
                 {fmtNum(data.by_crew.filter((c) => c.label !== '(belum diisi)').reduce((a, c) => a + c.total, 0))}
@@ -367,13 +374,14 @@ export default function ManpowerGroupPage() {
                         <th className="px-3 py-2 text-left font-semibold">Kelompok</th>
                         <th className="px-3 py-2 text-right font-semibold">Staff</th>
                         <th className="px-3 py-2 text-right font-semibold">Mekanik</th>
+                        <th className="px-3 py-2 text-right font-semibold">Repairman</th>
                         <th className="px-3 py-2 text-right font-semibold">Belum</th>
                         <th className="px-3 py-2 text-right font-semibold">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {block.rows.length === 0 && (
-                        <tr><td colSpan={5} className="px-3 py-4 text-center text-gray-400">Tidak ada data.</td></tr>
+                        <tr><td colSpan={6} className="px-3 py-4 text-center text-gray-400">Tidak ada data.</td></tr>
                       )}
                       {block.rows.map((b) => (
                         <tr key={b.label} className="border-t dark:border-gray-800">
@@ -382,8 +390,9 @@ export default function ManpowerGroupPage() {
                           </td>
                           <td className="px-3 py-1.5 text-right">{fmtNum(b.staff)}</td>
                           <td className="px-3 py-1.5 text-right">{fmtNum(b.mekanik)}</td>
+                          <td className="px-3 py-1.5 text-right">{fmtNum(b.repairman)}</td>
                           <td className="px-3 py-1.5 text-right text-gray-400">
-                            {fmtNum(b.total - b.staff - b.mekanik)}
+                            {fmtNum(b.total - b.staff - b.mekanik - b.repairman)}
                           </td>
                           <td className="px-3 py-1.5 text-right font-semibold">{fmtNum(b.total)}</td>
                         </tr>

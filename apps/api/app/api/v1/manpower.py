@@ -47,10 +47,11 @@ DEPT_ALLOW: set[str] = {"SPL2"}
 # snapshot bulanan, sehingga tidak hilang saat import ulang.
 SECTIONS = [
     "Big Wheel - PCH", "SPEX Mobile - Lighting",
-    "SPEX Pumping - Fabrication", "LCE", "MTE", "Dept Head",
+    "SPEX Pumping - Fabrication", "LCE", "MTE", "Tyre", "Dept Head",
 ]
 CREWS = ["Big Wheel", "PCH", "Mobile", "Lighting", "Pumping"]
-STATUSES = ["Staff", "Mekanik"]
+# Section Tyre tidak memakai status Mekanik: hanya Staff atau Repairman.
+STATUSES = ["Staff", "Mekanik", "Repairman"]
 EMPTY = "__EMPTY__"   # nilai filter untuk "belum diisi"
 
 # Tebakan awal (section, crew, status) dari JABATAN. Nilai yang tidak ada di
@@ -61,8 +62,8 @@ _JABATAN_MAP: dict[str, tuple[str | None, str | None, str | None]] = {
     "COAL HAULER EQUIP. MECHANIC": ("Big Wheel - PCH", "PCH", "Mekanik"),
     "WHEEL TYPE MECHANIC": ("Big Wheel - PCH", "Big Wheel", "Mekanik"),
     "PUMPING & ELECTRICAL GL": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
-    "TYRE UTILIZATION GL": ("Big Wheel - PCH", "Big Wheel", "Staff"),
-    "TYRE REPAIRMAN": ("Big Wheel - PCH", "Big Wheel", "Mekanik"),
+    "TYRE UTILIZATION GL": ("Tyre", "Big Wheel", "Staff"),
+    "TYRE REPAIRMAN": ("Tyre", "Big Wheel", "Repairman"),
     "LIFE CYCLE EXPERT": ("LCE", None, "Staff"),
     "COAL HAULER EQUIP. GL": ("Big Wheel - PCH", "PCH", "Staff"),
     "LIGHT TRUCK & LIFTING GL": ("SPEX Mobile - Lighting", "Lighting", "Staff"),
@@ -70,16 +71,16 @@ _JABATAN_MAP: dict[str, tuple[str | None, str | None, str | None]] = {
     "GENERAL CREW - PLANT 2": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
     "SSE MAINTENANCE TECHNICAL EXPERT": ("MTE", None, "Staff"),
     "FABRICATION GL": ("SPEX Pumping - Fabrication", None, "Staff"),
-    "TYRE REPAIR & MAINT. GL": ("Big Wheel - PCH", "Big Wheel", "Staff"),
+    "TYRE REPAIR & MAINT. GL": ("Tyre", "Big Wheel", "Staff"),
     "SSE TYPE MAINT. PROCESS EXPERT TL": ("MTE", None, "Staff"),
-    "TYRE MAINT. EXPERT TL": ("Big Wheel - PCH", "Big Wheel", "Staff"),
-    "TYRE LIFE CYCLE & TECH. EXPERT": ("Big Wheel - PCH", "Big Wheel", "Staff"),
+    "TYRE MAINT. EXPERT TL": ("Tyre", "Big Wheel", "Staff"),
+    "TYRE LIFE CYCLE & TECH. EXPERT": ("Tyre", "Big Wheel", "Staff"),
     "DRIVER TADANO": ("SPEX Mobile - Lighting", "Mobile", "Mekanik"),
     "LIFE CYCLE EXPERT TL": ("LCE", None, "Staff"),
     "PLANT 2 EXPERT COORDINATOR": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
     "WHEEL MAINTENANCE TECHNICAL EXPERT": ("MTE", None, "Staff"),
     "WHEEL TYPE MAINT. PROCESS EXPERT TL": ("MTE", None, "Staff"),
-    "TYRE UTILIZATION GL TRAINEE": ("Big Wheel - PCH", "Big Wheel", "Staff"),
+    "TYRE UTILIZATION GL TRAINEE": ("Tyre", "Big Wheel", "Staff"),
     "PUMPING & ELECTRICAL GL TRAINEE": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
     "LIFE CYCLE EXPERT TRAINEE": ("LCE", None, "Staff"),
 }
@@ -100,7 +101,12 @@ def classify(jabatan: str | None) -> tuple[str | None, str | None, str | None]:
     crew: str | None = None
     if "DEPARTMENT HEAD" in j or "DEPT HEAD" in j:
         section = "Dept Head"
-    elif "LIFE CYCLE" in j and "TYRE" not in j:
+    elif "TYRE" in j:
+        # Section Tyre tidak punya Mekanik: jabatan tyre repairman -> Repairman,
+        # selain itu (GL / expert / trainee) -> Staff.
+        section, crew = "Tyre", "Big Wheel"
+        status = "Repairman" if "REPAIRMAN" in j else "Staff"
+    elif "LIFE CYCLE" in j:
         section = "LCE"
     elif "FABRICATION" in j:
         section = "SPEX Pumping - Fabrication"
@@ -108,7 +114,7 @@ def classify(jabatan: str | None) -> tuple[str | None, str | None, str | None]:
         section, crew = "SPEX Pumping - Fabrication", "Pumping"
     elif "COAL HAULER" in j:
         section, crew = "Big Wheel - PCH", "PCH"
-    elif "TYRE" in j or "WHEEL" in j:
+    elif "WHEEL" in j:
         section, crew = "Big Wheel - PCH", "Big Wheel"
     elif "LIGHT TRUCK" in j or "LIFTING" in j:
         section, crew = "SPEX Mobile - Lighting", "Lighting"
@@ -750,7 +756,8 @@ def _breakdown_dim(dim: str) -> str:
     return (
         " SELECT COALESCE(p." + dim + ", '(belum diisi)') AS label, COUNT(*) AS total,"
         "        COUNT(*) FILTER (WHERE p.status = 'Staff') AS staff,"
-        "        COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik"
+        "        COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik,"
+        "        COUNT(*) FILTER (WHERE p.status = 'Repairman') AS repairman"
         " FROM manpower_month m LEFT JOIN manpower_profile p ON p.nrp = m.nrp"
         " WHERE {where} GROUP BY 1 ORDER BY total DESC, 1"
     )
@@ -780,8 +787,8 @@ async def manage_dashboard(
         per = (await db.execute(text("SELECT MAX(periode) FROM manpower_month"))).scalar()
     if not per:
         return {"periode": None, "manpower": 0, "classified": 0, "unclassified": 0,
-                "staff": 0, "mekanik": 0, "by_section": [], "by_crew": [],
-                "by_status": [], "sections": SECTIONS, "crews": CREWS,
+                "staff": 0, "mekanik": 0, "repairman": 0, "by_section": [],
+                "by_crew": [], "by_status": [], "sections": SECTIONS, "crews": CREWS,
                 "statuses": STATUSES, "depts": [], "total": 0, "page": 1,
                 "page_size": page_size, "data": [], "profiled": 0}
 
@@ -794,6 +801,7 @@ async def manage_dashboard(
                                   AND p.status IS NOT NULL) AS classified,
                COUNT(*) FILTER (WHERE p.status = 'Staff') AS staff,
                COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik,
+               COUNT(*) FILTER (WHERE p.status = 'Repairman') AS repairman,
                COUNT(p.nrp) AS profiled
         FROM manpower_month m LEFT JOIN manpower_profile p ON p.nrp = m.nrp
         WHERE {w}
@@ -805,7 +813,8 @@ async def manage_dashboard(
         rows = (await db.execute(text(_breakdown_dim(dim).format(where=ww)),
                                  pp)).mappings().all()
         return [{"label": r["label"], "total": int(r["total"] or 0),
-                 "staff": int(r["staff"] or 0), "mekanik": int(r["mekanik"] or 0)}
+                 "staff": int(r["staff"] or 0), "mekanik": int(r["mekanik"] or 0),
+                 "repairman": int(r["repairman"] or 0)}
                 for r in rows]
 
     by_section = await breakdown("section", section=None)
@@ -843,6 +852,7 @@ async def manage_dashboard(
         "unclassified": manpower - classified,
         "staff": int(s["staff"] or 0),
         "mekanik": int(s["mekanik"] or 0),
+        "repairman": int(s["repairman"] or 0),
         "by_section": by_section,
         "by_crew": by_crew,
         "by_status": by_status,

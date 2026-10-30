@@ -1806,6 +1806,7 @@ export type ManpowerBreakdown = {
   total: number
   staff: number
   mekanik: number
+  repairman: number
 }
 
 export type ManpowerProfileRow = {
@@ -1832,6 +1833,7 @@ export type ManpowerManage = {
   unclassified: number
   staff: number
   mekanik: number
+  repairman: number
   by_section: ManpowerBreakdown[]
   by_crew: ManpowerBreakdown[]
   by_status: ManpowerBreakdown[]
