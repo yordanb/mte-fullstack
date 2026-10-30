@@ -818,10 +818,17 @@ def _breakdown_dim(dim: str) -> str:
     Crew mungkin belum diisi) dikelompokkan ke label "General Crew", bukan
     "(belum diisi)", supaya terbaca langsung di card Rincian per Section
     dan Rincian per Crew.
+    Pada card Rincian per Crew (dim = "crew"), orang dengan Section
+    "Dept Head" (biasanya tanpa Crew) diberi baris "Dept Head", bukan
+    "(belum diisi)".
     """
+    extra = ""
+    if dim == "crew":
+        extra = " WHEN p.crew IS NULL AND p.section = 'Dept Head' THEN 'Dept Head'"
     return (
         " SELECT CASE WHEN p." + dim + " IS NOT NULL THEN p." + dim
         + " WHEN p.status = 'General Crew' THEN 'General Crew'"
+        + extra
         + " ELSE '(belum diisi)' END AS label, COUNT(*) AS total,"
         "        COUNT(*) FILTER (WHERE p.status = 'Staff') AS staff,"
         "        COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik,"
