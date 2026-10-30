@@ -1154,8 +1154,16 @@ export type SsTargetCrew = {
   month_count: number
   total_target: number
   total_aktual: number
-  /** Judul SS pada rentang terpilih yang sudah approved (grade terisi). */
+  /** Judul SS sudah approved (grade terisi). */
   approved: number
+  /** Menunggu penilaian oleh PM. */
+  pm: number
+  /** Menunggu penilaian oleh Dept Head. */
+  dept_head: number
+  /** Menunggu penilaian oleh SH / GL. */
+  sh_gl: number
+  /** Lainnya (INPUT PENILAIAN, SS REVISI, dsb.). */
+  lainnya: number
   /** Judul SS pada rentang terpilih yang masih outstanding (belum dinilai). */
   menunggu: number
   data: SsTargetCrewRow[]

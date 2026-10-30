@@ -226,14 +226,21 @@ export default function SsPage() {
     ? (targetCrew.total_aktual / targetCrew.total_target) * 100
     : 0
   // Status judul SS pada rentang terpilih (Tanggal Laporan).
+  const ssStatusLabels = ['Approved', 'PM', 'Dept Head', 'SH / GL']
   const ssStatusSeries = [
     targetCrew?.approved ?? 0,
-    targetCrew?.menunggu ?? 0,
+    targetCrew?.pm ?? 0,
+    targetCrew?.dept_head ?? 0,
+    targetCrew?.sh_gl ?? 0,
   ]
+  if ((targetCrew?.lainnya ?? 0) > 0) {
+    ssStatusLabels.push('Lainnya')
+    ssStatusSeries.push(targetCrew!.lainnya)
+  }
   const ssStatusOpts = {
-    chart: { type: 'donut' as const, height: 300, background: 'transparent' },
-    labels: ['Approved', 'Menunggu Approval'],
-    colors: ['#12b76a', '#f79009'],
+    chart: { type: 'donut' as const, height: 320, background: 'transparent' },
+    labels: ssStatusLabels,
+    colors: ['#12b76a', '#2563eb', '#7c3aed', '#0d9488', '#98a2b3'],
     dataLabels: { enabled: true, formatter: (v: number) => `${v.toFixed(1)}%` },
     legend: { position: 'bottom' as const, labels: { colors: textColor } },
     stroke: { colors: [dark ? '#111827' : '#ffffff'] },
