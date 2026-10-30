@@ -247,7 +247,12 @@ export default function SsPage() {
     chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
     colors: ['#98a2b3', '#465fff'],
     plotOptions: { bar: { columnWidth: '55%', borderRadius: 3 } },
-    dataLabels: { enabled: false },
+    dataLabels: {
+      enabled: true,
+      offsetY: -4,
+      style: { fontSize: '10px', colors: [textColor] },
+      formatter: (v: number) => (v > 0 ? fmtNum(v) : ''),
+    },
     grid: { borderColor: gridColor },
     legend: { position: 'bottom' as const, labels: { colors: textColor } },
     xaxis: {
