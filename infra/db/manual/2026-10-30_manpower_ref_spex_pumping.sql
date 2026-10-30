@@ -1,5 +1,10 @@
 -- Validasi data manpower terhadap daftar referensi NRP mekanik SPEX Pumping.
 --
+-- CATATAN: seluruh NRP di file ini sudah termasuk dalam versi gabungan
+-- `2026-10-30_manpower_ref_crew_mekanik.sql` (5 crew). Pakai file gabungan bila
+-- ingin menerapkan semua crew sekaligus; file ini tetap boleh dijalankan
+-- sendiri (idempoten, hasilnya sama untuk crew Pumping).
+--
 -- Sumber daftar : data-manpower/nrp mekanik spex pumping.txt
 -- Jumlah NRP    : 44
 -- Diterapkan    : Section = 'SPEX Pumping - Fabrication'
