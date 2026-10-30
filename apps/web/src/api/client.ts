@@ -1025,9 +1025,15 @@ export type SsEiictm = {
 }
 export type SsBreak = { label: string; total: number; reward: number }
 
-/** Jumlah NRP unik yang membuat SS per bulan (gantikan Pareto Top 10). */
-export type SsInnovatorMonth = { period: string; nrp: number; ss: number }
-export type SsInnovatorResp = { total_nrp: number; months: SsInnovatorMonth[] }
+/** Top 10 NRP dengan judul SS terbanyak pada rentang filter (Tanggal Laporan). */
+export type SsTopNrp = { key: string; nama: string | null; total: number; approved: number; menunggu: number }
+export type SsTopNrpResp = {
+  total_nrp: number
+  total_ss: number
+  month_lo: string | null
+  month_hi: string | null
+  data: SsTopNrp[]
+}
 
 export type SsFilters = {
   dept: string[]
@@ -1170,8 +1176,8 @@ export async function fetchSsTop(params: SsParams & { by: 'pencetus' | 'penilai'
   return r.data
 }
 
-export async function fetchSsInnovatorMonths(params: SsParams): Promise<SsInnovatorResp> {
-  const r = await api.get('/v1/ss/innovator-month', { params })
+export async function fetchSsTopNrp(params: SsParams): Promise<SsTopNrpResp> {
+  const r = await api.get('/v1/ss/top-nrp', { params })
   return r.data
 }
 

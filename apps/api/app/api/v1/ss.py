@@ -850,14 +850,15 @@ async def get_breakdown(
     return [dict(r) for r in rows]
 
 
-@router.get("/innovator-month", dependencies=[Depends(require_role("admin"))])
-async def get_innovator_month(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
-    """Jumlah NRP unik yang membuat SS per bulan (TANGGAL LAPORAN).
+@router.get("/top-nrp", dependencies=[Depends(require_role("admin"))])
+async def get_top_nrp(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
+    """Top 10 NRP dengan judul SS terbanyak (TANGGAL LAPORAN).
 
-    Pengganti Pareto Top 10 Pencetus Ide: per bulan dihitung NRP yang muncul
-    (membuat minimal 1 judul SS), baik yang approved maupun outstanding,
-    sesuai filter non-tanggal halaman. Rentang tanggal mengikuti filter; bila tidak
-    diisi, rentang mengikuti data SS (bukan manpower).
+    Menggantikan Pareto Top 10 Pencetus Ide: ranking NRP berdasarkan jumlah
+    judul SS yang dilaporkan pada rentang filter (default = bulan berjalan),
+    baik yang sudah approved maupun yang masih menunggu approval. Mengikuti
+    filter non-tanggal halaman. Nama diambil dari penulisan `pencetus` pada
+    tanggal laporan terbarunya.
     """
     where, p = _filters(f, with_date=False)
     conds = ["tgl_laporan IS NOT NULL"]
@@ -869,20 +870,24 @@ async def get_innovator_month(f: dict = Depends(_params), db: AsyncSession = Dep
         conds.append("tgl_laporan <= :hi")
     row_conds = " AND ".join(conds)
     rows = (await db.execute(text(f"""
-        SELECT to_char(date_trunc('month', tgl_laporan), 'YYYY-MM') AS period,
-               COUNT(DISTINCT NULLIF(nrp, '')) AS nrp,
-               COUNT(*) AS ss
+        SELECT nrp AS key,
+               (ARRAY_AGG(pencetus ORDER BY tgl_laporan DESC NULLS LAST))[1] AS nama,
+               COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE grade IS NOT NULL) AS approved,
+               COUNT(*) FILTER (WHERE grade IS NULL) AS menunggu
         FROM ss_report
-        WHERE {where} AND {row_conds}
-        GROUP BY 1 ORDER BY 1
+        WHERE {where} AND {row_conds} AND nrp IS NOT NULL AND nrp <> ''
+        GROUP BY nrp ORDER BY total DESC, nrp LIMIT 10
     """), p)).mappings().all()
     total = (await db.execute(text(f"""
         SELECT COUNT(DISTINCT NULLIF(nrp, '')) FROM ss_report
         WHERE {where} AND {row_conds}
     """), p)).scalar() or 0
-    months = [{"period": r["period"], "nrp": int(r["nrp"] or 0),
-               "ss": int(r["ss"] or 0)} for r in rows]
-    return {"total_nrp": int(total), "months": months}
+    data = [{"key": r["key"], "nama": r["nama"], "total": int(r["total"] or 0),
+             "approved": int(r["approved"] or 0), "menunggu": int(r["menunggu"] or 0)}
+            for r in rows]
+    return {"total_nrp": int(total), "total_ss": sum(d["total"] for d in data),
+            "month_lo": f["start"], "month_hi": f["end"], "data": data}
 
 
 @router.get("/top", dependencies=[Depends(require_role("admin"))])

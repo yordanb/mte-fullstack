@@ -6,8 +6,8 @@ import { DatePicker } from '../components/DatePicker'
 import {
   errMsg, todayLocal, monthStartLocal,
   fetchSsFilters, fetchSsKpi, fetchSsTrend, fetchSsEiictm, fetchSsTargetCrew,
-  fetchSsBreakdown, fetchSsInnovatorMonths, fetchSsRecords, exportSsCsv,
-  type SsBasis, type SsBreak, type SsEiictm, type SsFilters, type SsInnovatorResp,
+  fetchSsBreakdown, fetchSsTopNrp, fetchSsRecords, exportSsCsv,
+  type SsBasis, type SsBreak, type SsEiictm, type SsFilters, type SsTopNrpResp,
   type SsKpi, type SsRecord, type SsTargetCrew, type SsTrend,
 } from '../api/client'
 
@@ -73,7 +73,7 @@ export default function SsPage() {
   const [byGrade, setByGrade] = useState<SsBreak[]>([])
   const [byKat, setByKat] = useState<SsBreak[]>([])
   const [byDept, setByDept] = useState<SsBreak[]>([])
-  const [topP, setTopP] = useState<SsInnovatorResp | null>(null)
+  const [topP, setTopP] = useState<SsTopNrpResp | null>(null)
 
   const [rows, setRows] = useState<SsRecord[]>([])
   const [total, setTotal] = useState(0)
@@ -129,12 +129,12 @@ export default function SsPage() {
       fetchSsBreakdown({ ...params, by: 'dept' }),
       fetchSsEiictm(params),
       fetchSsTargetCrew(params),
-      fetchSsInnovatorMonths(params),
+      fetchSsTopNrp(params),
     ])
-      .then(([k, t, dl, g, ka, d, ei, tc, im]) => {
+      .then(([k, t, dl, g, ka, d, ei, tc, tn]) => {
         if (!alive) return
         setKpi(k); setTrend(t); setDaily(dl)
-        setByGrade(g); setByKat(ka); setByDept(d); setTopP(im)
+        setByGrade(g); setByKat(ka); setByDept(d); setTopP(tn)
         setEiictm(ei); setTargetCrew(tc)
       })
       .catch((e) => { if (alive) setMsg(`gagal: ${errMsg(e)}`) })
@@ -291,27 +291,34 @@ export default function SsPage() {
     tooltip: { y: { formatter: (v: number) => `${fmtNum(v)} SS` } },
   }
 
-  // Tren NRP yang membuat SS per bulan (pengganti Pareto Top 10 Pencetus Ide).
-  const imMonths = topP?.months ?? []
-  const innoSeries = [{ name: 'Jumlah NRP', data: imMonths.map((m) => m.nrp) }]
+  // Top 10 NRP dengan judul SS terbanyak pada rentang filter (Tanggal Laporan).
+  const topNrp = topP?.data ?? []
+  const innoSeries = [
+    { name: 'Approved', data: topNrp.map((r) => r.approved) },
+    { name: 'Menunggu Approval', data: topNrp.map((r) => r.menunggu) },
+  ]
   const innoOpts = {
-    chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
-    colors: ['#7f56d9'],
-    plotOptions: { bar: { columnWidth: '55%', borderRadius: 3 } },
+    chart: { type: 'bar' as const, height: 400, toolbar: { show: false }, background: 'transparent' },
+    colors: ['#12b76a', '#f79009'],
+    plotOptions: { bar: { horizontal: true, stacked: true, barHeight: '60%', borderRadius: 2 } },
     dataLabels: { enabled: false },
     xaxis: {
-      categories: imMonths.map((m) => m.period),
-      labels: { rotate: -35, style: { colors: textColor, fontSize: '10px' } },
+      categories: topNrp.map((r) => titleName(r.nama) || r.key),
+      labels: { style: { colors: textColor }, formatter: (v: number) => fmtNum(v) },
+      title: { text: 'Jumlah Judul SS', style: { color: textColor, fontSize: '11px' } },
     },
     yaxis: {
-      labels: { style: { colors: textColor }, formatter: (v: number) => fmtNum(v) },
-      title: { text: 'Jumlah NRP', style: { color: textColor, fontSize: '11px' } },
+      labels: { style: { colors: textColor, fontSize: '11px' }, maxWidth: 220 },
     },
     grid: { borderColor: gridColor },
+    legend: { position: 'bottom' as const, labels: { colors: textColor } },
     tooltip: {
       shared: false,
       intersect: false,
-      y: { formatter: (v: number) => `${fmtNum(v)} NRP` },
+      y: [
+        { formatter: (v: number) => `${fmtNum(v)} judul approved` },
+        { formatter: (v: number) => `${fmtNum(v)} judul menunggu approval` },
+      ],
     },
   }
 
@@ -596,14 +603,14 @@ export default function SsPage() {
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data.</p>}
         </div>
         <div className="rounded-2xl border bg-white p-4 lg:col-span-3 dark:bg-gray-900">
-          <h3 className="mb-1 font-semibold text-theme-sm">NRP Berinovasi per Bulan — Tanggal Laporan</h3>
+          <h3 className="mb-1 font-semibold text-theme-sm">Top 10 NRP — Judul SS Terbanyak</h3>
           <p className="mb-2 text-theme-xs text-gray-400">
-            Jumlah NRP unik yang membuat SS (approved maupun outstanding) tiap bulan
-            {' '}· rentang {fmtDate(start)} – {fmtDate(end)}
-            {' '}· total <b>{fmtNum(topP?.total_nrp ?? 0)}</b> NRP
+            Bulan berjalan ({fmtDate(start)} – {fmtDate(end)}) · dihitung dari Tanggal Laporan,
+            approved maupun menunggu approval
+            {' '}· {fmtNum(topP?.total_nrp ?? 0)} NRP membuat {fmtNum(topP?.total_ss ?? 0)} judul pada rentang ini
           </p>
-          {imMonths.length > 0
-            ? <ReactApexChart key={dark ? 'imd' : 'iml'} type="bar" height={320} series={innoSeries} options={innoOpts} />
+          {topNrp.length > 0
+            ? <ReactApexChart key={dark ? 'imd' : 'iml'} type="bar" height={400} series={innoSeries} options={innoOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data.</p>}
         </div>
       </div>
