@@ -211,7 +211,12 @@ export default function SsPage() {
     chart: { type: 'bar' as const, height: 300, toolbar: { show: false }, background: 'transparent' },
     colors: ['#465fff'],
     plotOptions: { bar: { columnWidth: '68%', borderRadius: 2 } },
-    dataLabels: { enabled: false },
+    dataLabels: {
+      enabled: true,
+      offsetY: -18,
+      style: { fontSize: '10px', colors: [textColor] },
+      formatter: (v: number) => (v > 0 ? fmtNum(v) : ''),
+    },
     xaxis: {
       categories: lapRows.map((r) => (lapBucket === 'hari' ? lapShort(r.period) : r.period)),
       labels: { show: lapRows.length <= 60, rotate: -90, style: { colors: textColor, fontSize: '10px' } },
