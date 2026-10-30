@@ -1,13 +1,12 @@
 // Manpower Inovasi — snapshot bulanan RptInnovatorMonthly.
 // Satu baris per orang per bulan; dipakai menghitung coverage pembuatan SS
 // dengan manpower bulan yang bersangkutan.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ReactApexChart from 'react-apexcharts'
 import {
-  can, errMsg,
-  importManpowerXlsx, fetchManpowerImportStatus, fetchManpowerPeriods,
+  errMsg, fetchManpowerPeriods,
   fetchManpowerSummary, fetchManpowerTrend, fetchManpowerRecords,
-  type ManpowerImportStatus, type ManpowerPeriod, type ManpowerRecord,
+  type ManpowerPeriod, type ManpowerRecord,
   type ManpowerSummary,
 } from '../api/client'
 
@@ -51,12 +50,6 @@ export default function ManpowerPage() {
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingRows, setLoadingRows] = useState(false)
-  const [reload, setReload] = useState(0)
-
-  const [importing, setImporting] = useState(false)
-  const [prog, setProg] = useState<ManpowerImportStatus | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const timerRef = useRef<number | null>(null)
 
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
   useEffect(() => {
@@ -72,7 +65,7 @@ export default function ManpowerPage() {
         setPeriode((cur) => cur || ps[0]?.periode || '')
       })
       .catch((e) => setMsg(`gagal memuat periode: ${errMsg(e)}`))
-  }, [reload])
+  }, [])
 
   useEffect(() => {
     const t = window.setTimeout(() => setSearch(q.trim()), 400)
@@ -93,7 +86,7 @@ export default function ManpowerPage() {
       .catch((e) => { if (alive) setMsg(`gagal: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [periode, dept, reload])
+  }, [periode, dept])
 
   useEffect(() => {
     if (!periode) { setRows([]); setTotal(0); return }
@@ -108,46 +101,7 @@ export default function ManpowerPage() {
       .catch((e) => { if (alive) setMsg(`gagal: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoadingRows(false) })
     return () => { alive = false }
-  }, [periode, dept, search, innovatorOnly, page, pageSize, sort, dir, reload])
-
-  useEffect(() => () => { if (timerRef.current) window.clearInterval(timerRef.current) }, [])
-
-  const poll = (id: string) => {
-    if (timerRef.current) window.clearInterval(timerRef.current)
-    timerRef.current = window.setInterval(async () => {
-      try {
-        const s = await fetchManpowerImportStatus(id)
-        setProg(s)
-        if (s.status === 'COMMITTED' || s.status === 'FAILED') {
-          if (timerRef.current) window.clearInterval(timerRef.current)
-          timerRef.current = null
-          setImporting(false)
-          if (s.status === 'FAILED') setMsg(`import gagal: ${s.errors?.error ?? 'tidak diketahui'}`)
-          else setReload((x) => x + 1)
-        }
-      } catch (e) {
-        if (timerRef.current) window.clearInterval(timerRef.current)
-        timerRef.current = null
-        setImporting(false)
-        setMsg(`gagal cek status import: ${errMsg(e)}`)
-      }
-    }, 1500)
-  }
-
-  const handleFiles = async (files: File[]) => {
-    if (!files.length) return
-    setImporting(true)
-    setProg(null)
-    setMsg('')
-    try {
-      const r = await importManpowerXlsx(files)
-      setMsg(`mengimpor ${r.files} file…`)
-      poll(r.import_id)
-    } catch (e) {
-      setImporting(false)
-      setMsg(`import gagal: ${errMsg(e)}`)
-    }
-  }
+  }, [periode, dept, search, innovatorOnly, page, pageSize, sort, dir])
 
   const sortBy = (key: string) => {
     if (sort === key) setDir(dir === 'desc' ? 'asc' : 'desc')
@@ -156,9 +110,6 @@ export default function ManpowerPage() {
   }
   const sortMark = (key: string) => (sort === key ? (dir === 'desc' ? ' ▼' : ' ▲') : '')
 
-  const progPct = prog && prog.total_rows > 0
-    ? Math.min(100, Math.round((prog.processed_rows / prog.total_rows) * 100))
-    : 0
   const pages = Math.max(1, Math.ceil(total / pageSize))
 
   const deptOptions = useMemo(
@@ -212,32 +163,12 @@ export default function ManpowerPage() {
               {deptOptions.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
-          {can('manpower', 'add') && (
-            <>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".xlsx,.xlsm"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  const fs = Array.from(e.target.files ?? [])
-                  handleFiles(fs)
-                  e.target.value = ''
-                }}
-              />
-              <button
-                className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-                onClick={() => fileRef.current?.click()}
-                disabled={importing}
-                title="Upload 1 atau beberapa file RptInnovatorMonthly (.xlsx). Hanya baris DEPT SPL2 yang disimpan; periode dibaca dari nama file (mis. 'Agt 26'); import ulang bulan yang sama akan mengganti snapshot bulan tsb."
-              >
-                {importing ? 'Mengimpor…' : 'Import Excel'}
-              </button>
-            </>
-          )}
         </div>
       </div>
+
+      <p className="mb-3 text-theme-xs text-gray-500">
+        Upload / update data manpower dilakukan di halaman <b>Update Data</b> (menu Operasional).
+      </p>
 
       {msg && (
         <p className="mb-3 rounded-lg bg-gray-100 px-3 py-2 text-theme-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
@@ -245,38 +176,11 @@ export default function ManpowerPage() {
         </p>
       )}
 
-      {prog && (
-        <div className="mb-3 rounded-2xl border bg-white p-4 dark:bg-gray-900">
-          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-theme-sm">
-            <span className="font-medium">
-              Import: {prog.status} · {fmtNum(prog.processed_rows)} / {fmtNum(prog.total_rows)} baris
-            </span>
-            <span className="text-theme-xs text-gray-500">
-              {prog.errors && prog.status === 'COMMITTED'
-                ? `${fmtNum(prog.errors.inserted ?? 0)} baru · ${fmtNum(prog.errors.updated ?? 0)} diperbarui`
-                  + ((prog.errors.deleted ?? 0) > 0 ? ` · ${fmtNum(prog.errors.deleted)} dihapus` : '')
-                  + ((prog.errors.skipped_dept ?? 0) > 0
-                    ? ` · ${fmtNum(prog.errors.skipped_dept)} dilewati (DEPT ${(prog.errors.dept_filter ?? []).join('/') || '-'})`
-                    : '')
-                  + ` · periode ${(prog.errors.periods ?? []).map(fmtPeriode).join(', ') || '-'}`
-                : prog.errors?.error ?? ''}
-            </span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-            <div
-              className={`h-full rounded-full transition-all ${prog.status === 'FAILED' ? 'bg-red-500' : 'bg-brand-500'}`}
-              style={{ width: `${progPct}%` }}
-            />
-          </div>
-          <p className="mt-1 text-theme-xs text-gray-400">{prog.filename}</p>
-        </div>
-      )}
-
-      {periods.length === 0 && !prog && (
+      {periods.length === 0 && (
         <div className="rounded-2xl border bg-white p-8 text-center dark:bg-gray-900">
           <p className="text-theme-sm text-gray-500">
-            Belum ada data manpower. Upload file <b>RptInnovatorMonthly &lt;Bln&gt; &lt;Thn&gt;.xlsx</b> lewat
-            tombol Import Excel (boleh sekaligus banyak bulan).
+            Belum ada data manpower. Upload file <b>RptInnovatorMonthly &lt;Bln&gt; &lt;Thn&gt;.xlsx</b> di
+            halaman <b>Update Data</b> (boleh sekaligus banyak bulan).
           </p>
         </div>
       )}

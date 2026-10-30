@@ -1,5 +1,5 @@
-﻿import { useEffect, useState } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, canWrite, todayLocal, errMsg, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
+﻿import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, canWrite, todayLocal, errMsg, isAdmin, importSsXlsx, fetchSsImportStatus, importManpowerXlsx, fetchManpowerImportStatus, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
 import { DatePicker } from '../components/DatePicker'
 import { VesselTable } from '../components/Widgets'
 
@@ -106,6 +106,171 @@ export function FleetPage() {
   )
 }
 
+type ImportProgress = {
+  status: string
+  total_rows: number
+  processed_rows: number
+  ok_rows: number
+  fail_rows: number
+  filename?: string
+  errors?: Record<string, unknown> | null
+}
+
+const fmtN = (v: unknown) => new Intl.NumberFormat('id-ID').format(Number(v ?? 0))
+
+/** Kartu upload generik: pilih file -> unggah -> pantau progres import. */
+function UploadCard(props: {
+  title: string
+  subtitle: string
+  icon: ReactNode
+  formats: { name: string; cols: number; desc?: string }[]
+  notes?: string[]
+  accept?: string
+  multiple?: boolean
+  disabled?: boolean
+  disabledNote?: string
+  startLabel: string
+  onUpload: (files: File[]) => Promise<{ import_id: string; files: number }>
+  fetchStatus: (id: string) => Promise<ImportProgress>
+  summary?: (errors: Record<string, unknown>) => string
+}) {
+  const {
+    title, subtitle, icon, formats, notes, accept = '.xlsx,.xlsm', multiple = true,
+    disabled = false, disabledNote, startLabel, onUpload, fetchStatus, summary,
+  } = props
+  const [files, setFiles] = useState<File[]>([])
+  const [busy, setBusy] = useState(false)
+  const [prog, setProg] = useState<ImportProgress | null>(null)
+  const [msg, setMsg] = useState('')
+  const timer = useRef<number | null>(null)
+
+  useEffect(() => () => { if (timer.current) window.clearInterval(timer.current) }, [])
+
+  const poll = (id: string) => {
+    if (timer.current) window.clearInterval(timer.current)
+    timer.current = window.setInterval(async () => {
+      try {
+        const s = await fetchStatus(id)
+        setProg(s)
+        if (s.status === 'COMMITTED' || s.status === 'FAILED') {
+          if (timer.current) window.clearInterval(timer.current)
+          timer.current = null
+          setBusy(false)
+          setMsg(s.status === 'FAILED'
+            ? `Import gagal: ${String(s.errors?.error ?? 'tidak diketahui')}`
+            : 'Import selesai.')
+        }
+      } catch (e) {
+        if (timer.current) window.clearInterval(timer.current)
+        timer.current = null
+        setBusy(false)
+        setMsg(`Gagal cek status import: ${errMsg(e)}`)
+      }
+    }, 1500)
+  }
+
+  const start = async () => {
+    if (!files.length) { setMsg('Pilih file .xlsx dulu.'); return }
+    setBusy(true); setProg(null); setMsg('')
+    try {
+      const r = await onUpload(files)
+      setMsg(`Mengimpor ${r.files} file…`)
+      poll(r.import_id)
+    } catch (e) {
+      setBusy(false)
+      setMsg(`Import gagal: ${errMsg(e)}`)
+    }
+  }
+
+  const pct = prog && prog.total_rows > 0
+    ? Math.min(100, Math.round((prog.processed_rows / prog.total_rows) * 100))
+    : 0
+
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+      <div className="flex items-center gap-3">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+          {icon}
+        </span>
+        <div>
+          <h3 className="font-semibold">{title}</h3>
+          <p className="text-theme-sm text-gray-500">{subtitle}</p>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-100 bg-gray-50 p-3 text-theme-xs text-gray-600 dark:border-gray-800 dark:bg-gray-800/40 dark:text-gray-300">
+        <p className="mb-1 font-semibold text-gray-700 dark:text-gray-200">Format file</p>
+        <ul className="list-disc space-y-0.5 pl-4">
+          {formats.map((f) => (
+            <li key={f.name}>
+              <span className="font-mono">{f.name}</span> — {f.cols} kolom{f.desc ? `, ${f.desc}` : ''}
+            </li>
+          ))}
+        </ul>
+        {notes?.map((n) => <p key={n} className="mt-1">{n}</p>)}
+      </div>
+
+      <label className={disabled
+        ? 'cursor-not-allowed rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-2 text-theme-sm text-gray-400'
+        : 'cursor-pointer rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-2 text-theme-sm text-gray-600 hover:bg-gray-100'}>
+        {files.length === 0
+          ? 'Pilih file .xlsx'
+          : files.length === 1 ? `File: ${files[0].name}` : `${files.length} file dipilih`}
+        <input
+          type="file"
+          accept={accept}
+          multiple={multiple}
+          disabled={disabled}
+          className="hidden"
+          onChange={(e) => {
+            setFiles(Array.from(e.target.files ?? []))
+            setMsg('')
+            e.target.value = ''
+          }}
+        />
+      </label>
+
+      <button
+        className="rounded-lg bg-brand-500 px-4 py-2 text-white disabled:opacity-40"
+        disabled={disabled || busy || files.length === 0}
+        onClick={start}
+      >
+        {busy ? 'Mengimpor…' : startLabel}
+      </button>
+
+      {disabled && disabledNote && <p className="text-theme-xs text-amber-600">{disabledNote}</p>}
+
+      {prog && (
+        <div>
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-theme-xs">
+            <span className="font-medium">
+              {prog.status} · {fmtN(prog.processed_rows)} / {fmtN(prog.total_rows)} baris
+            </span>
+            <span className="text-gray-500">
+              {prog.status === 'COMMITTED' && prog.errors && summary
+                ? summary(prog.errors)
+                : String(prog.errors?.error ?? '')}
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+            {prog.total_rows > 0 ? (
+              <div
+                className={`h-full rounded-full ${prog.status === 'FAILED' ? 'bg-red-500' : 'bg-brand-500'}`}
+                style={{ width: `${pct}%` }}
+              />
+            ) : (
+              <div className="h-2 w-1/3 animate-pulse rounded-full bg-brand-500" />
+            )}
+          </div>
+          {prog.filename && <p className="mt-1 truncate text-theme-xs text-gray-400">{prog.filename}</p>}
+        </div>
+      )}
+
+      {msg && <p className="border-t border-gray-100 pt-2 text-theme-sm text-gray-600">{msg}</p>}
+    </div>
+  )
+}
+
 export function ImportPage() {
   const [msg, setMsg] = useState('')
   const [fname, setFname] = useState('')
@@ -171,10 +336,7 @@ export function ImportPage() {
   const fileBtn = 'cursor-pointer rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-2 text-theme-sm text-gray-600 hover:bg-gray-100'
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h2 className="text-theme-xl font-semibold">Update Data</h2>
-        <p className="text-theme-sm text-gray-500">Unggah file Excel untuk memperbarui data operasional</p>
-      </div>
+      <p className="text-theme-sm text-gray-500">Unggah file Excel untuk memperbarui data operasional</p>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <div className={tile}>
           <div className={tileHead}>
@@ -240,6 +402,58 @@ export function ImportPage() {
           )}
           {upMsg && <p className="border-t border-gray-100 pt-2 text-theme-sm text-gray-600">{upMsg}</p>}
         </div>
+
+        <UploadCard
+          title="Suggestion System"
+          subtitle="Laporan SS closed & outstanding"
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.7V18h8v-3.3A7 7 0 0 0 12 2Z" /></svg>}
+          formats={[
+            { name: 'ReportSSClosedDistrict_<distrik>_<periode>.xlsx', cols: 15, desc: 'sheet Report, NO SS s/d STATUS KARYAWAN' },
+            { name: 'ReportOutstandingSS_<distrik>_<periode>.xlsx', cols: 8, desc: 'sheet Report, NO SS s/d STATUS' },
+          ]}
+          notes={[
+            'Kunci data = NO SS: baris baru ditambah, baris yang sudah ada diperbarui (data di luar file tidak dihapus).',
+            'Hanya baris DEPT SPL2 yang disimpan; baris DEPT lain dilewati dan dihitung pada ringkasan.',
+            'Boleh pilih beberapa file sekaligus (closed + outstanding).',
+          ]}
+          startLabel="Upload Suggestion System"
+          disabled={!isAdmin()}
+          disabledNote="Upload data SS hanya bisa dilakukan oleh role admin."
+          onUpload={importSsXlsx}
+          fetchStatus={fetchSsImportStatus}
+          summary={(e) =>
+            `${fmtN(e.inserted)} baru · ${fmtN(e.updated)} diperbarui`
+            + ` · ${fmtN(e.outstanding)} outstanding`
+            + ((Number(e.skipped_dept ?? 0) > 0)
+              ? ` · ${fmtN(e.skipped_dept)} dilewati (DEPT ${(e.dept_filter as string[] ?? []).join('/') || '-'})`
+              : '')}
+        />
+
+        <UploadCard
+          title="Manpower Inovasi"
+          subtitle="Snapshot manpower per bulan"
+          icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><circle cx="17" cy="9" r="2.4" /><path d="M16 14.2c3 .2 5.5 2.3 5.5 5.3" /></svg>}
+          formats={[
+            { name: 'RptInnovatorMonthly <Bln> <Thn>.xlsx', cols: 28, desc: 'sheet Report, NRP s/d INNOVATOR ALL' },
+          ]}
+          notes={[
+            'Periode dibaca dari nama file (mis. "Agt 26" → Agustus 2026). Boleh upload banyak bulan sekaligus.',
+            'Import ulang bulan yang sama mengganti snapshot bulan itu: baris yang tidak ada lagi di file baru dihapus.',
+            'Hanya baris DEPT SPL2 yang disimpan; baris DEPT lain dilewati dan dihitung pada ringkasan.',
+          ]}
+          startLabel="Upload Manpower Inovasi"
+          disabled={!can('manpower', 'add')}
+          disabledNote="Role Anda tidak memiliki izin menambah data Manpower Inovasi."
+          onUpload={importManpowerXlsx}
+          fetchStatus={fetchManpowerImportStatus}
+          summary={(e) =>
+            `${fmtN(e.inserted)} baru · ${fmtN(e.updated)} diperbarui`
+            + ((Number(e.deleted ?? 0) > 0) ? ` · ${fmtN(e.deleted)} dihapus` : '')
+            + ((Number(e.skipped_dept ?? 0) > 0)
+              ? ` · ${fmtN(e.skipped_dept)} dilewati (DEPT ${(e.dept_filter as string[] ?? []).join('/') || '-'})`
+              : '')
+            + ` · periode ${((e.periods as string[] ?? []).join(', ')) || '-'}`}
+        />
       </div>
     </div>
   )

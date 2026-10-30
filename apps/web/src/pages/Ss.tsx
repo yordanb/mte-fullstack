@@ -1,13 +1,13 @@
 // Suggestion System (SS) — dashboard + import ReportSSClosedDistrict (KIDE).
 // Sumber: 4 file xlsx 2023-2026; import upsert berdasarkan NO SS.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ReactApexChart from 'react-apexcharts'
 import { DatePicker } from '../components/DatePicker'
 import {
-  errMsg, isAdmin, todayLocal, monthStartLocal,
-  importSsXlsx, fetchSsImportStatus, fetchSsFilters, fetchSsKpi, fetchSsTrend,
+  errMsg, todayLocal, monthStartLocal,
+  fetchSsFilters, fetchSsKpi, fetchSsTrend,
   fetchSsBreakdown, fetchSsTop, fetchSsRecords, exportSsCsv,
-  type SsBasis, type SsBreak, type SsFilters, type SsImportStatus, type SsKpi,
+  type SsBasis, type SsBreak, type SsFilters, type SsKpi,
   type SsRecord, type SsTop, type SsTrend,
 } from '../api/client'
 
@@ -80,12 +80,6 @@ export default function SsPage() {
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingRows, setLoadingRows] = useState(false)
-  const [reload, setReload] = useState(0)
-
-  const [importing, setImporting] = useState(false)
-  const [prog, setProg] = useState<SsImportStatus | null>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const timerRef = useRef<number | null>(null)
 
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
   useEffect(() => {
@@ -116,7 +110,7 @@ export default function SsPage() {
 
   useEffect(() => {
     fetchSsFilters().then(setFilters).catch((e) => setMsg(`gagal: ${errMsg(e)}`))
-  }, [reload])
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -138,7 +132,7 @@ export default function SsPage() {
       .catch((e) => { if (alive) setMsg(`gagal: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [params, reload])
+  }, [params])
 
   useEffect(() => {
     let alive = true
@@ -148,46 +142,7 @@ export default function SsPage() {
       .catch((e) => { if (alive) setMsg(`gagal: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoadingRows(false) })
     return () => { alive = false }
-  }, [params, page, pageSize, sort, dir, reload])
-
-  useEffect(() => () => { if (timerRef.current) window.clearInterval(timerRef.current) }, [])
-
-  const poll = (id: string) => {
-    if (timerRef.current) window.clearInterval(timerRef.current)
-    timerRef.current = window.setInterval(async () => {
-      try {
-        const s = await fetchSsImportStatus(id)
-        setProg(s)
-        if (s.status === 'COMMITTED' || s.status === 'FAILED') {
-          if (timerRef.current) window.clearInterval(timerRef.current)
-          timerRef.current = null
-          setImporting(false)
-          if (s.status === 'FAILED') setMsg(`import gagal: ${s.errors?.error ?? 'tidak diketahui'}`)
-          else setReload((x) => x + 1)
-        }
-      } catch (e) {
-        if (timerRef.current) window.clearInterval(timerRef.current)
-        timerRef.current = null
-        setImporting(false)
-        setMsg(`gagal cek status import: ${errMsg(e)}`)
-      }
-    }, 1500)
-  }
-
-  const handleFiles = async (files: File[]) => {
-    if (!files.length) return
-    setImporting(true)
-    setProg(null)
-    setMsg('')
-    try {
-      const r = await importSsXlsx(files)
-      setMsg(`mengimpor ${r.files} file…`)
-      poll(r.import_id)
-    } catch (e) {
-      setImporting(false)
-      setMsg(`import gagal: ${errMsg(e)}`)
-    }
-  }
+  }, [params, page, pageSize, sort, dir])
 
   const resetFilter = () => {
     setBasis('menilai'); setStart(monthStart); setEnd(today)
@@ -334,9 +289,6 @@ export default function SsPage() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const progPct = prog && prog.total_rows > 0
-    ? Math.min(100, Math.round((prog.processed_rows / prog.total_rows) * 100))
-    : prog?.status === 'COMMITTED' ? 100 : 0
 
   return (
     <div className="w-full px-2">
@@ -417,65 +369,16 @@ export default function SsPage() {
         >
           Export CSV
         </button>
-        {isAdmin() && (
-          <>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".xlsx,.xlsm"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const fs = Array.from(e.target.files ?? [])
-                handleFiles(fs)
-                e.target.value = ''
-              }}
-            />
-            <button
-              className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-              onClick={() => fileRef.current?.click()}
-              disabled={importing}
-              title="Upload ReportSSClosedDistrict / ReportOutstandingSS (.xlsx). Hanya baris dengan DEPT SPL2 yang disimpan; data diperbarui berdasarkan NO SS."
-            >
-              {importing ? 'Mengimpor…' : 'Import Excel'}
-            </button>
-          </>
-        )}
         {(loading || loadingRows) && <span className="text-theme-xs text-gray-500">Memuat…</span>}
       </div>
+
+      <p className="mb-3 text-theme-xs text-gray-500">
+        Upload / update data SS dilakukan di halaman <b>Update Data</b> (menu Operasional).
+      </p>
 
       {msg && (
         <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-theme-sm text-blue-700">
           {msg}
-        </div>
-      )}
-
-      {prog && (
-        <div className="mb-3 rounded-2xl border bg-white p-4 dark:bg-gray-900">
-          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-theme-sm">
-            <span className="font-medium">
-              Import: {prog.status} · {fmtNum(prog.processed_rows)} / {fmtNum(prog.total_rows)} baris
-            </span>
-            <span className="text-theme-xs text-gray-500">
-              {prog.errors && prog.status === 'COMMITTED'
-                ? `${fmtNum(prog.errors.inserted ?? 0)} baru · ${fmtNum(prog.errors.updated ?? 0)} diperbarui`
-                  + ` · ${fmtNum(prog.errors.outstanding ?? 0)} outstanding`
-                  + ((prog.errors.now_approved ?? 0) > 0
-                    ? ` · ${fmtNum(prog.errors.now_approved)} berubah approved` : '')
-                  + ` · ${fmtNum(prog.errors.duplicates ?? 0)} duplikat`
-                  + ((prog.errors.skipped_dept ?? 0) > 0
-                    ? ` · ${fmtNum(prog.errors.skipped_dept)} dilewati (DEPT ${(prog.errors.dept_filter ?? []).join('/') || '-'})`
-                    : '')
-                : prog.errors?.error ?? ''}
-            </span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-            <div
-              className={`h-full rounded-full transition-all ${prog.status === 'FAILED' ? 'bg-red-500' : 'bg-brand-500'}`}
-              style={{ width: `${progPct}%` }}
-            />
-          </div>
-          <p className="mt-1 text-theme-xs text-gray-400">{prog.filename}</p>
         </div>
       )}
 
