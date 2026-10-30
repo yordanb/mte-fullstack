@@ -812,8 +812,17 @@ def _manage_where(periode: dt.date, dept: str | None = None, section: str | None
 
 
 def _breakdown_dim(dim: str) -> str:
+    """Rincian per Section/Crew/Status untuk satu periode.
+
+    Orang dengan Status "General Crew" (status disimpan per NRP, Section/
+    Crew mungkin belum diisi) dikelompokkan ke label "General Crew", bukan
+    "(belum diisi)", supaya terbaca langsung di card Rincian per Section
+    dan Rincian per Crew.
+    """
     return (
-        " SELECT COALESCE(p." + dim + ", '(belum diisi)') AS label, COUNT(*) AS total,"
+        " SELECT CASE WHEN p." + dim + " IS NOT NULL THEN p." + dim
+        + " WHEN p.status = 'General Crew' THEN 'General Crew'"
+        + " ELSE '(belum diisi)' END AS label, COUNT(*) AS total,"
         "        COUNT(*) FILTER (WHERE p.status = 'Staff') AS staff,"
         "        COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik,"
         "        COUNT(*) FILTER (WHERE p.status = 'Repairman') AS repairman,"
