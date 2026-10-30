@@ -584,15 +584,9 @@ export default function SsPage() {
           <h3 className="mb-1 font-semibold text-theme-sm">
             Target SS per Crew — {fmtNum(targetCrew?.multiplier ?? 3)} SS per NRP
           </h3>
-          <p className="mb-2 text-theme-xs text-gray-400">
-            Target = manpower aktif (General Crew tidak dihitung) × {fmtNum(targetCrew?.multiplier ?? 3)} SS
-            {targetCrew && targetCrew.month_count > 1 && <> × {fmtNum(targetCrew.month_count)} bulan</>}.
-            Aktual = jumlah judul SS berdasarkan Tanggal Laporan, approved maupun outstanding
-            {' '}· rentang {fmtDate(start)} – {fmtDate(end)}
-          </p>
           <p className="mb-2 text-theme-xs text-gray-500">
-            Aktual <b className="text-brand-600">{fmtNum(targetCrew?.total_aktual)}</b> dari target{' '}
-            <b>{fmtNum(targetCrew?.total_target)}</b> SS
+            Aktual {fmtNum(targetCrew?.total_aktual)} dari target{' '}
+            {fmtNum(targetCrew?.total_target)} SS
             {crewTargetPct > 0 && <> · capaian {fmtPct(crewTargetPct)}</>}
             {targetCrew && targetCrew.month_count === 0 && (
               <span className="text-gray-400"> · belum ada data manpower</span>
@@ -604,11 +598,6 @@ export default function SsPage() {
 </div>
         <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
           <h3 className="mb-1 font-semibold text-theme-sm">Status Judul SS</h3>
-          <p className="mb-2 text-theme-xs text-gray-400">
-            Judul SS dibuat (Tanggal Laporan) pada rentang terpilih:
-            {' '}<b className="text-green-600">{fmtNum(targetCrew?.approved ?? 0)} approved</b> ·{' '}
-            <b className="text-amber-600">{fmtNum(targetCrew?.menunggu ?? 0)} menunggu approval</b>
-          </p>
           {(ssStatusSeries[0] + ssStatusSeries[1]) > 0
             ? <ReactApexChart key={dark ? 'ssd' : 'ssl'} type="donut" height={260} series={ssStatusSeries} options={ssStatusOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada SS pada rentang tanggal ini.</p>}
@@ -619,10 +608,6 @@ export default function SsPage() {
         {/* Open Approval by Management (bar chart) */}
         <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
           <h3 className="mb-1 font-semibold text-theme-sm">Open Approval per Management</h3>
-          <p className="mb-2 text-theme-xs text-gray-400">
-            Judul SS outstanding (belum dinilai) per Management pada Tanggal Laporan&nbsp;
-            {fmtDate(start)} – {fmtDate(end)}. Urut dari paling banyak ke paling sedikit.
-          </p>
           {openApprovalData.length > 0
             ? <ReactApexChart
                 key={dark ? 'oad' : 'oal'}
