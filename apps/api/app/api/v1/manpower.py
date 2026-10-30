@@ -49,7 +49,7 @@ SECTIONS = [
     "Big Wheel - PCH", "SPEX Mobile - Lighting",
     "SPEX Pumping - Fabrication", "LCE", "MTE", "Tyre", "Dept Head",
 ]
-CREWS = ["Big Wheel", "PCH", "Mobile", "Lighting", "Pumping"]
+CREWS = ["Big Wheel", "PCH", "Mobile", "Lighting", "Pumping", "Tyre"]
 # Section Tyre tidak memakai status Mekanik: hanya Staff atau Repairman.
 STATUSES = ["Staff", "Mekanik", "Repairman"]
 EMPTY = "__EMPTY__"   # nilai filter untuk "belum diisi"
@@ -62,8 +62,8 @@ _JABATAN_MAP: dict[str, tuple[str | None, str | None, str | None]] = {
     "COAL HAULER EQUIP. MECHANIC": ("Big Wheel - PCH", "PCH", "Mekanik"),
     "WHEEL TYPE MECHANIC": ("Big Wheel - PCH", "Big Wheel", "Mekanik"),
     "PUMPING & ELECTRICAL GL": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
-    "TYRE UTILIZATION GL": ("Tyre", "Big Wheel", "Staff"),
-    "TYRE REPAIRMAN": ("Tyre", "Big Wheel", "Repairman"),
+    "TYRE UTILIZATION GL": ("Tyre", "Tyre", "Staff"),
+    "TYRE REPAIRMAN": ("Tyre", "Tyre", "Repairman"),
     "LIFE CYCLE EXPERT": ("LCE", None, "Staff"),
     "COAL HAULER EQUIP. GL": ("Big Wheel - PCH", "PCH", "Staff"),
     "LIGHT TRUCK & LIFTING GL": ("SPEX Mobile - Lighting", "Lighting", "Staff"),
@@ -71,16 +71,16 @@ _JABATAN_MAP: dict[str, tuple[str | None, str | None, str | None]] = {
     "GENERAL CREW - PLANT 2": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
     "SSE MAINTENANCE TECHNICAL EXPERT": ("MTE", None, "Staff"),
     "FABRICATION GL": ("SPEX Pumping - Fabrication", None, "Staff"),
-    "TYRE REPAIR & MAINT. GL": ("Tyre", "Big Wheel", "Staff"),
+    "TYRE REPAIR & MAINT. GL": ("Tyre", "Tyre", "Staff"),
     "SSE TYPE MAINT. PROCESS EXPERT TL": ("MTE", None, "Staff"),
-    "TYRE MAINT. EXPERT TL": ("Tyre", "Big Wheel", "Staff"),
-    "TYRE LIFE CYCLE & TECH. EXPERT": ("Tyre", "Big Wheel", "Staff"),
+    "TYRE MAINT. EXPERT TL": ("Tyre", "Tyre", "Staff"),
+    "TYRE LIFE CYCLE & TECH. EXPERT": ("Tyre", "Tyre", "Staff"),
     "DRIVER TADANO": ("SPEX Mobile - Lighting", "Mobile", "Mekanik"),
     "LIFE CYCLE EXPERT TL": ("LCE", None, "Staff"),
     "PLANT 2 EXPERT COORDINATOR": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
     "WHEEL MAINTENANCE TECHNICAL EXPERT": ("MTE", None, "Staff"),
     "WHEEL TYPE MAINT. PROCESS EXPERT TL": ("MTE", None, "Staff"),
-    "TYRE UTILIZATION GL TRAINEE": ("Tyre", "Big Wheel", "Staff"),
+    "TYRE UTILIZATION GL TRAINEE": ("Tyre", "Tyre", "Staff"),
     "PUMPING & ELECTRICAL GL TRAINEE": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
     "LIFE CYCLE EXPERT TRAINEE": ("LCE", None, "Staff"),
 }
@@ -102,9 +102,10 @@ def classify(jabatan: str | None) -> tuple[str | None, str | None, str | None]:
     if "DEPARTMENT HEAD" in j or "DEPT HEAD" in j:
         section = "Dept Head"
     elif "TYRE" in j:
-        # Section Tyre tidak punya Mekanik: jabatan tyre repairman -> Repairman,
-        # selain itu (GL / expert / trainee) -> Staff.
-        section, crew = "Tyre", "Big Wheel"
+        # Semua yang berbau TYRE masuk Section + Crew Tyre. Section Tyre tidak
+        # punya Mekanik: jabatan tyre repairman -> Repairman, selain itu
+        # (GL / expert / trainee) -> Staff.
+        section, crew = "Tyre", "Tyre"
         status = "Repairman" if "REPAIRMAN" in j else "Staff"
     elif "LIFE CYCLE" in j:
         section = "LCE"

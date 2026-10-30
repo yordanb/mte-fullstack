@@ -1,19 +1,20 @@
--- Selaraskan pengelompokan manpower untuk Section "Tyre" (sekali jalan).
+-- Selaraskan pengelompokan manpower untuk Section + Crew "Tyre" (sekali jalan).
 --
 -- Aturan baru (lihat `classify()` di apps/api/app/api/v1/manpower.py):
---   jabatan memuat TYRE            -> Section 'Tyre', Crew tetap 'Big Wheel'
---   jabatan memuat TYRE ... REPAIRMAN -> Status 'Repairman'
+--   jabatan memuat TYRE              -> Section 'Tyre', Crew 'Tyre'
+--   jabatan TYRE ... REPAIRMAN       -> Status 'Repairman'
 --   jabatan TYRE lainnya (GL/expert/trainee) -> Status 'Staff'
 --   Section Tyre tidak memakai Status 'Mekanik'.
 --
 -- Yang diubah HANYA baris hasil tebakan (auto = TRUE). Baris yang sudah
 -- dikoreksi manual (auto = FALSE) tidak disentuh.
 --
--- Prasyarat: constraint baru dari V48 (Section 'Tyre', Status 'Repairman').
+-- Prasyarat: V48 (Section 'Tyre', Status 'Repairman') dan V49 (Crew 'Tyre').
 --   docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V48__manpower_tyre_repairman.sql
+--   docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V49__manpower_crew_tyre.sql
 --
 -- Jalankan:
---   docker exec -i mte-fs-db psql -U mte -d mte < infra/db/manual/2026-10-30_manpower_tyre_section.sql
+--   docker exec -i mte-fs-db psql -U mte -d mte < infra/db/manual/2026-10-30_manpower_tyre.sql
 
 \set ON_ERROR_STOP on
 BEGIN;
@@ -39,16 +40,17 @@ WITH latest AS (
 ), upd AS (
   UPDATE manpower_profile p
      SET section    = 'Tyre',
-         crew       = COALESCE(p.crew, 'Big Wheel'),
+         crew       = 'Tyre',
          status     = CASE WHEN UPPER(l.jabatan) LIKE '%REPAIRMAN%'
                            THEN 'Repairman' ELSE 'Staff' END,
-         updated_by = 'validasi: section tyre',
+         updated_by = 'validasi: section & crew tyre',
          updated_at = now()
     FROM latest l
    WHERE l.nrp = p.nrp
      AND p.auto                              -- hanya hasil tebakan
      AND UPPER(COALESCE(l.jabatan, '')) LIKE '%TYRE%'
      AND (p.section IS DISTINCT FROM 'Tyre'
+          OR p.crew    IS DISTINCT FROM 'Tyre'
           OR p.status IS DISTINCT FROM (CASE WHEN UPPER(l.jabatan) LIKE '%REPAIRMAN%'
                                              THEN 'Repairman' ELSE 'Staff' END))
   RETURNING p.nrp
@@ -71,8 +73,8 @@ ORDER BY jumlah DESC;
 
 COMMIT;
 
--- Verifikasi akhir: baris hasil tebakan berjabatan TYRE yang belum 'Tyre',
--- atau masih berstatus 'Mekanik'. Hasilnya harus 0.
+-- Verifikasi akhir: baris hasil tebakan berjabatan TYRE yang belum
+-- Section/Crew Tyre, atau masih berstatus 'Mekanik'. Hasilnya harus 0.
 WITH latest AS (
   SELECT DISTINCT ON (m.nrp) m.nrp, m.jabatan
   FROM manpower_month m
@@ -83,4 +85,6 @@ FROM manpower_profile p
 JOIN latest l ON l.nrp = p.nrp
 WHERE p.auto
   AND UPPER(COALESCE(l.jabatan, '')) LIKE '%TYRE%'
-  AND (p.section IS DISTINCT FROM 'Tyre' OR p.status = 'Mekanik');
+  AND (p.section IS DISTINCT FROM 'Tyre'
+       OR p.crew IS DISTINCT FROM 'Tyre'
+       OR p.status = 'Mekanik');
