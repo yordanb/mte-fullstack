@@ -235,19 +235,27 @@ export default function SsPage() {
   const openApprovalData = (targetCrew?.status_ss_breakdown ?? []).sort(
     (a: { jumlah: number }, b: { jumlah: number }) => b.jumlah - a.jumlah
   )
-  const openApprovalSeries = openApprovalData.map((item) => ({
-    name: item.management,
-    data: [item.jumlah],
-  }))
+  const openApprovalSeries = [
+    { name: 'Open Approval', data: openApprovalData.map((item) => item.jumlah) },
+  ]
   const openApprovalOpts = {
     chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
-    plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '62%' } },
-    dataLabels: { enabled: false },
+    colors: ['#f79009'],
+    plotOptions: { bar: { columnWidth: '55%', borderRadius: 3 } },
+    dataLabels: {
+      enabled: true,
+      offsetY: -4,
+      style: { fontSize: '10px', colors: [textColor] },
+      formatter: (v: number) => (v > 0 ? fmtNum(v) : ''),
+    },
     xaxis: {
       categories: openApprovalData.map((item) => item.management),
-      labels: { style: { colors: textColor, fontSize: '11px' } },
+      labels: { rotate: -30, style: { colors: textColor, fontSize: '11px' } },
     },
-    yaxis: { labels: { style: { colors: textColor, fontSize: '11px' } } },
+    yaxis: {
+      labels: { style: { colors: textColor }, formatter: (v: number) => fmtNum(v) },
+      title: { text: 'Jumlah SS', style: { color: textColor, fontSize: '11px' } },
+    },
     grid: { borderColor: gridColor },
     tooltip: { y: { formatter: (v: number) => `${fmtNum(v)} SS` } },
   }
@@ -565,7 +573,7 @@ export default function SsPage() {
             ? <ReactApexChart key={`lap-${lapBucket}-${daily.length}-${dark ? 'd' : 'l'}`} type="bar" height={300} series={lapSeries} options={lapOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada SS pada rentang tanggal ini.</p>}
         </div>
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
+        <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
           <h3 className="mb-1 font-semibold text-theme-sm">
             Target SS per Crew — {fmtNum(targetCrew?.multiplier ?? 3)} SS per NRP
           </h3>
@@ -586,7 +594,7 @@ export default function SsPage() {
           {crewTarget.length > 0
             ? <ReactApexChart key={dark ? 'ctd' : 'ctl'} type="bar" height={320} series={crewTargetSeries} options={crewTargetOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Belum ada data manpower / pengelompokan crew.</p>}
-        </div>
+</div>
         <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
           <h3 className="mb-1 font-semibold text-theme-sm">Status Judul SS</h3>
           <p className="mb-2 text-theme-xs text-gray-400">
@@ -600,6 +608,25 @@ export default function SsPage() {
           <p className="mt-2 text-theme-xs text-gray-400">
             Approved = sudah dinilai · Menunggu Approval = outstanding (belum dinilai)
           </p>
+        </div>
+        {/* Open Approval by Management (bar chart) */}
+        <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
+          <h3 className="mb-1 font-semibold text-theme-sm">Open Approval per Management</h3>
+          <p className="mb-2 text-theme-xs text-gray-400">
+            Judul SS outstanding (belum dinilai) per Management pada Tanggal Laporan&nbsp;
+            {fmtDate(start)} – {fmtDate(end)}. Urut dari paling banyak ke paling sedikit.
+          </p>
+          {openApprovalData.length > 0
+            ? <ReactApexChart
+                key={dark ? 'oad' : 'oal'}
+                type="bar"
+                height={320}
+                series={openApprovalSeries}
+                options={openApprovalOpts}
+              />
+            : <p className="py-10 text-center text-theme-sm text-gray-400">
+                Tidak ada judul SS outstanding pada rentang ini.
+              </p>}
         </div>
         <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
           <h3 className="mb-2 font-semibold text-theme-sm">
@@ -640,25 +667,6 @@ export default function SsPage() {
           {topNrp.length > 0
             ? <ReactApexChart key={dark ? 'imd' : 'iml'} type="bar" height={400} series={innoSeries} options={innoOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data.</p>}
-        </div>
-        {/* Open Approval by Management (bar chart) */}
-<div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
-          <h3 className="mb-1 font-semibold text-theme-sm">Open Approval per Management</h3>
-          <p className="mb-2 text-theme-xs text-gray-400">
-            Judul SS outstanding (belum dinilai) per Management pada Tanggal Laporan&nbsp;
-            {fmtDate(start)} – {fmtDate(end)}. Urut dari paling banyak ke paling sedikit.
-          </p>
-          {openApprovalData.length > 0
-            ? <ReactApexChart
-                key={dark ? 'oad' : 'oal'}
-                type="bar"
-                height={320}
-                series={openApprovalSeries}
-                options={openApprovalOpts}
-              />
-            : <p className="py-10 text-center text-theme-sm text-gray-400">
-                Tidak ada judul SS outstanding pada rentang ini.
-              </p>}
         </div>
       </div>
 
