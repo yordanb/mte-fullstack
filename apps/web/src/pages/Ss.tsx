@@ -223,6 +223,20 @@ export default function SsPage() {
   const crewTargetPct = targetCrew && targetCrew.total_target
     ? (targetCrew.total_aktual / targetCrew.total_target) * 100
     : 0
+  // Status judul SS pada rentang terpilih (Tanggal Laporan).
+  const ssStatusSeries = [
+    targetCrew?.approved ?? 0,
+    targetCrew?.menunggu ?? 0,
+  ]
+  const ssStatusOpts = {
+    chart: { type: 'donut' as const, height: 300, background: 'transparent' },
+    labels: ['Approved', 'Menunggu Approval'],
+    colors: ['#12b76a', '#f79009'],
+    dataLabels: { enabled: true, formatter: (v: number) => `${v.toFixed(1)}%` },
+    legend: { position: 'bottom' as const, labels: { colors: textColor } },
+    stroke: { colors: [dark ? '#111827' : '#ffffff'] },
+    tooltip: { y: { formatter: (v: number) => `${fmtNum(v)} SS` } },
+  }
   const crewTargetSeries = [
     { name: 'Target', data: crewTarget.map((c) => c.target) },
     { name: 'Aktual', data: crewTarget.map((c) => c.aktual) },
@@ -535,7 +549,7 @@ export default function SsPage() {
             ? <ReactApexChart key={`lap-${lapBucket}-${daily.length}-${dark ? 'd' : 'l'}`} type="bar" height={300} series={lapSeries} options={lapOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada SS pada rentang tanggal ini.</p>}
         </div>
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-3 dark:bg-gray-900">
+        <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
           <h3 className="mb-1 font-semibold text-theme-sm">
             Target SS per Crew — {fmtNum(targetCrew?.multiplier ?? 3)} SS per NRP
           </h3>
@@ -556,6 +570,20 @@ export default function SsPage() {
           {crewTarget.length > 0
             ? <ReactApexChart key={dark ? 'ctd' : 'ctl'} type="bar" height={320} series={crewTargetSeries} options={crewTargetOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Belum ada data manpower / pengelompokan crew.</p>}
+        </div>
+        <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
+          <h3 className="mb-1 font-semibold text-theme-sm">Status Judul SS</h3>
+          <p className="mb-2 text-theme-xs text-gray-400">
+            Judul SS dibuat (Tanggal Laporan) pada rentang terpilih:
+            {' '}<b className="text-green-600">{fmtNum(targetCrew?.approved ?? 0)} approved</b> ·{' '}
+            <b className="text-amber-600">{fmtNum(targetCrew?.menunggu ?? 0)} menunggu approval</b>
+          </p>
+          {(ssStatusSeries[0] + ssStatusSeries[1]) > 0
+            ? <ReactApexChart key={dark ? 'ssd' : 'ssl'} type="donut" height={260} series={ssStatusSeries} options={ssStatusOpts} />
+            : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada SS pada rentang tanggal ini.</p>}
+          <p className="mt-2 text-theme-xs text-gray-400">
+            Approved = sudah dinilai · Menunggu Approval = outstanding (belum dinilai)
+          </p>
         </div>
         <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
           <h3 className="mb-2 font-semibold text-theme-sm">

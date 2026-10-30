@@ -751,11 +751,25 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
     data = [{"crew": r["crew"], "manpower": int(r["manpower"] or 0),
              "target": int(r["target"] or 0), "aktual": int(r["aktual"] or 0)}
             for r in rows]
+
+    # Status judul SS pada rentang yang sama (Tanggal Laporan):
+    # approved (sudah dinilai, grade terisi) vs menunggu approval (outstanding).
+    st = (await db.execute(text(f"""
+        SELECT COUNT(*) FILTER (WHERE grade IS NOT NULL) AS approved,
+               COUNT(*) FILTER (WHERE grade IS NULL) AS menunggu
+        FROM (
+          SELECT grade FROM ss_report
+          WHERE {where} AND tgl_laporan IS NOT NULL
+            AND tgl_laporan BETWEEN :lo AND :hi
+        ) s
+    """), p)).mappings().first()
     return {
         "multiplier": SS_TARGET_PER_NRP,
         "month_count": int(month_count),
         "total_target": sum(d["target"] for d in data),
         "total_aktual": sum(d["aktual"] for d in data),
+        "approved": int(st["approved"] or 0) if st else 0,
+        "menunggu": int(st["menunggu"] or 0) if st else 0,
         "data": data,
     }
 
