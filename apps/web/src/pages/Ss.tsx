@@ -214,7 +214,7 @@ export default function SsPage() {
     dataLabels: {
       enabled: true,
       offsetY: -18,
-      style: { fontSize: '10px', colors: [textColor] },
+      style: { fontSize: '10px', colors: [dark ? '#9ca3af' : '#111827'] },
       formatter: (v: number) => (v > 0 ? fmtNum(v) : ''),
     },
     xaxis: {
@@ -275,7 +275,7 @@ export default function SsPage() {
     chart: { type: 'donut' as const, height: 320, background: 'transparent' },
     labels: ['Approved', 'Menunggu Approval'],
     colors: ['#12b76a', '#f79009'],
-    dataLabels: { enabled: true, formatter: (v: number) => `${v.toFixed(1)}%` },
+    dataLabels: { enabled: true, formatter: (v: number) => `${v.toFixed(1)}%`, style: { fontWeight: 400 } },
     legend: { position: 'bottom' as const, labels: { colors: textColor } },
     stroke: { colors: [dark ? '#111827' : '#ffffff'] },
     tooltip: { y: { formatter: (v: number) => `${fmtNum(v)} SS` } },
