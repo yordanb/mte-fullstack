@@ -281,7 +281,7 @@ export default function SsPage() {
   ]
   const crewTargetOpts = {
     chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
-    colors: ['#98a2b3', '#465fff'],
+    colors: ['#d1d5db', '#3b82f6'],
     plotOptions: { bar: { columnWidth: '55%', borderRadius: 3 } },
     dataLabels: {
       enabled: true,
