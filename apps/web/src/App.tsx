@@ -20,6 +20,7 @@ import ProkerPage from './pages/Proker'
 import ProkerBoosterPage from './pages/ProkerBooster'
 import ProkerInjectorPage from './pages/ProkerInjector'
 import ManpowerPage from './pages/Manpower'
+import ManpowerGroupPage from './pages/ManpowerGroup'
 import { fetchMe, can } from './api/client'
 
 // ApexCharts berat (~700KB): muat hanya saat menu Performance dibuka.
@@ -85,6 +86,7 @@ export default function App() {
       {page === 'prokerbooster' && can('prokerbooster', 'view') && <ProkerBoosterPage />}
       {page === 'prokerinjector' && can('prokerinjector', 'view') && <ProkerInjectorPage />}
       {page === 'manpower' && can('manpower', 'view') && <ManpowerPage />}
+      {page === 'manpowermanage' && can('manpower', 'view') && <ManpowerGroupPage />}
       {page === 'import' && <ImportPage />}
       {page === 'users' && me.role === 'admin' && <UsersPage />}
       {page === 'audit' && me.role === 'admin' && <AuditPage />}

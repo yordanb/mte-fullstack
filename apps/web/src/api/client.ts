@@ -1751,6 +1751,7 @@ export type ManpowerImportStatus = {
     deleted?: number
     duplicates?: number
     skipped_dept?: number
+    profiles_created?: number
     dept_filter?: string[]
     periods?: string[]
     files?: string[]
@@ -1798,3 +1799,86 @@ export async function fetchManpowerRecords(params: {
   return r.data
 }
 
+
+// --- Manpower (pengelompokan Section/Crew/Status) -------------------------
+export type ManpowerBreakdown = {
+  label: string
+  total: number
+  staff: number
+  mekanik: number
+}
+
+export type ManpowerProfileRow = {
+  nrp: string
+  nama: string | null
+  jabatan: string | null
+  dept: string | null
+  divisi: string | null
+  distrik: string | null
+  section: string | null
+  crew: string | null
+  status: string | null
+  auto_filled: boolean
+  ss_closed: number
+  innovator_ss: number
+  innovator_all: number
+}
+
+export type ManpowerManage = {
+  periode: string | null
+  manpower: number
+  profiled: number
+  classified: number
+  unclassified: number
+  staff: number
+  mekanik: number
+  by_section: ManpowerBreakdown[]
+  by_crew: ManpowerBreakdown[]
+  by_status: ManpowerBreakdown[]
+  sections: string[]
+  crews: string[]
+  statuses: string[]
+  depts: string[]
+  total: number
+  page: number
+  page_size: number
+  data: ManpowerProfileRow[]
+}
+
+export async function fetchManpowerManage(params: {
+  periode?: string; dept?: string; section?: string; crew?: string; status?: string
+  search?: string; page?: number; page_size?: number; sort?: string; dir?: 'asc' | 'desc'
+}): Promise<ManpowerManage> {
+  const r = await api.get('/v1/manpower/manage', { params })
+  return r.data
+}
+
+export async function fetchManpowerProfilePeriods(): Promise<ManpowerPeriod[]> {
+  const r = await api.get('/v1/manpower/periods')
+  return r.data
+}
+
+export async function updateManpowerProfile(
+  nrp: string,
+  body: { section?: string | null; crew?: string | null; status?: string | null },
+): Promise<ManpowerProfileRow> {
+  const r = await api.patch(`/v1/manpower/manage/${encodeURIComponent(nrp)}`, body)
+  return r.data
+}
+
+export async function bulkManpowerProfile(body: {
+  nrps: string[]
+  section?: string | null
+  crew?: string | null
+  status?: string | null
+}): Promise<{ updated: number; nrps: number }> {
+  const r = await api.post('/v1/manpower/manage/bulk', body)
+  return r.data
+}
+
+export async function autofillManpowerProfile(): Promise<{
+  checked: number; created: number; filled: number; updated: number; skipped: number
+}> {
+  const r = await api.post('/v1/manpower/manage/autofill')
+  return r.data
+}

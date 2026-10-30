@@ -452,6 +452,8 @@ export function ImportPage() {
             + ((Number(e.skipped_dept ?? 0) > 0)
               ? ` · ${fmtN(e.skipped_dept)} dilewati (DEPT ${(e.dept_filter as string[] ?? []).join('/') || '-'})`
               : '')
+            + ((Number(e.profiles_created ?? 0) > 0)
+              ? ` · ${fmtN(e.profiles_created)} profil baru` : '')
             + ` · periode ${((e.periods as string[] ?? []).join(', ')) || '-'}`}
         />
       </div>

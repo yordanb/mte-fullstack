@@ -42,6 +42,95 @@ log = logging.getLogger("manpower")
 # dilaporkan sebagai `skipped_dept` pada ringkasan import.
 DEPT_ALLOW: set[str] = {"SPL2"}
 
+# --- Pengelompokan manpower (halaman "Manpower") ---------------------------
+# Section/Crew/Status disimpan per NRP di `manpower_profile`, terpisah dari
+# snapshot bulanan, sehingga tidak hilang saat import ulang.
+SECTIONS = [
+    "Big Wheel - PCH", "SPEX Mobile - Lighting",
+    "SPEX Pumping - Fabrication", "LCE", "MTE", "Dept Head",
+]
+CREWS = ["Big Wheel", "PCH", "Mobile", "Lighting", "Pumping"]
+STATUSES = ["Staff", "Mekanik"]
+EMPTY = "__EMPTY__"   # nilai filter untuk "belum diisi"
+
+# Tebakan awal (section, crew, status) dari JABATAN. Nilai yang tidak ada di
+# tabel ini ditebak lewat kata kunci pada `classify()`; semuanya bisa dikoreksi
+# manual di halaman Manpower.
+_JABATAN_MAP: dict[str, tuple[str | None, str | None, str | None]] = {
+    "SITE SUPPORT EQUIP. MECHANIC": ("SPEX Mobile - Lighting", "Mobile", "Mekanik"),
+    "COAL HAULER EQUIP. MECHANIC": ("Big Wheel - PCH", "PCH", "Mekanik"),
+    "WHEEL TYPE MECHANIC": ("Big Wheel - PCH", "Big Wheel", "Mekanik"),
+    "PUMPING & ELECTRICAL GL": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
+    "TYRE UTILIZATION GL": ("Big Wheel - PCH", "Big Wheel", "Staff"),
+    "TYRE REPAIRMAN": ("Big Wheel - PCH", "Big Wheel", "Mekanik"),
+    "LIFE CYCLE EXPERT": ("LCE", None, "Staff"),
+    "COAL HAULER EQUIP. GL": ("Big Wheel - PCH", "PCH", "Staff"),
+    "LIGHT TRUCK & LIFTING GL": ("SPEX Mobile - Lighting", "Lighting", "Staff"),
+    "WHEEL TYPE GL": ("Big Wheel - PCH", "Big Wheel", "Staff"),
+    "GENERAL CREW - PLANT 2": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
+    "SSE MAINTENANCE TECHNICAL EXPERT": ("MTE", None, "Staff"),
+    "FABRICATION GL": ("SPEX Pumping - Fabrication", None, "Staff"),
+    "TYRE REPAIR & MAINT. GL": ("Big Wheel - PCH", "Big Wheel", "Staff"),
+    "SSE TYPE MAINT. PROCESS EXPERT TL": ("MTE", None, "Staff"),
+    "TYRE MAINT. EXPERT TL": ("Big Wheel - PCH", "Big Wheel", "Staff"),
+    "TYRE LIFE CYCLE & TECH. EXPERT": ("Big Wheel - PCH", "Big Wheel", "Staff"),
+    "DRIVER TADANO": ("SPEX Mobile - Lighting", "Mobile", "Mekanik"),
+    "LIFE CYCLE EXPERT TL": ("LCE", None, "Staff"),
+    "PLANT 2 EXPERT COORDINATOR": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
+    "WHEEL MAINTENANCE TECHNICAL EXPERT": ("MTE", None, "Staff"),
+    "WHEEL TYPE MAINT. PROCESS EXPERT TL": ("MTE", None, "Staff"),
+    "TYRE UTILIZATION GL TRAINEE": ("Big Wheel - PCH", "Big Wheel", "Staff"),
+    "PUMPING & ELECTRICAL GL TRAINEE": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
+    "LIFE CYCLE EXPERT TRAINEE": ("LCE", None, "Staff"),
+}
+
+
+def classify(jabatan: str | None) -> tuple[str | None, str | None, str | None]:
+    """Tebak (section, crew, status) dari JABATAN. Semua None bila tidak yakin."""
+    raw = (jabatan or "").strip()
+    if not raw:
+        return None, None, None
+    j = " ".join(raw.upper().split())
+    if j in _JABATAN_MAP:
+        return _JABATAN_MAP[j]
+
+    status = "Mekanik" if any(
+        k in j for k in ("MECHANIC", "REPAIRMAN", "DRIVER", "TECHNICIAN")) else "Staff"
+    section: str | None = None
+    crew: str | None = None
+    if "DEPARTMENT HEAD" in j or "DEPT HEAD" in j:
+        section = "Dept Head"
+    elif "LIFE CYCLE" in j and "TYRE" not in j:
+        section = "LCE"
+    elif "FABRICATION" in j:
+        section = "SPEX Pumping - Fabrication"
+    elif "PUMPING" in j or "ELECTRICAL" in j or "PLANT 2" in j:
+        section, crew = "SPEX Pumping - Fabrication", "Pumping"
+    elif "COAL HAULER" in j:
+        section, crew = "Big Wheel - PCH", "PCH"
+    elif "TYRE" in j or "WHEEL" in j:
+        section, crew = "Big Wheel - PCH", "Big Wheel"
+    elif "LIGHT TRUCK" in j or "LIFTING" in j:
+        section, crew = "SPEX Mobile - Lighting", "Lighting"
+    elif "SITE SUPPORT" in j or "TADANO" in j:
+        section, crew = "SPEX Mobile - Lighting", "Mobile"
+    elif "SSE" in j or "EXPERT" in j:
+        section = "MTE"
+    return section, crew, status
+
+
+def _pick(value, allowed: list[str], field: str) -> str | None:
+    """Validasi nilai pilihan; string kosong = None (dikosongkan)."""
+    if value is None:
+        return None
+    s = str(value).strip()
+    if not s:
+        return None
+    for a in allowed:
+        if a.lower() == s.lower():
+            return a
+    raise HTTPException(400, f"{field} tidak dikenal: {value}")
+
 SHEET = "Report"
 HEADERS = [
     "NRP", "NAME", "JABATAN", "DEPT", "DIV", "DISTRIK",
@@ -253,7 +342,37 @@ async def _existing(db: AsyncSession, periods: list[dt.date]) -> set[tuple[dt.da
     return {(r["periode"], r["nrp"]) for r in rows}
 
 
-async def _run(import_id: str, files: list[tuple[str, bytes]], override: dt.date | None):
+async def _ensure_profiles(db: AsyncSession, rows: list[dict], by: str | None) -> int:
+    """Buat profil (beserta tebakan dari JABATAN) untuk NRP yang belum punya.
+
+    Profil yang sudah ada tidak diubah, sehingga koreksi manual aman.
+    """
+    if not rows:
+        return 0
+    nrps = sorted({r["nrp"] for r in rows if r.get("nrp")})
+    if not nrps:
+        return 0
+    have = set((await db.execute(
+        text("SELECT nrp FROM manpower_profile WHERE nrp = ANY(:n)"), {"n": nrps})).scalars())
+    payload = []
+    for r in rows:
+        nrp = r.get("nrp")
+        if not nrp or nrp in have:
+            continue
+        section, crew, status = classify(r.get("jabatan"))
+        payload.append({"nrp": nrp, "section": section, "crew": crew, "status": status,
+                        "auto": bool(section or crew or status), "by": by})
+        have.add(nrp)
+    if payload:
+        await db.execute(text(
+            "INSERT INTO manpower_profile (nrp, section, crew, status, auto, updated_by) "
+            "VALUES (:nrp, :section, :crew, :status, :auto, :by) "
+            "ON CONFLICT (nrp) DO NOTHING"), payload)
+    return len(payload)
+
+
+async def _run(import_id: str, files: list[tuple[str, bytes]], override: dt.date | None,
+               username: str | None = None):
     async with SessionLocal() as db:
         try:
             merged: dict[tuple[dt.date, str], dict] = {}
@@ -311,12 +430,18 @@ async def _run(import_id: str, files: list[tuple[str, bytes]], override: dt.date
                 {"ps": sorted(periods), "i": import_id})
             await db.commit()
 
+            # NRP baru langsung diberi kelompok awal hasil tebakan jabatan.
+            profiles_created = await _ensure_profiles(
+                db, values, by=f"import: {username}" if username else "import")
+            await db.commit()
+
             summary = {
                 "inserted": inserted,
                 "updated": updated,
                 "deleted": deleted,
                 "duplicates": duplicates,
                 "skipped_dept": skipped_dept,
+                "profiles_created": profiles_created,
                 "dept_filter": sorted(DEPT_ALLOW),
                 "periods": [p.strftime("%Y-%m") for p in sorted(periods)],
                 "files": [f for f, _ in files],
@@ -378,7 +503,7 @@ async def import_xlsx(
         {"fn": label[:300], "u": user["username"]})
     import_id = str(res.scalar_one())
     await db.commit()
-    bg.add_task(_run, import_id, payload, override)
+    bg.add_task(_run, import_id, payload, override, user["username"])
     return {"import_id": import_id, "status": "PROCESSING", "files": len(payload)}
 
 
@@ -581,3 +706,260 @@ async def get_records(
         p)).mappings().all()
     return {"total": total, "page": page, "page_size": page_size,
             "data": [dict(r) for r in rows]}
+
+# --------------------------------------------------------------------------- kelola
+# Halaman "Manpower" (grup Agent): dashboard + pengelompokan Section/Crew/Status.
+# Pengelompokan disimpan per NRP di `manpower_profile`; data orang (nama,
+# jabatan, dept, dll) tetap diambil dari snapshot bulan yang dipilih.
+_MANAGE_SORTS = ("nrp", "nama", "jabatan", "dept", "section", "crew", "status",
+                 "ss_closed", "innovator_all")
+
+_MANAGE_SELECT = """
+  m.nrp, m.nama, m.jabatan, m.dept, m.divisi, m.distrik,
+  p.section, p.crew, p.status, COALESCE(p.auto, FALSE) AS auto_filled,
+  m.ss_closed, m.innovator_ss, m.innovator_all
+"""
+
+
+def _manage_where(periode: dt.date, dept: str | None = None, section: str | None = None,
+                  crew: str | None = None, status: str | None = None,
+                  search: str | None = None) -> tuple[str, dict]:
+    conds = ["m.periode = :periode"]
+    p: dict = {"periode": periode}
+    if dept:
+        conds.append("m.dept = :dept")
+        p["dept"] = dept
+    if search:
+        conds.append("(m.nama ILIKE :q OR m.nrp ILIKE :q OR m.jabatan ILIKE :q "
+                     "OR p.section ILIKE :q)")
+        p["q"] = f"%{search}%"
+    for col, val, key in (("p.section", section, "section"),
+                          ("p.crew", crew, "crew"),
+                          ("p.status", status, "status")):
+        if not val:
+            continue
+        if val == EMPTY:
+            conds.append(f"{col} IS NULL")
+        else:
+            conds.append(f"{col} = :{key}")
+            p[key] = val
+    return " AND ".join(conds), p
+
+
+def _breakdown_dim(dim: str) -> str:
+    return (
+        " SELECT COALESCE(p." + dim + ", '(belum diisi)') AS label, COUNT(*) AS total,"
+        "        COUNT(*) FILTER (WHERE p.status = 'Staff') AS staff,"
+        "        COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik"
+        " FROM manpower_month m LEFT JOIN manpower_profile p ON p.nrp = m.nrp"
+        " WHERE {where} GROUP BY 1 ORDER BY total DESC, 1"
+    )
+
+
+@router.get("/manage", dependencies=[Depends(require_menu("manpower", "view"))])
+async def manage_dashboard(
+    periode: str | None = Query(None),
+    dept: str | None = Query(None),
+    section: str | None = Query(None),
+    crew: str | None = Query(None),
+    status: str | None = Query(None),
+    search: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=200),
+    sort: str = Query("nama"),
+    dir: str = Query("asc", pattern="^(asc|desc)$"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ringkasan + daftar manpower beserta kelompoknya untuk satu bulan."""
+    if periode:
+        try:
+            per = parse_period(periode)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    else:
+        per = (await db.execute(text("SELECT MAX(periode) FROM manpower_month"))).scalar()
+    if not per:
+        return {"periode": None, "manpower": 0, "classified": 0, "unclassified": 0,
+                "staff": 0, "mekanik": 0, "by_section": [], "by_crew": [],
+                "by_status": [], "sections": SECTIONS, "crews": CREWS,
+                "statuses": STATUSES, "depts": [], "total": 0, "page": 1,
+                "page_size": page_size, "data": [], "profiled": 0}
+
+    # KPI mengikuti seluruh filter; rincian per dimensi mengabaikan filter
+    # dimensi itu sendiri supaya tetap bisa dibandingkan.
+    w, p = _manage_where(per, dept, section, crew, status, search)
+    s = (await db.execute(text(f"""
+        SELECT COUNT(*) AS manpower,
+               COUNT(*) FILTER (WHERE p.section IS NOT NULL AND p.crew IS NOT NULL
+                                  AND p.status IS NOT NULL) AS classified,
+               COUNT(*) FILTER (WHERE p.status = 'Staff') AS staff,
+               COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik,
+               COUNT(p.nrp) AS profiled
+        FROM manpower_month m LEFT JOIN manpower_profile p ON p.nrp = m.nrp
+        WHERE {w}
+    """), p)).mappings().first()
+
+    async def breakdown(dim: str, **skip):
+        ww, pp = _manage_where(per, dept, **{**dict(section=section, crew=crew,
+                                                    status=status), **skip}, search=search)
+        rows = (await db.execute(text(_breakdown_dim(dim).format(where=ww)),
+                                 pp)).mappings().all()
+        return [{"label": r["label"], "total": int(r["total"] or 0),
+                 "staff": int(r["staff"] or 0), "mekanik": int(r["mekanik"] or 0)}
+                for r in rows]
+
+    by_section = await breakdown("section", section=None)
+    by_crew = await breakdown("crew", crew=None)
+    by_status = await breakdown("status", status=None)
+
+    depts = [r[0] for r in (await db.execute(text(
+        "SELECT DISTINCT dept FROM manpower_month WHERE periode = :p "
+        "AND dept IS NOT NULL ORDER BY 1"), {"p": per})).all()]
+
+    if sort not in _MANAGE_SORTS:
+        sort = "nama"
+    # `nrp` ada di kedua tabel, jadi kolom pengurutan harus diberi alias.
+    sort_expr = ("m." if sort in ("nrp", "nama", "jabatan", "dept", "ss_closed",
+                                  "innovator_all") else "p.") + sort
+    p["lim"] = page_size
+    p["off"] = (page - 1) * page_size
+    total = (await db.execute(text(
+        f"SELECT COUNT(*) FROM manpower_month m "
+        f"LEFT JOIN manpower_profile p ON p.nrp = m.nrp WHERE {w}"), p)).scalar() or 0
+    rows = (await db.execute(text(
+        f"SELECT {_MANAGE_SELECT} FROM manpower_month m "
+        f"LEFT JOIN manpower_profile p ON p.nrp = m.nrp WHERE {w} "
+        f"ORDER BY {sort_expr} {dir.upper()} NULLS LAST, m.nrp LIMIT :lim OFFSET :off"),
+        p)).mappings().all()
+
+    manpower = int(s["manpower"] or 0)
+    profiled = int(s["profiled"] or 0)
+    classified = int(s["classified"] or 0)
+    return {
+        "periode": per.strftime("%Y-%m"),
+        "manpower": manpower,
+        "profiled": profiled,
+        "classified": classified,
+        "unclassified": manpower - classified,
+        "staff": int(s["staff"] or 0),
+        "mekanik": int(s["mekanik"] or 0),
+        "by_section": by_section,
+        "by_crew": by_crew,
+        "by_status": by_status,
+        "sections": SECTIONS,
+        "crews": CREWS,
+        "statuses": STATUSES,
+        "depts": depts,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "data": [dict(r) for r in rows],
+    }
+
+
+@router.patch("/manage/{nrp}", dependencies=[Depends(require_menu("manpower", "edit"))])
+async def update_profile(nrp: str, body: dict, db: AsyncSession = Depends(get_db),
+                         user=Depends(get_current_user)):
+    """Ubah pengelompokan satu orang. Kirim "" untuk mengosongkan."""
+    key = (nrp or "").strip().upper()
+    if not key:
+        raise HTTPException(400, "NRP kosong")
+    exists = (await db.execute(text(
+        "SELECT 1 FROM manpower_month WHERE nrp = :n LIMIT 1"), {"n": key})).scalar()
+    if not exists:
+        raise HTTPException(404, "NRP tidak ditemukan pada data manpower")
+
+    sets, params = [], {"n": key, "u": user["username"]}
+    for field, allowed in (("section", SECTIONS), ("crew", CREWS), ("status", STATUSES)):
+        if field in body:
+            sets.append(f"{field} = :{field}")
+            params[field] = _pick(body[field], allowed, field)
+    if not sets:
+        raise HTTPException(400, "Tidak ada field yang diubah")
+
+    await db.execute(text(
+        "INSERT INTO manpower_profile (nrp) VALUES (:n) "
+        "ON CONFLICT (nrp) DO NOTHING"), {"n": key})
+    await db.execute(text(
+        f"UPDATE manpower_profile SET {', '.join(sets)}, auto = FALSE, "
+        f"updated_by = :u, updated_at = now() WHERE nrp = :n"), params)
+    await db.commit()
+    row = (await db.execute(text(
+        "SELECT nrp, section, crew, status, auto AS auto_filled, updated_by, updated_at "
+        "FROM manpower_profile WHERE nrp = :n"), {"n": key})).mappings().first()
+    return dict(row) if row else {"nrp": key}
+
+
+@router.post("/manage/bulk", dependencies=[Depends(require_menu("manpower", "edit"))])
+async def bulk_update(body: dict, db: AsyncSession = Depends(get_db),
+                      user=Depends(get_current_user)):
+    """Ubah pengelompokan banyak orang sekaligus (field yang dikirim saja)."""
+    nrps = sorted({str(n).strip().upper() for n in (body.get("nrps") or [])
+                   if str(n).strip()})
+    if not nrps:
+        raise HTTPException(400, "Pilih minimal satu baris")
+    sets, params = [], {"n": nrps, "u": user["username"]}
+    for field, allowed in (("section", SECTIONS), ("crew", CREWS), ("status", STATUSES)):
+        if field in body:
+            sets.append(f"{field} = :{field}")
+            params[field] = _pick(body[field], allowed, field)
+    if not sets:
+        raise HTTPException(400, "Tidak ada field yang diubah")
+
+    await db.execute(text(
+        "INSERT INTO manpower_profile (nrp) VALUES (:n) "
+        "ON CONFLICT (nrp) DO NOTHING"), [{"n": x} for x in nrps])
+    res = await db.execute(text(
+        f"UPDATE manpower_profile SET {', '.join(sets)}, auto = FALSE, "
+        f"updated_by = :u, updated_at = now() WHERE nrp = ANY(:n)"), params)
+    await db.commit()
+    return {"updated": res.rowcount or 0, "nrps": len(nrps)}
+
+
+@router.post("/manage/autofill", dependencies=[Depends(require_menu("manpower", "edit"))])
+async def autofill(db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
+    """Isi Section/Crew/Status yang masih kosong dari JABATAN terbaru.
+
+    Hanya mengisi kolom yang kosong; nilai yang sudah diisi manual tidak diubah.
+    """
+    rows = (await db.execute(text("""
+        SELECT DISTINCT ON (m.nrp) m.nrp, m.jabatan, p.nrp AS profil
+        FROM manpower_month m
+        LEFT JOIN manpower_profile p ON p.nrp = m.nrp
+        WHERE p.nrp IS NULL OR p.section IS NULL OR p.crew IS NULL OR p.status IS NULL
+        ORDER BY m.nrp, m.periode DESC
+    """))).mappings().all()
+
+    new_rows: list[dict] = []
+    upd_rows: list[dict] = []
+    skipped = 0
+    for r in rows:
+        section, crew, status = classify(r["jabatan"])
+        if not (section or crew or status):
+            skipped += 1
+            continue
+        item = {"nrp": r["nrp"], "section": section, "crew": crew, "status": status,
+                "by": user["username"]}
+        (upd_rows if r["profil"] else new_rows).append(item)
+
+    if new_rows:
+        await db.execute(text(
+            "INSERT INTO manpower_profile (nrp, section, crew, status, auto, updated_by) "
+            "VALUES (:nrp, :section, :crew, :status, TRUE, :by) "
+            "ON CONFLICT (nrp) DO NOTHING"), new_rows)
+    if upd_rows:
+        await db.execute(text("""
+            UPDATE manpower_profile SET
+              section = COALESCE(section, :section),
+              crew    = COALESCE(crew, :crew),
+              status  = COALESCE(status, :status),
+              updated_by = :by,
+              updated_at = now()
+            WHERE nrp = :nrp
+        """), upd_rows)
+    await db.commit()
+    total = len(new_rows) + len(upd_rows)
+    log.info("manpower autofill: %s baru, %s dilengkapi, %s tanpa tebakan",
+             len(new_rows), len(upd_rows), skipped)
+    return {"checked": len(rows), "created": len(new_rows), "filled": len(upd_rows),
+            "updated": total, "skipped": skipped}
