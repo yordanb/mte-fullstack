@@ -1166,8 +1166,8 @@ export type SsTargetCrew = {
   sh_gl: number
   /** Lainnya (INPUT PENILAIAN, SS REVISI, dsb.). */
   lainnya: number
-  /** Breakdown menunggu per nilai status_ss (peran evaluator). */
-  status_ss_breakdown: { status_ss: string; jumlah: number }[]
+  /** Breakdown menunggu per nilai management (penilai). */
+  status_ss_breakdown: { management: string; jumlah: number }[]
   data: SsTargetCrewRow[]
 }
 

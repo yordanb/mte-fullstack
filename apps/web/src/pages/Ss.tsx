@@ -236,7 +236,7 @@ export default function SsPage() {
     (a: { jumlah: number }, b: { jumlah: number }) => b.jumlah - a.jumlah
   )
   const openApprovalSeries = openApprovalData.map((item) => ({
-    name: item.status_ss,
+    name: item.management,
     data: [item.jumlah],
   }))
   const openApprovalOpts = {
@@ -244,7 +244,7 @@ export default function SsPage() {
     plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '62%' } },
     dataLabels: { enabled: false },
     xaxis: {
-      categories: openApprovalData.map((item) => item.status_ss),
+      categories: openApprovalData.map((item) => item.management),
       labels: { style: { colors: textColor, fontSize: '11px' } },
     },
     yaxis: { labels: { style: { colors: textColor, fontSize: '11px' } } },

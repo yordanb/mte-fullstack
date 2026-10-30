@@ -777,13 +777,13 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
         ) s
     """), p)).mappings().first()
     status_breakdown_rows = (await db.execute(text(f"""
-        SELECT status_ss, COUNT(*) AS jumlah
+        SELECT management, COUNT(*) AS jumlah
         FROM ss_report
         WHERE {where} AND tgl_laporan IS NOT NULL
           AND tgl_laporan BETWEEN :lo AND :hi
           AND grade IS NULL
-          AND status_ss IS NOT NULL AND status_ss <> ''
-        GROUP BY status_ss ORDER BY jumlah DESC
+          AND management IS NOT NULL AND management <> ''
+        GROUP BY management ORDER BY jumlah DESC
     """), p)).mappings().all()
     return {
         "multiplier": SS_TARGET_PER_NRP,
