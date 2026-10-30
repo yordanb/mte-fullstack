@@ -606,7 +606,7 @@ export default function SsPage() {
           <p className="mb-2 text-theme-xs text-gray-500">
             Aktual {fmtNum(targetCrew?.total_aktual)} dari target{' '}
             {fmtNum(targetCrew?.total_target)} SS
-            {crewTargetPct > 0 && <> · capaian {fmtPct(crewTargetPct)}</>}
+            {crewTargetPct > 0 && <> · capaian <span className="text-gray-900 dark:text-gray-100">{fmtPct(crewTargetPct)}</span></>}
             {targetCrew && targetCrew.month_count === 0 && (
               <span className="text-gray-400"> · belum ada data manpower</span>
             )}
