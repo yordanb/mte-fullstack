@@ -192,21 +192,21 @@ export default function ManpowerPage() {
               <p className="text-theme-xs text-gray-500">Karyawan Sudah Berinovasi</p>
               <p className="text-theme-2xl font-bold text-brand-600">
                 {fmtNum(summary.innovator_all)}
-                <span className="text-theme-sm font-normal text-gray-400"> / {fmtNum(summary.manpower)} orang</span>
+                <span className="text-theme-sm font-normal text-gray-400"> / {fmtNum(summary.assessed)} orang</span>
               </p>
               <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
                 <div
                   className="h-full rounded-full bg-brand-500"
                   style={{
-                    width: `${summary.manpower
-                      ? Math.min(100, (summary.innovator_all / summary.manpower) * 100)
+                    width: `${summary.assessed
+                      ? Math.min(100, (summary.innovator_all / summary.assessed) * 100)
                       : 0}%`,
                   }}
                 />
               </div>
               <p className="mt-1 text-theme-xs text-gray-400">
-                {fmtPct(summary.manpower ? (summary.innovator_all / summary.manpower) * 100 : 0)} dari total
-                karyawan · {fmtNum(summary.innovator_ss)} via SS
+                {fmtPct(summary.assessed ? (summary.innovator_all / summary.assessed) * 100 : 0)} dari manpower dinilai
+                · {fmtNum(summary.innovator_ss)} via SS
               </p>
             </div>
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
@@ -214,13 +214,16 @@ export default function ManpowerPage() {
               <p className="text-theme-2xl font-bold text-brand-600">{fmtNum(summary.manpower)}</p>
               <p className="text-theme-xs text-gray-400">
                 {summary.dept.length} dept
+                {summary.general_crew > 0 && (
+                  <> · {fmtNum(summary.general_crew)} General Crew tidak dinilai</>
+                )}
               </p>
             </div>
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
               <p className="text-theme-xs text-gray-500">Innovator SS</p>
               <p className="text-theme-2xl font-bold text-green-600">{fmtNum(summary.innovator_ss)}</p>
               <p className="text-theme-xs text-gray-400">
-                coverage {fmtPct(summary.coverage_pct)} dari manpower
+                coverage {fmtPct(summary.coverage_pct)} dari {fmtNum(summary.assessed)} dinilai
               </p>
             </div>
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
@@ -248,12 +251,17 @@ export default function ManpowerPage() {
 
           <div className="mb-4 rounded-2xl border bg-white p-4 dark:bg-gray-900">
             <h3 className="mb-2 font-semibold text-theme-sm">Rincian per Dept — {fmtPeriode(summary.periode)}</h3>
+            <p className="mb-2 text-theme-xs text-gray-400">
+              General Crew dikecualikan dari kolom Dinilai, coverage, dan SS per manpower.
+            </p>
             <div className="overflow-x-auto">
               <table className="w-full text-theme-sm">
                 <thead className="bg-gray-50 text-theme-xs uppercase text-gray-500 dark:bg-gray-800">
                   <tr>
                     <th className="px-3 py-2 text-left font-semibold">Dept</th>
                     <th className="px-3 py-2 text-right font-semibold">Manpower</th>
+                    <th className="px-3 py-2 text-right font-semibold">General Crew</th>
+                    <th className="px-3 py-2 text-right font-semibold">Dinilai</th>
                     <th className="px-3 py-2 text-right font-semibold">Innovator SS</th>
                     <th className="px-3 py-2 text-left font-semibold">Coverage</th>
                     <th className="px-3 py-2 text-right font-semibold">SS Closed</th>
@@ -265,6 +273,8 @@ export default function ManpowerPage() {
                     <tr key={d.dept} className="border-t dark:border-gray-800">
                       <td className="px-3 py-1.5 font-medium">{d.dept}</td>
                       <td className="px-3 py-1.5 text-right">{fmtNum(d.manpower)}</td>
+                      <td className="px-3 py-1.5 text-right text-gray-400">{fmtNum(d.general_crew)}</td>
+                      <td className="px-3 py-1.5 text-right">{fmtNum(d.assessed)}</td>
                       <td className="px-3 py-1.5 text-right">{fmtNum(d.innovator_ss)}</td>
                       <td className="px-3 py-1.5">
                         <div className="flex items-center gap-2">
@@ -284,6 +294,8 @@ export default function ManpowerPage() {
                   <tr className="border-t-2 font-semibold dark:border-gray-700">
                     <td className="px-3 py-1.5">Total</td>
                     <td className="px-3 py-1.5 text-right">{fmtNum(summary.manpower)}</td>
+                    <td className="px-3 py-1.5 text-right text-gray-400">{fmtNum(summary.general_crew)}</td>
+                    <td className="px-3 py-1.5 text-right">{fmtNum(summary.assessed)}</td>
                     <td className="px-3 py-1.5 text-right">{fmtNum(summary.innovator_ss)}</td>
                     <td className="px-3 py-1.5 text-xs text-gray-500">{fmtPct(summary.coverage_pct)}</td>
                     <td className="px-3 py-1.5 text-right">{fmtNum(summary.ss_closed)}</td>

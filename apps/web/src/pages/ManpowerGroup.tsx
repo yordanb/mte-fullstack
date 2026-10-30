@@ -308,11 +308,16 @@ export default function ManpowerGroupPage() {
       {data && data.manpower > 0 && (
         <>
           {/* KPI */}
-          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
               <p className="text-theme-xs text-gray-500">Total Manpower — {fmtPeriode(data.periode)}</p>
               <p className="text-theme-2xl font-bold text-brand-600">{fmtNum(data.manpower)}</p>
-              <p className="text-theme-xs text-gray-400">orang (DEPT SPL2)</p>
+              <p className="text-theme-xs text-gray-400">
+                orang (DEPT SPL2)
+                {data.general_crew > 0 && (
+                  <> · {fmtNum(data.assessed)} dinilai performanya</>
+                )}
+              </p>
             </div>
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
               <p className="text-theme-xs text-gray-500">Sudah Dikelompokkan</p>
@@ -331,21 +336,29 @@ export default function ManpowerGroupPage() {
               <p className="text-theme-xs text-gray-500">Staff</p>
               <p className="text-theme-2xl font-bold text-gray-800 dark:text-white">{fmtNum(data.staff)}</p>
               <p className="text-theme-xs text-gray-400">
-                {fmtPct(data.manpower ? (data.staff / data.manpower) * 100 : 0)} dari manpower
+                {fmtPct(data.assessed ? (data.staff / data.assessed) * 100 : 0)} dari manpower dinilai
               </p>
             </div>
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
               <p className="text-theme-xs text-gray-500">Mekanik</p>
               <p className="text-theme-2xl font-bold text-amber-600">{fmtNum(data.mekanik)}</p>
               <p className="text-theme-xs text-gray-400">
-                {fmtPct(data.manpower ? (data.mekanik / data.manpower) * 100 : 0)} dari manpower
+                {fmtPct(data.assessed ? (data.mekanik / data.assessed) * 100 : 0)} dari manpower dinilai
               </p>
             </div>
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
               <p className="text-theme-xs text-gray-500">Repairman</p>
               <p className="text-theme-2xl font-bold text-cyan-600">{fmtNum(data.repairman)}</p>
               <p className="text-theme-xs text-gray-400">
-                {fmtPct(data.manpower ? (data.repairman / data.manpower) * 100 : 0)} dari manpower
+                {fmtPct(data.assessed ? (data.repairman / data.assessed) * 100 : 0)} dari manpower dinilai
+              </p>
+            </div>
+            <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
+              <p className="text-theme-xs text-gray-500">General Crew</p>
+              <p className="text-theme-2xl font-bold text-gray-500">{fmtNum(data.general_crew)}</p>
+              <p className="text-theme-xs text-gray-400">
+                {fmtPct(data.manpower ? (data.general_crew / data.manpower) * 100 : 0)} dari manpower · tidak
+                dihitung di performa
               </p>
             </div>
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
@@ -375,13 +388,14 @@ export default function ManpowerGroupPage() {
                         <th className="px-3 py-2 text-right font-semibold">Staff</th>
                         <th className="px-3 py-2 text-right font-semibold">Mekanik</th>
                         <th className="px-3 py-2 text-right font-semibold">Repairman</th>
+                        <th className="px-3 py-2 text-right font-semibold">General Crew</th>
                         <th className="px-3 py-2 text-right font-semibold">Belum</th>
                         <th className="px-3 py-2 text-right font-semibold">Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {block.rows.length === 0 && (
-                        <tr><td colSpan={6} className="px-3 py-4 text-center text-gray-400">Tidak ada data.</td></tr>
+                        <tr><td colSpan={7} className="px-3 py-4 text-center text-gray-400">Tidak ada data.</td></tr>
                       )}
                       {block.rows.map((b) => (
                         <tr key={b.label} className="border-t dark:border-gray-800">
@@ -391,8 +405,9 @@ export default function ManpowerGroupPage() {
                           <td className="px-3 py-1.5 text-right">{fmtNum(b.staff)}</td>
                           <td className="px-3 py-1.5 text-right">{fmtNum(b.mekanik)}</td>
                           <td className="px-3 py-1.5 text-right">{fmtNum(b.repairman)}</td>
+                          <td className="px-3 py-1.5 text-right text-gray-500">{fmtNum(b.general_crew)}</td>
                           <td className="px-3 py-1.5 text-right text-gray-400">
-                            {fmtNum(b.total - b.staff - b.mekanik - b.repairman)}
+                            {fmtNum(b.total - b.staff - b.mekanik - b.repairman - b.general_crew)}
                           </td>
                           <td className="px-3 py-1.5 text-right font-semibold">{fmtNum(b.total)}</td>
                         </tr>
@@ -400,6 +415,9 @@ export default function ManpowerGroupPage() {
                     </tbody>
                   </table>
                 </div>
+                <p className="mt-2 text-theme-xs text-gray-400">
+                  Persentase performa memakai manpower dinilai (total dikurangi General Crew).
+                </p>
               </div>
             ))}
           </div>

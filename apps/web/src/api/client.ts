@@ -1675,6 +1675,10 @@ export async function fetchInjectorImportStatus(id: string): Promise<InjectorImp
 export type ManpowerPeriod = {
   periode: string
   manpower: number
+  /** Status "General Crew": dikecualikan dari perhitungan performa. */
+  general_crew: number
+  /** manpower - general_crew; dipakai sebagai pembagi persentase. */
+  assessed: number
   innovator_ss: number
   ss_closed: number
   coverage_pct: number
@@ -1684,6 +1688,8 @@ export type ManpowerPeriod = {
 export type ManpowerDept = {
   dept: string
   manpower: number
+  general_crew: number
+  assessed: number
   innovator_ss: number
   coverage_pct: number
   ss_closed: number
@@ -1693,6 +1699,8 @@ export type ManpowerDept = {
 export type ManpowerSummary = {
   periode: string
   manpower: number
+  general_crew: number
+  assessed: number
   innovator_ss: number
   innovator_qcc: number
   innovator_all: number
@@ -1807,6 +1815,7 @@ export type ManpowerBreakdown = {
   staff: number
   mekanik: number
   repairman: number
+  general_crew: number
 }
 
 export type ManpowerProfileRow = {
@@ -1834,6 +1843,9 @@ export type ManpowerManage = {
   staff: number
   mekanik: number
   repairman: number
+  general_crew: number
+  /** manpower - general_crew; dasar persentase Staff/Mekanik di dashboard. */
+  assessed: number
   by_section: ManpowerBreakdown[]
   by_crew: ManpowerBreakdown[]
   by_status: ManpowerBreakdown[]

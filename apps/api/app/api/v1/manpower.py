@@ -54,7 +54,10 @@ CREWS = [
     "MTE", "LCE",
 ]
 # Section Tyre tidak memakai status Mekanik: hanya Staff atau Repairman.
-STATUSES = ["Staff", "Mekanik", "Repairman"]
+# Status "General Crew" dikecualikan dari perhitungan performa (coverage SS,
+# innovator, SS per manpower, dan rasio Staff/Mekanik di dashboard Manpower).
+STATUSES = ["Staff", "Mekanik", "Repairman", "General Crew"]
+GENERAL_CREW = "General Crew"
 EMPTY = "__EMPTY__"   # nilai filter untuk "belum diisi"
 
 # Tebakan awal (section, crew, status) dari JABATAN. Nilai yang tidak ada di
@@ -71,7 +74,7 @@ _JABATAN_MAP: dict[str, tuple[str | None, str | None, str | None]] = {
     "COAL HAULER EQUIP. GL": ("Big Wheel - PCH", "PCH", "Staff"),
     "LIGHT TRUCK & LIFTING GL": ("SPEX Mobile - Lighting", "Lighting", "Staff"),
     "WHEEL TYPE GL": ("Big Wheel - PCH", "Big Wheel", "Staff"),
-    "GENERAL CREW - PLANT 2": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
+    "GENERAL CREW - PLANT 2": ("SPEX Pumping - Fabrication", "Pumping", "General Crew"),
     "SSE MAINTENANCE TECHNICAL EXPERT": ("MTE", "MTE", "Staff"),
     "FABRICATION GL": ("SPEX Pumping - Fabrication", "Pumping", "Staff"),
     "TYRE REPAIR & MAINT. GL": ("Tyre", "Tyre", "Staff"),
@@ -104,6 +107,8 @@ def classify(jabatan: str | None) -> tuple[str | None, str | None, str | None]:
     crew: str | None = None
     if "DEPARTMENT HEAD" in j or "DEPT HEAD" in j:
         section = "Dept Head"
+    elif "GENERAL CREW" in j:
+        section, crew, status = "SPEX Pumping - Fabrication", "Pumping", GENERAL_CREW
     elif "TYRE" in j:
         # Semua yang berbau TYRE masuk Section + Crew Tyre. Section Tyre tidak
         # punya Mekanik: jabatan tyre repairman -> Repairman, selain itu
@@ -552,26 +557,51 @@ def _where(periode: dt.date, dept: str | None, divisi: str | None,
     return " AND ".join(conds), p
 
 
+def _perf_where(periode: dt.date, dept: str | None, divisi: str | None) -> tuple[str, dict]:
+    """WHERE untuk perhitungan performa; butuh alias `m` (manpower_month) dan
+    `p` (manpower_profile) karena status General Crew dikecualikan."""
+    conds = ["m.periode = :periode"]
+    p: dict = {"periode": periode}
+    if dept:
+        conds.append("m.dept = :dept")
+        p["dept"] = dept
+    if divisi:
+        conds.append("m.divisi = :divisi")
+        p["divisi"] = divisi
+    return " AND ".join(conds), p
+
+
+# General Crew tidak dihitung sebagai manpower yang dinilai performanya.
+_PERF = "p.status IS DISTINCT FROM :gc"
+
+
 @router.get("/periods", dependencies=[Depends(require_menu("manpower", "view"))])
 async def get_periods(db: AsyncSession = Depends(get_db)):
-    rows = (await db.execute(text("""
-        SELECT to_char(periode, 'YYYY-MM') AS periode,
+    rows = (await db.execute(text(f"""
+        SELECT to_char(m.periode, 'YYYY-MM') AS periode,
                COUNT(*) AS manpower,
-               COUNT(*) FILTER (WHERE innovator_ss > 0) AS innovator_ss,
-               SUM(ss_closed) AS ss_closed,
-               MAX(updated_at) AS updated_at
-        FROM manpower_month
-        GROUP BY periode ORDER BY periode DESC
-    """))).mappings().all()
+               COUNT(*) FILTER (WHERE p.status = :gc) AS general_crew,
+               COUNT(*) FILTER (WHERE {_PERF}) AS assessed,
+               COUNT(*) FILTER (WHERE m.innovator_ss > 0 AND {_PERF}) AS innovator_ss,
+               COALESCE(SUM(m.ss_closed) FILTER (WHERE {_PERF}), 0) AS ss_closed,
+               MAX(m.updated_at) AS updated_at
+        FROM manpower_month m
+        LEFT JOIN manpower_profile p ON p.nrp = m.nrp
+        GROUP BY m.periode ORDER BY m.periode DESC
+    """), {"gc": GENERAL_CREW})).mappings().all()
     out = []
     for r in rows:
         mp = r["manpower"] or 0
+        assessed = r["assessed"] or 0
         out.append({
             "periode": r["periode"],
             "manpower": mp,
+            "general_crew": r["general_crew"] or 0,
+            "assessed": assessed,
             "innovator_ss": r["innovator_ss"] or 0,
             "ss_closed": int(r["ss_closed"] or 0),
-            "coverage_pct": round((r["innovator_ss"] or 0) / mp * 100, 1) if mp else 0,
+            "coverage_pct": (round((r["innovator_ss"] or 0) / assessed * 100, 1)
+                             if assessed else 0),
             "updated_at": str(r["updated_at"]) if r["updated_at"] else None,
         })
     return out
@@ -583,31 +613,38 @@ async def get_trend(
     divisi: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    conds, p = [], {}
+    conds, p = [], {"gc": GENERAL_CREW}
     if dept:
-        conds.append("dept = :dept")
+        conds.append("m.dept = :dept")
         p["dept"] = dept
     if divisi:
-        conds.append("divisi = :divisi")
+        conds.append("m.divisi = :divisi")
         p["divisi"] = divisi
     where = ("WHERE " + " AND ".join(conds)) if conds else ""
     rows = (await db.execute(text(f"""
-        SELECT to_char(periode, 'YYYY-MM') AS periode,
+        SELECT to_char(m.periode, 'YYYY-MM') AS periode,
                COUNT(*) AS manpower,
-               COUNT(*) FILTER (WHERE innovator_ss > 0) AS innovator_ss,
-               SUM(ss_closed) AS ss_closed
-        FROM manpower_month {where}
-        GROUP BY periode ORDER BY periode
+               COUNT(*) FILTER (WHERE p.status = :gc) AS general_crew,
+               COUNT(*) FILTER (WHERE {_PERF}) AS assessed,
+               COUNT(*) FILTER (WHERE m.innovator_ss > 0 AND {_PERF}) AS innovator_ss,
+               COALESCE(SUM(m.ss_closed) FILTER (WHERE {_PERF}), 0) AS ss_closed
+        FROM manpower_month m
+        LEFT JOIN manpower_profile p ON p.nrp = m.nrp
+        {where}
+        GROUP BY m.periode ORDER BY m.periode
     """), p)).mappings().all()
     out = []
     for r in rows:
-        mp = r["manpower"] or 0
+        assessed = r["assessed"] or 0
         out.append({
             "periode": r["periode"],
-            "manpower": mp,
+            "manpower": r["manpower"] or 0,
+            "general_crew": r["general_crew"] or 0,
+            "assessed": assessed,
             "innovator_ss": r["innovator_ss"] or 0,
             "ss_closed": int(r["ss_closed"] or 0),
-            "coverage_pct": round((r["innovator_ss"] or 0) / mp * 100, 1) if mp else 0,
+            "coverage_pct": (round((r["innovator_ss"] or 0) / assessed * 100, 1)
+                             if assessed else 0),
         })
     return out
 
@@ -623,55 +660,69 @@ async def get_summary(
         per = parse_period(periode)
     except ValueError as e:
         raise HTTPException(400, str(e))
-    where, p = _where(per, dept, divisi)
+    where, p = _perf_where(per, dept, divisi)
     row = (await db.execute(text(f"""
         SELECT COUNT(*) AS manpower,
-               COUNT(*) FILTER (WHERE innovator_ss > 0) AS innovator_ss,
-               COUNT(*) FILTER (WHERE innovator_qcc > 0) AS innovator_qcc,
-               COUNT(*) FILTER (WHERE innovator_all > 0) AS innovator_all,
-               COALESCE(SUM(ss_closed), 0) AS ss_closed,
-               COALESCE(SUM(dt_closed), 0) AS dt_closed,
-               COALESCE(SUM(qcp_closed), 0) AS qcp_closed,
-               COALESCE(SUM(qcc_closed), 0) AS qcc_closed,
-               MAX(updated_at) AS updated_at
-        FROM manpower_month WHERE {where}
-    """), p)).mappings().first()
+               COUNT(*) FILTER (WHERE p.status = :gc) AS general_crew,
+               COUNT(*) FILTER (WHERE {_PERF}) AS assessed,
+               COUNT(*) FILTER (WHERE m.innovator_ss > 0 AND {_PERF}) AS innovator_ss,
+               COUNT(*) FILTER (WHERE m.innovator_qcc > 0 AND {_PERF}) AS innovator_qcc,
+               COUNT(*) FILTER (WHERE m.innovator_all > 0 AND {_PERF}) AS innovator_all,
+               COALESCE(SUM(m.ss_closed) FILTER (WHERE {_PERF}), 0) AS ss_closed,
+               COALESCE(SUM(m.dt_closed) FILTER (WHERE {_PERF}), 0) AS dt_closed,
+               COALESCE(SUM(m.qcp_closed) FILTER (WHERE {_PERF}), 0) AS qcp_closed,
+               COALESCE(SUM(m.qcc_closed) FILTER (WHERE {_PERF}), 0) AS qcc_closed,
+               MAX(m.updated_at) AS updated_at
+        FROM manpower_month m
+        LEFT JOIN manpower_profile p ON p.nrp = m.nrp
+        WHERE {where}
+    """), {**p, "gc": GENERAL_CREW})).mappings().first()
     mp = row["manpower"] or 0
+    gc = row["general_crew"] or 0
+    assessed = row["assessed"] or 0
     innov = row["innovator_ss"] or 0
     ssd = int(row["ss_closed"] or 0)
 
     # Rincian per dept selalu untuk seluruh periode (mengikuti filter divisi saja)
     # supaya tabel tetap informatif walau filter dept dipilih.
-    dw, dp = _where(per, None, divisi)
+    dw, dp = _perf_where(per, None, divisi)
     breaks = (await db.execute(text(f"""
-        SELECT COALESCE(NULLIF(TRIM(dept), ''), '(kosong)') AS dept,
+        SELECT COALESCE(NULLIF(TRIM(m.dept), ''), '(kosong)') AS dept,
                COUNT(*) AS manpower,
-               COUNT(*) FILTER (WHERE innovator_ss > 0) AS innovator_ss,
-               COALESCE(SUM(ss_closed), 0) AS ss_closed
-        FROM manpower_month WHERE {dw}
+               COUNT(*) FILTER (WHERE p.status = :gc) AS general_crew,
+               COUNT(*) FILTER (WHERE {_PERF}) AS assessed,
+               COUNT(*) FILTER (WHERE m.innovator_ss > 0 AND {_PERF}) AS innovator_ss,
+               COALESCE(SUM(m.ss_closed) FILTER (WHERE {_PERF}), 0) AS ss_closed
+        FROM manpower_month m
+        LEFT JOIN manpower_profile p ON p.nrp = m.nrp
+        WHERE {dw}
         GROUP BY 1 ORDER BY manpower DESC, 1
-    """), dp)).mappings().all()
+    """), {**dp, "gc": GENERAL_CREW})).mappings().all()
     dept_rows = []
     for b in breaks:
-        m = b["manpower"] or 0
+        a = b["assessed"] or 0
         dept_rows.append({
             "dept": b["dept"],
-            "manpower": m,
+            "manpower": b["manpower"] or 0,
+            "general_crew": b["general_crew"] or 0,
+            "assessed": a,
             "innovator_ss": b["innovator_ss"] or 0,
-            "coverage_pct": round((b["innovator_ss"] or 0) / m * 100, 1) if m else 0,
+            "coverage_pct": round((b["innovator_ss"] or 0) / a * 100, 1) if a else 0,
             "ss_closed": int(b["ss_closed"] or 0),
-            "ss_per_manpower": round(int(b["ss_closed"] or 0) / m, 2) if m else 0,
+            "ss_per_manpower": round(int(b["ss_closed"] or 0) / a, 2) if a else 0,
         })
 
     return {
         "periode": per.strftime("%Y-%m"),
         "manpower": mp,
+        "general_crew": gc,
+        "assessed": assessed,
         "innovator_ss": innov,
         "innovator_qcc": row["innovator_qcc"] or 0,
         "innovator_all": row["innovator_all"] or 0,
-        "coverage_pct": round(innov / mp * 100, 1) if mp else 0,
+        "coverage_pct": round(innov / assessed * 100, 1) if assessed else 0,
         "ss_closed": ssd,
-        "ss_per_manpower": round(ssd / mp, 2) if mp else 0,
+        "ss_per_manpower": round(ssd / assessed, 2) if assessed else 0,
         "dt_closed": int(row["dt_closed"] or 0),
         "qcp_closed": int(row["qcp_closed"] or 0),
         "qcc_closed": int(row["qcc_closed"] or 0),
@@ -761,7 +812,8 @@ def _breakdown_dim(dim: str) -> str:
         " SELECT COALESCE(p." + dim + ", '(belum diisi)') AS label, COUNT(*) AS total,"
         "        COUNT(*) FILTER (WHERE p.status = 'Staff') AS staff,"
         "        COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik,"
-        "        COUNT(*) FILTER (WHERE p.status = 'Repairman') AS repairman"
+        "        COUNT(*) FILTER (WHERE p.status = 'Repairman') AS repairman,"
+        "        COUNT(*) FILTER (WHERE p.status = 'General Crew') AS general_crew"
         " FROM manpower_month m LEFT JOIN manpower_profile p ON p.nrp = m.nrp"
         " WHERE {where} GROUP BY 1 ORDER BY total DESC, 1"
     )
@@ -791,10 +843,11 @@ async def manage_dashboard(
         per = (await db.execute(text("SELECT MAX(periode) FROM manpower_month"))).scalar()
     if not per:
         return {"periode": None, "manpower": 0, "classified": 0, "unclassified": 0,
-                "staff": 0, "mekanik": 0, "repairman": 0, "by_section": [],
-                "by_crew": [], "by_status": [], "sections": SECTIONS, "crews": CREWS,
-                "statuses": STATUSES, "depts": [], "total": 0, "page": 1,
-                "page_size": page_size, "data": [], "profiled": 0}
+                "staff": 0, "mekanik": 0, "repairman": 0, "general_crew": 0,
+                "assessed": 0, "by_section": [], "by_crew": [], "by_status": [],
+                "sections": SECTIONS, "crews": CREWS, "statuses": STATUSES,
+                "depts": [], "total": 0, "page": 1, "page_size": page_size,
+                "data": [], "profiled": 0}
 
     # KPI mengikuti seluruh filter; rincian per dimensi mengabaikan filter
     # dimensi itu sendiri supaya tetap bisa dibandingkan.
@@ -806,6 +859,8 @@ async def manage_dashboard(
                COUNT(*) FILTER (WHERE p.status = 'Staff') AS staff,
                COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik,
                COUNT(*) FILTER (WHERE p.status = 'Repairman') AS repairman,
+               COUNT(*) FILTER (WHERE p.status = 'General Crew') AS general_crew,
+               COUNT(*) FILTER (WHERE p.status IS DISTINCT FROM 'General Crew') AS assessed,
                COUNT(p.nrp) AS profiled
         FROM manpower_month m LEFT JOIN manpower_profile p ON p.nrp = m.nrp
         WHERE {w}
@@ -818,7 +873,8 @@ async def manage_dashboard(
                                  pp)).mappings().all()
         return [{"label": r["label"], "total": int(r["total"] or 0),
                  "staff": int(r["staff"] or 0), "mekanik": int(r["mekanik"] or 0),
-                 "repairman": int(r["repairman"] or 0)}
+                 "repairman": int(r["repairman"] or 0),
+                 "general_crew": int(r["general_crew"] or 0)}
                 for r in rows]
 
     by_section = await breakdown("section", section=None)
@@ -857,6 +913,8 @@ async def manage_dashboard(
         "staff": int(s["staff"] or 0),
         "mekanik": int(s["mekanik"] or 0),
         "repairman": int(s["repairman"] or 0),
+        "general_crew": int(s["general_crew"] or 0),
+        "assessed": int(s["assessed"] or 0),
         "by_section": by_section,
         "by_crew": by_crew,
         "by_status": by_status,
