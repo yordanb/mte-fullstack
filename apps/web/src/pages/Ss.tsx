@@ -20,6 +20,13 @@ const fmtDate = (v?: string | null) => {
 const fmtNum = (v?: number | null) =>
   v == null ? '-' : new Intl.NumberFormat('id-ID').format(Math.round(v))
 
+const abbrName = (v?: string | null) => {
+  if (!v) return '-'
+  const parts = v.trim().split(/\s+/).filter(Boolean)
+  if (parts.length <= 1) return v
+  return `${parts[0]} ${parts.slice(1).map((p) => p[0].toUpperCase()).join('')}`
+}
+
 /** Rupiah ringkas: 480.740.000 -> "Rp 480,7 jt", 35.752.979.526 -> "Rp 35,75 M". */
 const fmtRp = (v?: number | null) => {
   const n = Math.abs(v ?? 0)
@@ -249,7 +256,7 @@ export default function SsPage() {
       formatter: (v: number) => (v > 0 ? fmtNum(v) : ''),
     },
     xaxis: {
-      categories: openApprovalData.map((item) => item.management),
+      categories: openApprovalData.map((item) => abbrName(item.management)),
       labels: { rotate: -30, style: { colors: textColor, fontSize: '11px' } },
     },
     yaxis: {
