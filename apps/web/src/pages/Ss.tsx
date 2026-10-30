@@ -553,7 +553,7 @@ export default function SsPage() {
       )}
 
       {/* Charts */}
-      <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
+      <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-4">
         <div className="rounded-2xl border bg-white p-4 lg:col-span-3 dark:bg-gray-900">
           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
             <div>
@@ -584,6 +584,20 @@ export default function SsPage() {
           {lapRows.length > 0
             ? <ReactApexChart key={`lap-${lapBucket}-${daily.length}-${dark ? 'd' : 'l'}`} type="bar" height={300} series={lapSeries} options={lapOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada SS pada rentang tanggal ini.</p>}
+        </div>
+        <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
+          <h3 className="mb-1 font-semibold text-theme-sm">Capaian Approved</h3>
+          <ReactApexChart 
+            type="donut" height={260} 
+            series={[targetCrew?.approved ?? 0, Math.max(0, (targetCrew?.total_target ?? 0) - (targetCrew?.approved ?? 0))]} 
+            options={{
+              chart: { type: 'donut', background: 'transparent' },
+              labels: ['Approved', 'Sisa Target'],
+              colors: ['#12b76a', '#e5e7eb'],
+              dataLabels: { enabled: true, formatter: (v: number) => `${v.toFixed(1)}%`, style: { fontWeight: 400 } },
+              legend: { position: 'bottom', labels: { colors: textColor } },
+            }} 
+          />
         </div>
         <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
           <h3 className="mb-1 font-semibold text-theme-sm">
