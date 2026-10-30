@@ -380,8 +380,9 @@ export default function SsPage() {
 
       <p className="mb-3 text-theme-xs text-gray-500">
         Upload / update data SS dilakukan di halaman <b>Update Data</b> (menu Operasional).{' '}
-        EIICTM di kartu bawah dihitung dari <b>Tanggal Laporan</b> (pembuatan SS) dibagi manpower
-        aktif; status <b>General Crew</b> tidak dihitung.
+        EIICTM di kartu bawah menghitung NRP yang punya minimal 1 <b>judul SS Approved</b>{' '}
+        (dikelompokkan menurut Tanggal Menilai) dibagi manpower aktif; status{' '}
+        <b>General Crew</b> tidak dihitung.
       </p>
 
       {msg && (
@@ -396,7 +397,7 @@ export default function SsPage() {
           <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
             <p
               className="text-theme-xs text-gray-500"
-              title="EIICTM — Employee Innovation Involvement Coverage Through Manpower: jumlah NRP yang membuat minimal 1 SS (Tanggal Laporan) dibagi jumlah manpower aktif. General Crew tidak dihitung."
+              title="EIICTM — Employee Innovation Involvement Coverage Through Manpower: jumlah NRP yang punya minimal 1 judul SS Approved (menurut Tanggal Menilai) dibagi jumlah manpower aktif. General Crew tidak dihitung."
             >
               EIICTM
             </p>
@@ -412,12 +413,13 @@ export default function SsPage() {
                 'belum ada data manpower'
               ) : eiictm.month_count === 1 ? (
                 <>
-                  {fmtNum(eiictm.involved)} NRP dari {fmtNum(eiictm.assessed)} manpower dinilai
+                  {fmtNum(eiictm.involved)} NRP dengan SS approved dari{' '}
+                  {fmtNum(eiictm.assessed)} manpower dinilai
                 </>
               ) : (
                 <>
-                  rata-rata {eiictm.month_count} bulan: {fmtNum(eiictm.involved_avg)} NRP dari{' '}
-                  {fmtNum(eiictm.assessed_avg)} manpower dinilai
+                  rata-rata {eiictm.month_count} bulan: {fmtNum(eiictm.involved_avg)} NRP dengan SS
+                  approved dari {fmtNum(eiictm.assessed_avg)} manpower dinilai
                 </>
               )}
               {eiictm && eiictm.general_crew > 0 && (

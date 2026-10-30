@@ -597,10 +597,12 @@ async def get_kpi(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)
 async def get_eiictm(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
     """EIICTM — Employee Innovation Involvement Coverage Through Manpower.
 
-    Pembilang : NRP aktif yang membuat minimal 1 SS pada bulan itu (TANGGAL
-                LAPORAN), mengikuti filter non-tanggal pada halaman ini.
+    Pembilang : NRP yang punya minimal 1 Judul SS berstatus APPROVED pada bulan
+                itu (dikelompokkan menurut TANGGAL MENILAI / approval),
+                mengikuti filter non-tanggal pada halaman ini.
     Penyebut  : manpower aktif bulan itu; status "General Crew" tidak dihitung.
 
+    SS yang masih outstanding (belum dinilai / belum approved) tidak dihitung.
     NRP yang tidak ada pada snapshot manpower bulan tersebut (mis. sudah
     keluar) tidak ikut dihitung, sehingga nilainya tidak melebihi 100%.
     Bila rentang mencakup beberapa bulan, angkanya adalah rata-rata
@@ -635,13 +637,15 @@ async def get_eiictm(f: dict = Depends(_params), db: AsyncSession = Depends(get_
         ), ss AS (
           SELECT mm.periode, COUNT(DISTINCT mm.nrp) AS involved
           FROM (
-            SELECT nrp, tgl_laporan FROM ss_report
-            WHERE {where} AND tgl_laporan IS NOT NULL
-              AND tgl_laporan BETWEEN :lo AND :hi
+            SELECT nrp, tgl_menilai FROM ss_report
+            WHERE {where}
+              AND grade IS NOT NULL              -- hanya SS yang sudah approved
+              AND tgl_menilai IS NOT NULL
+              AND tgl_menilai BETWEEN :lo AND :hi
           ) s
           JOIN manpower_month mm
             ON mm.nrp = s.nrp
-           AND mm.periode = date_trunc('month', s.tgl_laporan)
+           AND mm.periode = date_trunc('month', s.tgl_menilai)
           LEFT JOIN manpower_profile pr ON pr.nrp = mm.nrp
           WHERE pr.status IS DISTINCT FROM :gc
           GROUP BY mm.periode
