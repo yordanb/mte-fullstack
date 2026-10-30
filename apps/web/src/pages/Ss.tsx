@@ -625,19 +625,24 @@ export default function SsPage() {
           </p>
         </div>
         {/* Open Approval by Management (bar chart) */}
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
-          <h3 className="mb-1 font-semibold text-theme-sm">Open Approval per Management</h3>
-          {openApprovalData.length > 0
-            ? <ReactApexChart
-                key={dark ? 'oad' : 'oal'}
-                type="bar"
-                height={320}
-                series={openApprovalSeries}
-                options={openApprovalOpts}
-              />
-            : <p className="py-10 text-center text-theme-sm text-gray-400">
-                Tidak ada judul SS outstanding pada rentang ini.
-              </p>}
+        <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900 flex flex-col justify-between">
+          <div>
+            <h3 className="mb-1 font-semibold text-theme-sm">Open Approval per Management</h3>
+            {openApprovalData.length > 0
+              ? <ReactApexChart
+                  key={dark ? 'oad' : 'oal'}
+                  type="bar"
+                  height={300}
+                  series={openApprovalSeries}
+                  options={openApprovalOpts}
+                />
+              : <p className="py-10 text-center text-theme-sm text-gray-400">
+                  Tidak ada judul SS outstanding pada rentang ini.
+                </p>}
+          </div>
+          <p className="mt-2 text-theme-xs text-gray-400">
+            Last update data: {targetCrew?.last_update ? new Date(targetCrew.last_update).toLocaleString('id-ID') : '-'}
+          </p>
         </div>
         <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
           <h3 className="mb-2 font-semibold text-theme-sm">

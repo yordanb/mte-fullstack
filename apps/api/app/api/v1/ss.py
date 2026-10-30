@@ -797,6 +797,7 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
         "sh_gl": int(st["sh_gl"] or 0) if st else 0,
         "lainnya": int(st["lainnya"] or 0) if st else 0,
         "status_ss_breakdown": [dict(r) for r in status_breakdown_rows],
+        "last_update": (await db.execute(text("SELECT MAX(updated_at) FROM ss_report"))).scalar().isoformat() if st else None,
         "data": data,
     }
 

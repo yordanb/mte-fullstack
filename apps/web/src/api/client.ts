@@ -1168,6 +1168,7 @@ export type SsTargetCrew = {
   lainnya: number
   /** Breakdown menunggu per nilai management (penilai). */
   status_ss_breakdown: { management: string; jumlah: number }[]
+  last_update?: string | null
   data: SsTargetCrewRow[]
 }
 
