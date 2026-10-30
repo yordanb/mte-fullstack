@@ -698,8 +698,9 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
              TANGGAL LAPORAN dalam rentang filter, mengikuti filter
              non-tanggal di halaman ini.
 
-    Crew dibaca dari pengelompokan manpower (`manpower_profile.crew`); judul
-    SS dari NRP tanpa crew masuk bucket "(belum diisi)" dengan target 0.
+    Crew dibaca dari pengelompokan manpower (`manpower_profile.crew`); orang
+    Section "Dept Head" (tanpa Crew) diberi bucket "Dept Head", sisanya yang
+    tanpa pengelompokan jatuh ke bucket "(belum diisi)" dengan target 0.
     """
     where, p = _filters(f, with_date=False)
     p["gc"] = GENERAL_CREW
@@ -723,7 +724,10 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
 
     rows = (await db.execute(text(f"""
         WITH mp AS (
-          SELECT COALESCE(pr.crew, '(belum diisi)') AS crew, COUNT(*) AS manpower
+          SELECT CASE WHEN pr.crew IS NOT NULL THEN pr.crew
+                      WHEN pr.section = 'Dept Head' THEN 'Dept Head'
+                      ELSE '(belum diisi)' END AS crew,
+                 COUNT(*) AS manpower
           FROM manpower_month m
           LEFT JOIN manpower_profile pr ON pr.nrp = m.nrp
           WHERE m.periode BETWEEN date_trunc('month', CAST(:lo AS date))
@@ -731,7 +735,10 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
             AND pr.status IS DISTINCT FROM :gc
           GROUP BY 1
         ), ss AS (
-          SELECT COALESCE(pr.crew, '(belum diisi)') AS crew, COUNT(*) AS jumlah
+          SELECT CASE WHEN pr.crew IS NOT NULL THEN pr.crew
+                      WHEN pr.section = 'Dept Head' THEN 'Dept Head'
+                      ELSE '(belum diisi)' END AS crew,
+                 COUNT(*) AS jumlah
           FROM (
             SELECT nrp FROM ss_report
             WHERE {where} AND tgl_laporan IS NOT NULL
