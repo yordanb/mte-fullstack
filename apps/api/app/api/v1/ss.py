@@ -765,6 +765,7 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
     st = (await db.execute(text(f"""
         SELECT
           COUNT(*) FILTER (WHERE grade IS NOT NULL) AS approved,
+          COUNT(*) FILTER (WHERE grade IS NULL) AS menunggu,
           COUNT(*) FILTER (WHERE grade IS NULL AND upper(status_ss) LIKE '%PM%') AS pm,
           COUNT(*) FILTER (WHERE grade IS NULL AND upper(status_ss) LIKE '%DEPT HEAD%') AS dept_head,
           COUNT(*) FILTER (WHERE grade IS NULL AND upper(status_ss) LIKE '%SH / GL%') AS sh_gl,
@@ -781,11 +782,11 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
         "total_target": sum(d["target"] for d in data),
         "total_aktual": sum(d["aktual"] for d in data),
         "approved": int(st["approved"] or 0) if st else 0,
+        "menunggu": int(st["menunggu"] or 0) if st else 0,
         "pm": int(st["pm"] or 0) if st else 0,
         "dept_head": int(st["dept_head"] or 0) if st else 0,
         "sh_gl": int(st["sh_gl"] or 0) if st else 0,
         "lainnya": int(st["lainnya"] or 0) if st else 0,
-        "menunggu": int(st["menunggu"] or 0) if st else 0,
         "data": data,
     }
 
