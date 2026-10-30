@@ -760,8 +760,8 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
             for r in rows]
 
     # Status judul SS pada rentang yang sama (Tanggal Laporan):
-    # approved (sudah dinilai, grade terisi) vs menunggu approval per peran:
-    # PM, Dept Head, SH/GL — ditentukan dari status_ss outstanding.
+    # approved (sudah dinilai, grade terisi) vs menunggu approval (outstanding),
+    # dengan breakdown per status_ss (peran evaluator).
     st = (await db.execute(text(f"""
         SELECT
           COUNT(*) FILTER (WHERE grade IS NOT NULL) AS approved,
@@ -776,6 +776,15 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
             AND tgl_laporan BETWEEN :lo AND :hi
         ) s
     """), p)).mappings().first()
+    status_breakdown_rows = (await db.execute(text(f"""
+        SELECT status_ss, COUNT(*) AS jumlah
+        FROM ss_report
+        WHERE {where} AND tgl_laporan IS NOT NULL
+          AND tgl_laporan BETWEEN :lo AND :hi
+          AND grade IS NULL
+          AND status_ss IS NOT NULL AND status_ss <> ''
+        GROUP BY status_ss ORDER BY jumlah DESC
+    """), p)).mappings().all()
     return {
         "multiplier": SS_TARGET_PER_NRP,
         "month_count": int(month_count),
@@ -787,6 +796,7 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
         "dept_head": int(st["dept_head"] or 0) if st else 0,
         "sh_gl": int(st["sh_gl"] or 0) if st else 0,
         "lainnya": int(st["lainnya"] or 0) if st else 0,
+        "status_ss_breakdown": [dict(r) for r in status_breakdown_rows],
         "data": data,
     }
 

@@ -225,22 +225,36 @@ export default function SsPage() {
   const crewTargetPct = targetCrew && targetCrew.total_target
     ? (targetCrew.total_aktual / targetCrew.total_target) * 100
     : 0
-  // Status judul SS pada rentang terpilih (Tanggal Laporan).
-  const ssStatusLabels = ['Approved', 'PM', 'Dept Head', 'SH / GL']
+  // Status judul SS pada rentang terpilih (Tanggal Laporan): Approved vs Menunggu Approval.
   const ssStatusSeries = [
     targetCrew?.approved ?? 0,
-    targetCrew?.pm ?? 0,
-    targetCrew?.dept_head ?? 0,
-    targetCrew?.sh_gl ?? 0,
+    targetCrew?.menunggu ?? 0,
   ]
-  if ((targetCrew?.lainnya ?? 0) > 0) {
-    ssStatusLabels.push('Lainnya')
-    ssStatusSeries.push(targetCrew!.lainnya)
+
+  // Open Approval per Management: outstanding SS (grade NULL) grouped by status_ss, ordered desc
+  const openApprovalData = (targetCrew?.status_ss_breakdown ?? []).sort(
+    (a: { jumlah: number }, b: { jumlah: number }) => b.jumlah - a.jumlah
+  )
+  const openApprovalSeries = openApprovalData.map((item) => ({
+    name: item.status_ss,
+    data: [item.jumlah],
+  }))
+  const openApprovalOpts = {
+    chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
+    plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '62%' } },
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: openApprovalData.map((item) => item.status_ss),
+      labels: { style: { colors: textColor, fontSize: '11px' } },
+    },
+    yaxis: { labels: { style: { colors: textColor, fontSize: '11px' } } },
+    grid: { borderColor: gridColor },
+    tooltip: { y: { formatter: (v: number) => `${fmtNum(v)} SS` } },
   }
   const ssStatusOpts = {
     chart: { type: 'donut' as const, height: 320, background: 'transparent' },
-    labels: ssStatusLabels,
-    colors: ['#12b76a', '#2563eb', '#7c3aed', '#0d9488', '#98a2b3'],
+    labels: ['Approved', 'Menunggu Approval'],
+    colors: ['#12b76a', '#f79009'],
     dataLabels: { enabled: true, formatter: (v: number) => `${v.toFixed(1)}%` },
     legend: { position: 'bottom' as const, labels: { colors: textColor } },
     stroke: { colors: [dark ? '#111827' : '#ffffff'] },
@@ -573,7 +587,7 @@ export default function SsPage() {
             ? <ReactApexChart key={dark ? 'ctd' : 'ctl'} type="bar" height={320} series={crewTargetSeries} options={crewTargetOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Belum ada data manpower / pengelompokan crew.</p>}
         </div>
-        <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
+        <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
           <h3 className="mb-1 font-semibold text-theme-sm">Status Judul SS</h3>
           <p className="mb-2 text-theme-xs text-gray-400">
             Judul SS dibuat (Tanggal Laporan) pada rentang terpilih:
@@ -626,6 +640,25 @@ export default function SsPage() {
           {topNrp.length > 0
             ? <ReactApexChart key={dark ? 'imd' : 'iml'} type="bar" height={400} series={innoSeries} options={innoOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data.</p>}
+        </div>
+        {/* Open Approval by Management (bar chart) */}
+<div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
+          <h3 className="mb-1 font-semibold text-theme-sm">Open Approval per Management</h3>
+          <p className="mb-2 text-theme-xs text-gray-400">
+            Judul SS outstanding (belum dinilai) per Management pada Tanggal Laporan&nbsp;
+            {fmtDate(start)} – {fmtDate(end)}. Urut dari paling banyak ke paling sedikit.
+          </p>
+          {openApprovalData.length > 0
+            ? <ReactApexChart
+                key={dark ? 'oad' : 'oal'}
+                type="bar"
+                height={320}
+                series={openApprovalSeries}
+                options={openApprovalOpts}
+              />
+            : <p className="py-10 text-center text-theme-sm text-gray-400">
+                Tidak ada judul SS outstanding pada rentang ini.
+              </p>}
         </div>
       </div>
 
