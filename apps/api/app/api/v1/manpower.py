@@ -874,8 +874,11 @@ async def manage_dashboard(
     w, p = _manage_where(per, dept, section, crew, status, search)
     s = (await db.execute(text(f"""
         SELECT COUNT(*) AS manpower,
-               COUNT(*) FILTER (WHERE p.section IS NOT NULL AND p.crew IS NOT NULL
-                                  AND p.status IS NOT NULL) AS classified,
+               -- Dept Head tidak punya Crew; dianggap lengkap tanpa Crew.
+               COUNT(*) FILTER (WHERE p.section IS NOT NULL
+                                  AND p.status IS NOT NULL
+                                  AND (p.crew IS NOT NULL
+                                       OR p.section = 'Dept Head')) AS classified,
                COUNT(*) FILTER (WHERE p.status = 'Staff') AS staff,
                COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik,
                COUNT(*) FILTER (WHERE p.status = 'Repairman') AS repairman,
