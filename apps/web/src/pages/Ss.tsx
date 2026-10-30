@@ -553,8 +553,8 @@ export default function SsPage() {
       )}
 
       {/* Charts */}
-      <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-4">
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-3 dark:bg-gray-900">
+      <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
             <div>
               <h3 className="font-semibold text-theme-sm">Jumlah SS per Tanggal Laporan</h3>
