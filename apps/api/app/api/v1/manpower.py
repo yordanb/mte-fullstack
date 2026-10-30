@@ -45,13 +45,17 @@ DEPT_ALLOW: set[str] = {"SPL2"}
 # --- Pengelompokan manpower (halaman "Manpower") ---------------------------
 # Section/Crew/Status disimpan per NRP di `manpower_profile`, terpisah dari
 # snapshot bulanan, sehingga tidak hilang saat import ulang.
+# Section/Crew "General Crew" tersedia sebagai nilai pengelompokan (selain
+# status) supaya orang-orang General Crew bisa difilter/dikelompokkan seragam
+# dari halaman Manpower.
 SECTIONS = [
     "Big Wheel - PCH", "SPEX Mobile - Lighting",
     "SPEX Pumping - Fabrication", "LCE", "MTE", "Tyre", "Dept Head",
+    "General Crew",
 ]
 CREWS = [
     "Big Wheel", "PCH", "Mobile", "Lighting", "Pumping", "Tyre",
-    "MTE", "LCE",
+    "MTE", "LCE", "General Crew",
 ]
 # Section Tyre tidak memakai status Mekanik: hanya Staff atau Repairman.
 # Status "General Crew" dikecualikan dari perhitungan performa (coverage SS,
