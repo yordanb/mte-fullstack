@@ -5,9 +5,9 @@ import ReactApexChart from 'react-apexcharts'
 import { DatePicker } from '../components/DatePicker'
 import {
   errMsg, todayLocal, monthStartLocal,
-  fetchSsFilters, fetchSsKpi, fetchSsTrend,
+  fetchSsFilters, fetchSsKpi, fetchSsTrend, fetchSsEiictm,
   fetchSsBreakdown, fetchSsTop, fetchSsRecords, exportSsCsv,
-  type SsBasis, type SsBreak, type SsFilters, type SsKpi,
+  type SsBasis, type SsBreak, type SsEiictm, type SsFilters, type SsKpi,
   type SsRecord, type SsTop, type SsTrend,
 } from '../api/client'
 
@@ -44,6 +44,9 @@ const GRADE_COLORS: Record<string, string> = {
 
 const inp = 'rounded-lg border px-2 py-1.5 text-theme-sm'
 
+const fmtPct = (v?: number | null) =>
+  v == null ? '-' : `${new Intl.NumberFormat('id-ID', { maximumFractionDigits: 1 }).format(Number(v))}%`
+
 export default function SsPage() {
   const today = todayLocal()
   // Default rentang: tanggal 1 bulan berjalan s/d hari ini.
@@ -62,6 +65,7 @@ export default function SsPage() {
 
   const [filters, setFilters] = useState<SsFilters | null>(null)
   const [kpi, setKpi] = useState<SsKpi | null>(null)
+  const [eiictm, setEiictm] = useState<SsEiictm | null>(null)
   const [trend, setTrend] = useState<SsTrend[]>([])
   const [daily, setDaily] = useState<SsTrend[]>([])
   const [lapBucket, setLapBucket] = useState<'hari' | 'bulan'>('hari')
@@ -123,11 +127,13 @@ export default function SsPage() {
       fetchSsBreakdown({ ...params, by: 'kategori' }),
       fetchSsBreakdown({ ...params, by: 'dept' }),
       fetchSsTop({ ...params, by: 'pencetus', limit: 10 }),
+      fetchSsEiictm(params),
     ])
-      .then(([k, t, dl, g, ka, d, tp]) => {
+      .then(([k, t, dl, g, ka, d, tp, ei]) => {
         if (!alive) return
         setKpi(k); setTrend(t); setDaily(dl)
         setByGrade(g); setByKat(ka); setByDept(d); setTopP(tp)
+        setEiictm(ei)
       })
       .catch((e) => { if (alive) setMsg(`gagal: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoading(false) })
@@ -373,7 +379,9 @@ export default function SsPage() {
       </div>
 
       <p className="mb-3 text-theme-xs text-gray-500">
-        Upload / update data SS dilakukan di halaman <b>Update Data</b> (menu Operasional).
+        Upload / update data SS dilakukan di halaman <b>Update Data</b> (menu Operasional).{' '}
+        EIICTM di kartu bawah dihitung dari <b>Tanggal Laporan</b> (pembuatan SS) dibagi manpower
+        aktif; status <b>General Crew</b> tidak dihitung.
       </p>
 
       {msg && (
@@ -384,7 +392,45 @@ export default function SsPage() {
 
       {/* KPI */}
       {kpi && (
-        <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
+            <p
+              className="text-theme-xs text-gray-500"
+              title="EIICTM — Employee Innovation Involvement Coverage Through Manpower: jumlah NRP yang membuat minimal 1 SS (Tanggal Laporan) dibagi jumlah manpower aktif. General Crew tidak dihitung."
+            >
+              EIICTM
+            </p>
+            <p className="text-theme-2xl font-bold text-indigo-600">{eiictm ? fmtPct(eiictm.pct) : '-'}</p>
+            <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+              <div
+                className="h-full rounded-full bg-indigo-500"
+                style={{ width: `${Math.min(100, eiictm?.pct ?? 0)}%` }}
+              />
+            </div>
+            <p className="mt-1 text-theme-xs text-gray-400">
+              {!eiictm || eiictm.month_count === 0 ? (
+                'belum ada data manpower'
+              ) : eiictm.month_count === 1 ? (
+                <>
+                  {fmtNum(eiictm.involved)} NRP dari {fmtNum(eiictm.assessed)} manpower dinilai
+                </>
+              ) : (
+                <>
+                  rata-rata {eiictm.month_count} bulan: {fmtNum(eiictm.involved_avg)} NRP dari{' '}
+                  {fmtNum(eiictm.assessed_avg)} manpower dinilai
+                </>
+              )}
+              {eiictm && eiictm.general_crew > 0 && (
+                <span className="block">
+                  General Crew{' '}
+                  {fmtNum(eiictm.month_count > 1
+                    ? eiictm.general_crew / eiictm.month_count
+                    : eiictm.general_crew)}{' '}
+                  tidak dihitung
+                </span>
+              )}
+            </p>
+          </div>
           <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
             <p className="text-theme-xs text-gray-500">Total SS</p>
             <p className="text-theme-2xl font-bold text-brand-600">{fmtNum(kpi.total)}</p>

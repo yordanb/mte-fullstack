@@ -51,6 +51,10 @@ COLS = [
 # Kosongkan set (set()) bila ingin menerima semua DEPT.
 DEPT_ALLOW: set[str] = {"SPL2"}
 
+# Status manpower yang tidak dihitung sebagai manpower aktif pada EIICTM
+# (lihat `manpower_profile` di menu Manpower).
+GENERAL_CREW = "General Crew"
+
 BATCH = 2000
 MAX_EXPORT = 100000
 
@@ -586,6 +590,93 @@ async def get_kpi(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)
         "grade_f": row["grade_f"] or 0,
         "outstanding": row["outstanding"] or 0,
         "pending": row["pending"] or 0,
+    }
+
+
+@router.get("/eiictm", dependencies=[Depends(require_role("admin"))])
+async def get_eiictm(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
+    """EIICTM — Employee Innovation Involvement Coverage Through Manpower.
+
+    Pembilang : NRP aktif yang membuat minimal 1 SS pada bulan itu (TANGGAL
+                LAPORAN), mengikuti filter non-tanggal pada halaman ini.
+    Penyebut  : manpower aktif bulan itu; status "General Crew" tidak dihitung.
+
+    NRP yang tidak ada pada snapshot manpower bulan tersebut (mis. sudah
+    keluar) tidak ikut dihitung, sehingga nilainya tidak melebihi 100%.
+    Bila rentang mencakup beberapa bulan, angkanya adalah rata-rata
+    tertimbang (total pembilang / total penyebut per bulan).
+    """
+    where, p = _filters(f, with_date=False)
+    p["gc"] = GENERAL_CREW
+    bounds = (await db.execute(text(
+        "SELECT MIN(periode) AS lo, MAX(periode) AS hi FROM manpower_month"
+    ))).mappings().first()
+    if not bounds or not bounds["lo"]:
+        return {"pct": 0, "involved": 0, "assessed": 0, "general_crew": 0,
+                "involved_avg": 0, "assessed_avg": 0, "month_count": 0,
+                "first": None, "last": None, "months": []}
+    lo = f["start"] or bounds["lo"]
+    hi = f["end"] or bounds["hi"]
+    if lo > hi:
+        lo, hi = hi, lo
+    p["lo"], p["hi"] = lo, hi
+
+    rows = (await db.execute(text(f"""
+        WITH mp AS (
+          SELECT m.periode,
+                 COUNT(*) AS manpower,
+                 COUNT(*) FILTER (WHERE pr.status = :gc) AS general_crew,
+                 COUNT(*) FILTER (WHERE pr.status IS DISTINCT FROM :gc) AS assessed
+          FROM manpower_month m
+          LEFT JOIN manpower_profile pr ON pr.nrp = m.nrp
+          WHERE m.periode BETWEEN date_trunc('month', CAST(:lo AS date))
+                              AND date_trunc('month', CAST(:hi AS date))
+          GROUP BY m.periode
+        ), ss AS (
+          SELECT mm.periode, COUNT(DISTINCT mm.nrp) AS involved
+          FROM (
+            SELECT nrp, tgl_laporan FROM ss_report
+            WHERE {where} AND tgl_laporan IS NOT NULL
+              AND tgl_laporan BETWEEN :lo AND :hi
+          ) s
+          JOIN manpower_month mm
+            ON mm.nrp = s.nrp
+           AND mm.periode = date_trunc('month', s.tgl_laporan)
+          LEFT JOIN manpower_profile pr ON pr.nrp = mm.nrp
+          WHERE pr.status IS DISTINCT FROM :gc
+          GROUP BY mm.periode
+        )
+        SELECT to_char(mp.periode, 'YYYY-MM') AS periode,
+               mp.manpower, mp.general_crew, mp.assessed,
+               COALESCE(ss.involved, 0) AS involved
+        FROM mp LEFT JOIN ss ON ss.periode = mp.periode
+        ORDER BY mp.periode
+    """), p)).mappings().all()
+
+    months = [{
+        "periode": r["periode"],
+        "manpower": int(r["manpower"] or 0),
+        "general_crew": int(r["general_crew"] or 0),
+        "assessed": int(r["assessed"] or 0),
+        "involved": int(r["involved"] or 0),
+        "pct": (round(int(r["involved"] or 0) / int(r["assessed"]) * 100, 1)
+                if r["assessed"] else 0),
+    } for r in rows]
+
+    n = len(months)
+    involved = sum(m["involved"] for m in months)
+    assessed = sum(m["assessed"] for m in months)
+    return {
+        "pct": round(involved / assessed * 100, 1) if assessed else 0,
+        "involved": involved,
+        "assessed": assessed,
+        "general_crew": sum(m["general_crew"] for m in months),
+        "involved_avg": round(involved / n, 1) if n else 0,
+        "assessed_avg": round(assessed / n, 1) if n else 0,
+        "month_count": n,
+        "first": months[0]["periode"] if n else None,
+        "last": months[-1]["periode"] if n else None,
+        "months": months,
     }
 
 

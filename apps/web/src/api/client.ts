@@ -999,6 +999,30 @@ export type SsKpi = {
 }
 
 export type SsTrend = { period: string; laporan: number; menilai: number }
+
+/** EIICTM — Employee Innovation Involvement Coverage Through Manpower. */
+export type SsEiictmMonth = {
+  periode: string
+  manpower: number
+  general_crew: number
+  assessed: number
+  involved: number
+  pct: number
+}
+
+export type SsEiictm = {
+  /** pembilang / penyebut x 100; rata-rata tertimbang bila >1 bulan */
+  pct: number
+  involved: number
+  assessed: number
+  general_crew: number
+  involved_avg: number
+  assessed_avg: number
+  month_count: number
+  first: string | null
+  last: string | null
+  months: SsEiictmMonth[]
+}
 export type SsBreak = { label: string; total: number; reward: number }
 export type SsTop = { key: string; nama: string; total: number; reward: number }
 
@@ -1100,6 +1124,11 @@ export async function fetchSsKpi(params: SsParams): Promise<SsKpi> {
 
 export async function fetchSsTrend(params: SsParams & { granularity?: 'day' | 'month' | 'year' }): Promise<SsTrend[]> {
   const r = await api.get('/v1/ss/trend', { params })
+  return r.data
+}
+
+export async function fetchSsEiictm(params: SsParams): Promise<SsEiictm> {
+  const r = await api.get('/v1/ss/eiictm', { params })
   return r.data
 }
 
