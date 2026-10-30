@@ -850,6 +850,41 @@ async def get_breakdown(
     return [dict(r) for r in rows]
 
 
+@router.get("/innovator-month", dependencies=[Depends(require_role("admin"))])
+async def get_innovator_month(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
+    """Jumlah NRP unik yang membuat SS per bulan (TANGGAL LAPORAN).
+
+    Pengganti Pareto Top 10 Pencetus Ide: per bulan dihitung NRP yang muncul
+    (membuat minimal 1 judul SS), baik yang approved maupun outstanding,
+    sesuai filter non-tanggal halaman. Rentang tanggal mengikuti filter; bila tidak
+    diisi, rentang mengikuti data SS (bukan manpower).
+    """
+    where, p = _filters(f, with_date=False)
+    conds = ["tgl_laporan IS NOT NULL"]
+    if f["start"]:
+        p["lo"] = f["start"]
+        conds.append("tgl_laporan >= :lo")
+    if f["end"]:
+        p["hi"] = f["end"]
+        conds.append("tgl_laporan <= :hi")
+    row_conds = " AND ".join(conds)
+    rows = (await db.execute(text(f"""
+        SELECT to_char(date_trunc('month', tgl_laporan), 'YYYY-MM') AS period,
+               COUNT(DISTINCT NULLIF(nrp, '')) AS nrp,
+               COUNT(*) AS ss
+        FROM ss_report
+        WHERE {where} AND {row_conds}
+        GROUP BY 1 ORDER BY 1
+    """), p)).mappings().all()
+    total = (await db.execute(text(f"""
+        SELECT COUNT(DISTINCT NULLIF(nrp, '')) FROM ss_report
+        WHERE {where} AND {row_conds}
+    """), p)).scalar() or 0
+    months = [{"period": r["period"], "nrp": int(r["nrp"] or 0),
+               "ss": int(r["ss"] or 0)} for r in rows]
+    return {"total_nrp": int(total), "months": months}
+
+
 @router.get("/top", dependencies=[Depends(require_role("admin"))])
 async def get_top(
     f: dict = Depends(_params),

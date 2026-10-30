@@ -6,9 +6,9 @@ import { DatePicker } from '../components/DatePicker'
 import {
   errMsg, todayLocal, monthStartLocal,
   fetchSsFilters, fetchSsKpi, fetchSsTrend, fetchSsEiictm, fetchSsTargetCrew,
-  fetchSsBreakdown, fetchSsTop, fetchSsRecords, exportSsCsv,
-  type SsBasis, type SsBreak, type SsEiictm, type SsFilters, type SsKpi,
-  type SsRecord, type SsTargetCrew, type SsTop, type SsTrend,
+  fetchSsBreakdown, fetchSsInnovatorMonths, fetchSsRecords, exportSsCsv,
+  type SsBasis, type SsBreak, type SsEiictm, type SsFilters, type SsInnovatorResp,
+  type SsKpi, type SsRecord, type SsTargetCrew, type SsTrend,
 } from '../api/client'
 
 const fmtDate = (v?: string | null) => {
@@ -73,7 +73,7 @@ export default function SsPage() {
   const [byGrade, setByGrade] = useState<SsBreak[]>([])
   const [byKat, setByKat] = useState<SsBreak[]>([])
   const [byDept, setByDept] = useState<SsBreak[]>([])
-  const [topP, setTopP] = useState<SsTop[]>([])
+  const [topP, setTopP] = useState<SsInnovatorResp | null>(null)
 
   const [rows, setRows] = useState<SsRecord[]>([])
   const [total, setTotal] = useState(0)
@@ -127,14 +127,14 @@ export default function SsPage() {
       fetchSsBreakdown({ ...params, by: 'grade' }),
       fetchSsBreakdown({ ...params, by: 'kategori' }),
       fetchSsBreakdown({ ...params, by: 'dept' }),
-      fetchSsTop({ ...params, by: 'pencetus', limit: 10 }),
       fetchSsEiictm(params),
       fetchSsTargetCrew(params),
+      fetchSsInnovatorMonths(params),
     ])
-      .then(([k, t, dl, g, ka, d, tp, ei, tc]) => {
+      .then(([k, t, dl, g, ka, d, ei, tc, im]) => {
         if (!alive) return
         setKpi(k); setTrend(t); setDaily(dl)
-        setByGrade(g); setByKat(ka); setByDept(d); setTopP(tp)
+        setByGrade(g); setByKat(ka); setByDept(d); setTopP(im)
         setEiictm(ei); setTargetCrew(tc)
       })
       .catch((e) => { if (alive) setMsg(`gagal: ${errMsg(e)}`) })
@@ -291,46 +291,27 @@ export default function SsPage() {
     tooltip: { y: { formatter: (v: number) => `${fmtNum(v)} SS` } },
   }
 
-  const topSum = topP.reduce((a, b) => a + b.total, 0)
-  let acc = 0
-  const cumPct = topP.map((t) => {
-    acc += t.total
-    return topSum ? Number(((acc / topSum) * 100).toFixed(1)) : 0
-  })
-  const topSeries = [
-    { name: 'Jumlah SS', type: 'column', data: topP.map((t) => t.total) },
-    { name: 'Kumulatif %', type: 'line', data: cumPct },
-  ]
-  const topOpts = {
-    chart: { type: 'line' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
-    colors: ['#7f56d9', '#f79009'],
-    stroke: { width: [0, 2], curve: 'straight' as const },
-    plotOptions: { bar: { columnWidth: '58%', borderRadius: 3 } },
+  // Tren NRP yang membuat SS per bulan (pengganti Pareto Top 10 Pencetus Ide).
+  const imMonths = topP?.months ?? []
+  const innoSeries = [{ name: 'Jumlah NRP', data: imMonths.map((m) => m.nrp) }]
+  const innoOpts = {
+    chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
+    colors: ['#7f56d9'],
+    plotOptions: { bar: { columnWidth: '55%', borderRadius: 3 } },
     dataLabels: { enabled: false },
     xaxis: {
-      categories: topP.map((t) => titleName(t.nama)),
+      categories: imMonths.map((m) => m.period),
       labels: { rotate: -35, style: { colors: textColor, fontSize: '10px' } },
     },
-    yaxis: [
-      {
-        labels: { style: { colors: textColor }, formatter: (v: number) => fmtNum(v) },
-        title: { text: 'Jumlah SS', style: { color: textColor, fontSize: '11px' } },
-      },
-      {
-        opposite: true,
-        min: 0,
-        max: 100,
-        labels: { style: { colors: textColor }, formatter: (v: number) => `${v}%` },
-        title: { text: 'Kumulatif', style: { color: textColor, fontSize: '11px' } },
-      },
-    ],
+    yaxis: {
+      labels: { style: { colors: textColor }, formatter: (v: number) => fmtNum(v) },
+      title: { text: 'Jumlah NRP', style: { color: textColor, fontSize: '11px' } },
+    },
     grid: { borderColor: gridColor },
-    legend: { labels: { colors: textColor } },
     tooltip: {
-      y: [
-        { formatter: (v: number) => `${fmtNum(v)} SS` },
-        { formatter: (v: number) => `${v}%` },
-      ],
+      shared: false,
+      intersect: false,
+      y: { formatter: (v: number) => `${fmtNum(v)} NRP` },
     },
   }
 
@@ -615,9 +596,14 @@ export default function SsPage() {
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data.</p>}
         </div>
         <div className="rounded-2xl border bg-white p-4 lg:col-span-3 dark:bg-gray-900">
-          <h3 className="mb-2 font-semibold text-theme-sm">Pareto Top 10 Pencetus Ide</h3>
-          {topP.length > 0
-            ? <ReactApexChart key={dark ? 'pd' : 'pl'} type="line" height={320} series={topSeries} options={topOpts} />
+          <h3 className="mb-1 font-semibold text-theme-sm">NRP Berinovasi per Bulan — Tanggal Laporan</h3>
+          <p className="mb-2 text-theme-xs text-gray-400">
+            Jumlah NRP unik yang membuat SS (approved maupun outstanding) tiap bulan
+            {' '}· rentang {fmtDate(start)} – {fmtDate(end)}
+            {' '}· total <b>{fmtNum(topP?.total_nrp ?? 0)}</b> NRP
+          </p>
+          {imMonths.length > 0
+            ? <ReactApexChart key={dark ? 'imd' : 'iml'} type="bar" height={320} series={innoSeries} options={innoOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data.</p>}
         </div>
       </div>

@@ -1024,7 +1024,10 @@ export type SsEiictm = {
   months: SsEiictmMonth[]
 }
 export type SsBreak = { label: string; total: number; reward: number }
-export type SsTop = { key: string; nama: string; total: number; reward: number }
+
+/** Jumlah NRP unik yang membuat SS per bulan (gantikan Pareto Top 10). */
+export type SsInnovatorMonth = { period: string; nrp: number; ss: number }
+export type SsInnovatorResp = { total_nrp: number; months: SsInnovatorMonth[] }
 
 export type SsFilters = {
   dept: string[]
@@ -1162,8 +1165,13 @@ export async function fetchSsBreakdown(params: SsParams & { by: 'grade' | 'kateg
   return r.data
 }
 
-export async function fetchSsTop(params: SsParams & { by: 'pencetus' | 'penilai'; limit?: number }): Promise<SsTop[]> {
+export async function fetchSsTop(params: SsParams & { by: 'pencetus' | 'penilai'; limit?: number }): Promise<{ key: string; nama: string; total: number; reward: number }[]> {
   const r = await api.get('/v1/ss/top', { params })
+  return r.data
+}
+
+export async function fetchSsInnovatorMonths(params: SsParams): Promise<SsInnovatorResp> {
+  const r = await api.get('/v1/ss/innovator-month', { params })
   return r.data
 }
 
