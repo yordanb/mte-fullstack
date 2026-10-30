@@ -243,7 +243,8 @@ export default function SsPage() {
       title: { text: 'Jumlah SS', style: { color: textColor, fontSize: '11px' } },
     },
     tooltip: {
-      shared: true,
+      shared: false,
+      intersect: false,
       y: [
         { formatter: (v: number) => `Target: ${fmtNum(v)} SS` },
         { formatter: (v: number) => `Aktual: ${fmtNum(v)} SS` },
