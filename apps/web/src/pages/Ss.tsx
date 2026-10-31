@@ -280,37 +280,56 @@ export default function SsPage() {
     stroke: { colors: [dark ? '#111827' : '#ffffff'] },
     tooltip: { y: { formatter: (v: number) => `${fmtNum(v)} SS` } },
   }
+  // Target SS per Crew: bar horizontal. Panjang bar = target (full bar),
+  // bagian biru = aktual, sisanya abu-abu = kekurangan terhadap target.
   const crewTargetSeries = [
-    { name: 'Target', data: crewTarget.map((c) => c.target) },
-    { name: 'Aktual', data: crewTarget.map((c) => c.aktual) },
+    { name: 'Aktual', data: crewTarget.map((c) => Math.min(c.aktual, c.target)) },
+    { name: 'Sisa Target', data: crewTarget.map((c) => Math.max(c.target - c.aktual, 0)) },
   ]
   const crewTargetOpts = {
-    chart: { type: 'bar' as const, height: 240, toolbar: { show: false }, background: 'transparent' },
-    colors: ['#d1d5db', '#3b82f6'],
-    plotOptions: { bar: { columnWidth: '55%', borderRadius: 3 } },
+    chart: {
+      type: 'bar' as const,
+      height: 240,
+      stacked: true,
+      toolbar: { show: false },
+      background: 'transparent',
+    },
+    colors: ['#3b82f6', dark ? '#374151' : '#e5e7eb'],
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        barHeight: '70%',
+        borderRadius: 3,
+        borderRadiusApplication: 'end' as const,
+      },
+    },
     dataLabels: {
       enabled: true,
-      offsetY: -4,
-      style: { fontSize: '10px', colors: [textColor] },
-      formatter: (v: number) => (v > 0 ? fmtNum(v) : ''),
+      style: { fontSize: '9px', colors: ['#ffffff'] },
+      formatter: (v: number, opts?: any) =>
+        (opts?.seriesIndex ?? 0) === 0 && v > 0 ? fmtNum(v) : '',
     },
     grid: { borderColor: gridColor },
     legend: { position: 'bottom' as const, labels: { colors: textColor } },
     xaxis: {
       categories: crewTarget.map((c) => c.crew),
-      labels: { rotate: -30, style: { colors: textColor, fontSize: '11px' } },
-    },
-    yaxis: {
-      labels: { style: { colors: textColor }, formatter: (v: number) => fmtNum(v) },
+      labels: { style: { colors: textColor, fontSize: '11px' }, formatter: (v: number) => fmtNum(v) },
       title: { text: 'Jumlah SS', style: { color: textColor, fontSize: '11px' } },
     },
+    yaxis: {
+      labels: { style: { colors: textColor, fontSize: '11px' }, maxWidth: 90 },
+    },
     tooltip: {
-      shared: false,
-      intersect: false,
-      y: [
-        { formatter: (v: number) => `Target: ${fmtNum(v)} SS` },
-        { formatter: (v: number) => `Aktual: ${fmtNum(v)} SS` },
-      ],
+      custom: ({ dataPointIndex }: { dataPointIndex: number }) => {
+        const c = crewTarget[dataPointIndex]
+        if (!c) return ''
+        const pct = c.target > 0 ? (c.aktual / c.target) * 100 : 0
+        return `<div style="padding:6px 8px;font-size:11px;line-height:1.5">
+          <div style="font-weight:600;margin-bottom:2px">${c.crew}</div>
+          <div>Target: ${fmtNum(c.target)} SS</div>
+          <div>Aktual: ${fmtNum(c.aktual)} SS (${fmtPct(pct)})</div>
+        </div>`
+      },
     },
   }
 
