@@ -921,19 +921,24 @@ function CrewDailyTable({ data, selected }: { data: SsCrewDailyMonth; selected: 
   const label = `${MONTHS_ID[m - 1] ?? data.month} ${y}`
 
   // Crew terpilih (kosong = semua), urut abjad berdasarkan nama crew.
-  const rows = data.crews
+  const filteredCrews = data.crews
     .filter((c) => selected.length === 0 || selected.includes(c.crew))
     .sort((a, b) => a.crew.localeCompare(b.crew, 'id'))
+
+  const memberRows = filteredCrews.flatMap((c) =>
+    c.members.map((m) => ({ ...m, crew: c.crew }))
+  ).sort((a, b) => a.nama.localeCompare(b.nama, 'id'))
+
   const dayTotals = Array.from({ length: data.days }, (_, i) =>
-    rows.reduce((s, c) => s + (c.days[i] ?? 0), 0))
-  const grand = rows.reduce((s, c) => s + c.total, 0)
+    memberRows.reduce((s, m) => s + (m.days[i] ?? 0), 0))
+  const grand = memberRows.reduce((s, m) => s + m.total, 0)
 
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-baseline gap-x-2">
         <h4 className="text-theme-sm font-semibold">{label}</h4>
         <span className="text-theme-xs text-gray-400">
-          {rows.length} crew · {data.days} hari · {fmtNum(grand)} SS
+          {memberRows.length} anggota · {data.days} hari · {fmtNum(grand)} SS
         </span>
       </div>
       <div className="w-full overflow-auto">
@@ -941,7 +946,7 @@ function CrewDailyTable({ data, selected }: { data: SsCrewDailyMonth; selected: 
           <thead className="bg-gray-50 dark:bg-gray-800">
             <tr className="border-b">
               <th className="sticky left-0 z-10 bg-gray-50 px-2 py-1.5 text-left font-semibold dark:bg-gray-800">
-                Crew
+                Anggota (NRP / Nama)
               </th>
               {Array.from({ length: data.days }, (_, i) => (
                 <th key={i} className="px-1.5 py-1.5 text-center font-medium tabular-nums text-gray-500">
@@ -952,15 +957,17 @@ function CrewDailyTable({ data, selected }: { data: SsCrewDailyMonth; selected: 
             </tr>
           </thead>
           <tbody>
-            {rows.map((c) => (
-              <tr key={c.crew} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-white/5">
+            {memberRows.map((m) => (
+              <tr key={m.nrp} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-white/5">
                 <td
                   className="sticky left-0 z-10 bg-white px-2 py-1.5 whitespace-nowrap dark:bg-gray-900"
-                  title={c.crew}
+                  title={`${m.nrp} - ${m.nama} (${m.crew})`}
                 >
-                  {abbrName(c.crew)}
+                  <span className="font-mono text-gray-400 mr-1.5">{m.nrp}</span>
+                  <span className="font-medium">{titleName(m.nama)}</span>
+                  <span className="ml-1.5 text-[10px] text-gray-400 bg-gray-100 dark:bg-gray-800 px-1 rounded">{abbrName(m.crew)}</span>
                 </td>
-                {c.days.map((n, i) => (
+                {m.days.map((n, i) => (
                   <td
                     key={i}
                     className={`px-1.5 py-1.5 text-center tabular-nums ${
@@ -970,15 +977,15 @@ function CrewDailyTable({ data, selected }: { data: SsCrewDailyMonth; selected: 
                     {n}
                   </td>
                 ))}
-                <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{fmtNum(c.total)}</td>
+                <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{fmtNum(m.total)}</td>
               </tr>
             ))}
-            {rows.length === 0 && (
+            {memberRows.length === 0 && (
               <tr>
                 <td colSpan={data.days + 2} className="px-4 py-6 text-center text-gray-400">
                   {data.crews.length === 0
-                    ? 'Belum ada crew dengan status Mekanik/Repairman.'
-                    : 'Tidak ada crew yang dipilih.'}
+                    ? 'Belum ada anggota dengan status Mekanik/Repairman.'
+                    : 'Tidak ada anggota dari crew yang dipilih.'}
                 </td>
               </tr>
             )}

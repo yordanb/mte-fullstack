@@ -1020,6 +1020,8 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
             AND tgl_laporan BETWEEN :lo AND :hi
         )
         SELECT pr.crew AS crew,
+               pr.nrp AS nrp,
+               (SELECT MAX(nama) FROM manpower_month WHERE nrp = pr.nrp) AS nama,
                date_trunc('month', s.tgl_laporan)::date AS bulan,
                EXTRACT(DAY FROM s.tgl_laporan)::int AS hari,
                COUNT(*) AS jumlah
@@ -1027,13 +1029,13 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
         JOIN manpower_profile pr ON pr.nrp = s.nrp
         WHERE pr.crew IS NOT NULL
           AND pr.status IN ('Mekanik', 'Repairman')
-        GROUP BY 1, 2, 3
+        GROUP BY 1, 2, 3, 4
     """), p)).mappings().all()
 
-    per: dict[tuple[str, str], list[int]] = {}
+    per: dict[tuple[str, str, str, str], list[int]] = {}
     for r in rows:
         bulan = r["bulan"]
-        key = (r["crew"], bulan.strftime("%Y-%m"))
+        key = (r["crew"], r["nrp"], r["nama"] or r["nrp"], bulan.strftime("%Y-%m"))
         arr = per.get(key)
         if arr is None:
             arr = [0] * calendar.monthrange(bulan.year, bulan.month)[1]
@@ -1045,23 +1047,36 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
     while (y, m) <= (hi.year, hi.month):
         ndays = calendar.monthrange(y, m)[1]
         mk = f"{y:04d}-{m:02d}"
-        crew_rows = []
-        day_totals = [0] * ndays
+        
+        # Group by crew then member
+        crew_map = {}
+        for (c, nrp, nama, mk_key), days in per.items():
+            if mk_key == mk:
+                if c not in crew_map: crew_map[c] = []
+                crew_map[c].append({"nrp": nrp, "nama": nama, "days": days, "total": sum(days)})
+        
+        month_crews = []
         for c in crews:
-            arr = per.get((c, mk)) or [0] * ndays
-            crew_rows.append({"crew": c, "days": arr, "total": sum(arr)})
-            for i, n in enumerate(arr):
-                day_totals[i] += n
+            members = crew_map.get(c, [])
+            if members:
+                # sum all daily values for day_totals
+                month_crews.append({"crew": c, "members": sorted(members, key=lambda x: x["nama"])})
+        
+        # Calculate day totals across all shown members
+        day_totals = [0] * ndays
+        for c in month_crews:
+            for mem in c["members"]:
+                for i, n in enumerate(mem["days"]):
+                    day_totals[i] += n
+
         months.append({
             "month": mk,
             "days": ndays,
-            "crews": crew_rows,
+            "crews": month_crews,
             "totals": {"days": day_totals, "total": sum(day_totals)},
         })
         m += 1
-        if m > 12:
-            m = 1
-            y += 1
+        if m > 12: m = 1; y += 1
     return {"months": months}
 
 

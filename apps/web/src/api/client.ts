@@ -1202,7 +1202,7 @@ export type SsCrewDailyMonth = {
   /** YYYY-MM */
   month: string
   days: number
-  crews: { crew: string; days: number[]; total: number }[]
+  crews: { crew: string; members: { nrp: string; nama: string; days: number[]; total: number }[] }[]
   totals: { days: number[]; total: number }
 }
 
