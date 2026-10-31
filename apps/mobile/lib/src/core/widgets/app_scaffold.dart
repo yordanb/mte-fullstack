@@ -15,6 +15,7 @@ const List<Map<String, dynamic>> _menu = [
   {'key': 'mom', 'label': 'Meeting', 'path': '/mom'},
   {'key': 'equipment', 'label': 'Equipment', 'path': '/equipment'},
   {'key': 'fui', 'label': 'FUI', 'path': '/fui'},
+  {'key': 'ss', 'label': 'Suggestion System', 'path': '/ss'},
   {'key': 'sugfui', 'label': 'Suggestion FUI', 'path': '/suggestion'},
   {'key': 'fureport', 'label': 'Report Follow Up', 'path': '/report-followup'},
   {'key': 'import', 'label': 'Update Data', 'path': '/update-data'},

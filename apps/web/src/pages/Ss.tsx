@@ -183,7 +183,7 @@ export default function SsPage() {
     { name: 'Tanggal Menilai', data: trend.map((t) => t.menilai) },
   ]
   const trendOpts = {
-    chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
+    chart: { type: 'bar' as const, height: 240, toolbar: { show: false }, background: 'transparent' },
     colors: ['#465fff', '#12b76a'],
     plotOptions: { bar: { columnWidth: '62%', borderRadius: 3 } },
     dataLabels: { enabled: false },
@@ -208,7 +208,7 @@ export default function SsPage() {
   const lapShort = (p: string) => (p.length === 10 ? `${p.slice(8, 10)}/${p.slice(5, 7)}` : p)
   const lapSeries = [{ name: 'Jumlah SS', data: lapRows.map((r) => r.laporan) }]
   const lapOpts = {
-    chart: { type: 'bar' as const, height: 300, toolbar: { show: false }, background: 'transparent' },
+    chart: { type: 'bar' as const, height: 220, toolbar: { show: false }, background: 'transparent' },
     colors: ['#465fff'],
     plotOptions: { bar: { columnWidth: '68%', borderRadius: 2 } },
     dataLabels: {
@@ -251,7 +251,7 @@ export default function SsPage() {
     { name: 'Open Approval', data: openApprovalData.map((item) => item.jumlah) },
   ]
   const openApprovalOpts = {
-    chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
+    chart: { type: 'bar' as const, height: 240, toolbar: { show: false }, background: 'transparent' },
     colors: ['#f79009'],
     plotOptions: { bar: { columnWidth: '55%', borderRadius: 3 } },
     dataLabels: {
@@ -272,7 +272,7 @@ export default function SsPage() {
     tooltip: { y: { formatter: (v: number) => `${fmtNum(v)} SS` } },
   }
   const ssStatusOpts = {
-    chart: { type: 'donut' as const, height: 320, background: 'transparent' },
+    chart: { type: 'donut' as const, height: 240, background: 'transparent' },
     labels: ['Approved', 'Menunggu Approval'],
     colors: ['#12b76a', '#f79009'],
     dataLabels: { enabled: true, formatter: (v: number) => `${v.toFixed(1)}%`, style: { fontWeight: 400 } },
@@ -285,7 +285,7 @@ export default function SsPage() {
     { name: 'Aktual', data: crewTarget.map((c) => c.aktual) },
   ]
   const crewTargetOpts = {
-    chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
+    chart: { type: 'bar' as const, height: 240, toolbar: { show: false }, background: 'transparent' },
     colors: ['#d1d5db', '#3b82f6'],
     plotOptions: { bar: { columnWidth: '55%', borderRadius: 3 } },
     dataLabels: {
@@ -315,7 +315,7 @@ export default function SsPage() {
   }
 
   const gradeOpts = {
-    chart: { type: 'donut' as const, height: 320, background: 'transparent' },
+    chart: { type: 'donut' as const, height: 240, background: 'transparent' },
     labels: byGrade.map((g) => g.label),
     colors: byGrade.map((g) => GRADE_COLORS[g.label] ?? '#98a2b3'),
     dataLabels: { enabled: true, formatter: (v: number) => `${v.toFixed(1)}%` },
@@ -326,7 +326,7 @@ export default function SsPage() {
 
   const katSeries = [{ name: 'Jumlah SS', data: byKat.map((k) => k.total) }]
   const katOpts = {
-    chart: { type: 'bar' as const, height: 320, toolbar: { show: false }, background: 'transparent' },
+    chart: { type: 'bar' as const, height: 240, toolbar: { show: false }, background: 'transparent' },
     colors: ['#465fff'],
     plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '62%' } },
     dataLabels: { enabled: false },
@@ -346,7 +346,7 @@ export default function SsPage() {
     { name: 'Menunggu Approval', data: topNrp.map((r) => r.menunggu) },
   ]
   const innoOpts = {
-    chart: { type: 'bar' as const, height: 400, toolbar: { show: false }, background: 'transparent' },
+    chart: { type: 'bar' as const, height: 300, toolbar: { show: false }, background: 'transparent' },
     colors: ['#12b76a', '#f79009'],
     plotOptions: { bar: { horizontal: true, stacked: true, barHeight: '60%', borderRadius: 2 } },
     dataLabels: { enabled: false },
@@ -372,7 +372,7 @@ export default function SsPage() {
 
   const deptSeries = byDept.map((d) => d.total)
   const deptOpts = {
-    chart: { type: 'pie' as const, height: 320, background: 'transparent' },
+    chart: { type: 'pie' as const, height: 240, background: 'transparent' },
     labels: byDept.map((d) => d.label),
     colors: ['#465fff', '#7f56d9', '#12b76a', '#f79009', '#0ba5ec'],
     dataLabels: { enabled: true, formatter: (v: number) => `${v.toFixed(1)}%` },
@@ -553,8 +553,8 @@ export default function SsPage() {
       )}
 
       {/* Charts */}
-      <div className="mb-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
+      <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border bg-white p-4 md:col-span-2 dark:bg-gray-900">
           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
             <div>
               <h3 className="font-semibold text-theme-sm">Jumlah SS per Tanggal Laporan</h3>
@@ -582,13 +582,13 @@ export default function SsPage() {
             </div>
           </div>
           {lapRows.length > 0
-            ? <ReactApexChart key={`lap-${lapBucket}-${daily.length}-${dark ? 'd' : 'l'}`} type="bar" height={300} series={lapSeries} options={lapOpts} />
+            ? <ReactApexChart key={`lap-${lapBucket}-${daily.length}-${dark ? 'd' : 'l'}`} type="bar" height={220} series={lapSeries} options={lapOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada SS pada rentang tanggal ini.</p>}
         </div>
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
+        <div className="rounded-2xl border bg-white p-4 md:col-span-1 dark:bg-gray-900">
           <h3 className="mb-1 font-semibold text-theme-sm">Capaian Approved</h3>
           <ReactApexChart 
-            type="donut" height={260} 
+            type="donut" height={190} 
             series={[targetCrew?.approved ?? 0, Math.max(0, (targetCrew?.total_target ?? 0) - (targetCrew?.approved ?? 0))]} 
             options={{
               chart: { type: 'donut', background: 'transparent' },
@@ -599,7 +599,7 @@ export default function SsPage() {
             }} 
           />
         </div>
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
+        <div className="rounded-2xl border bg-white p-4 md:col-span-1 dark:bg-gray-900">
           <h3 className="mb-1 font-semibold text-theme-sm">
             Target SS per Crew — {fmtNum(targetCrew?.multiplier ?? 3)} SS per NRP
           </h3>
@@ -612,27 +612,27 @@ export default function SsPage() {
             )}
           </p>
           {crewTarget.length > 0
-            ? <ReactApexChart key={dark ? 'ctd' : 'ctl'} type="bar" height={320} series={crewTargetSeries} options={crewTargetOpts} />
+            ? <ReactApexChart key={dark ? 'ctd' : 'ctl'} type="bar" height={240} series={crewTargetSeries} options={crewTargetOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Belum ada data manpower / pengelompokan crew.</p>}
 </div>
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900">
+        <div className="rounded-2xl border bg-white p-4 md:col-span-1 dark:bg-gray-900">
           <h3 className="mb-1 font-semibold text-theme-sm">Status Judul SS</h3>
           {(ssStatusSeries[0] + ssStatusSeries[1]) > 0
-            ? <ReactApexChart key={dark ? 'ssd' : 'ssl'} type="donut" height={260} series={ssStatusSeries} options={ssStatusOpts} />
+            ? <ReactApexChart key={dark ? 'ssd' : 'ssl'} type="donut" height={190} series={ssStatusSeries} options={ssStatusOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada SS pada rentang tanggal ini.</p>}
           <p className="mt-2 text-theme-xs text-gray-400">
             Approved = sudah dinilai · Menunggu Approval = outstanding (belum dinilai)
           </p>
         </div>
         {/* Open Approval by Management (bar chart) */}
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-1 dark:bg-gray-900 flex flex-col justify-between">
+        <div className="rounded-2xl border bg-white p-4 md:col-span-1 dark:bg-gray-900 flex flex-col justify-between">
           <div>
             <h3 className="mb-1 font-semibold text-theme-sm">Open Approval per Management</h3>
             {openApprovalData.length > 0
               ? <ReactApexChart
                   key={dark ? 'oad' : 'oal'}
                   type="bar"
-                  height={300}
+                  height={220}
                   series={openApprovalSeries}
                   options={openApprovalOpts}
                 />
@@ -644,7 +644,7 @@ export default function SsPage() {
             Last update data: {targetCrew?.last_update ? new Date(targetCrew.last_update).toLocaleString('id-ID') : '-'}
           </p>
         </div>
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
+        <div className="rounded-2xl border bg-white p-4 md:col-span-2 dark:bg-gray-900">
           <h3 className="mb-2 font-semibold text-theme-sm">
             Tren Jumlah SS per Bulan — Tanggal Laporan vs Tanggal Menilai
           </h3>
@@ -652,28 +652,28 @@ export default function SsPage() {
             Tiap seri dihitung dari kolom tanggalnya sendiri; filter dept/kategori/grade/status/cari berlaku untuk keduanya.
           </p>
           {trend.length > 0
-            ? <ReactApexChart key={dark ? 'td' : 'tl'} type="bar" height={320} series={trendSeries} options={trendOpts} />
+            ? <ReactApexChart key={dark ? 'td' : 'tl'} type="bar" height={240} series={trendSeries} options={trendOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data pada filter ini.</p>}
         </div>
         <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
           <h3 className="mb-2 font-semibold text-theme-sm">Komposisi Grade</h3>
           {byGrade.length > 0
-            ? <ReactApexChart key={dark ? 'gd' : 'gl'} type="donut" height={320} series={gradeSeries} options={gradeOpts} />
+            ? <ReactApexChart key={dark ? 'gd' : 'gl'} type="donut" height={240} series={gradeSeries} options={gradeOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data.</p>}
         </div>
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-2 dark:bg-gray-900">
+        <div className="rounded-2xl border bg-white p-4 md:col-span-2 dark:bg-gray-900">
           <h3 className="mb-2 font-semibold text-theme-sm">Kategori SS (setelah normalisasi)</h3>
           {byKat.length > 0
-            ? <ReactApexChart key={dark ? 'kd' : 'kl'} type="bar" height={320} series={katSeries} options={katOpts} />
+            ? <ReactApexChart key={dark ? 'kd' : 'kl'} type="bar" height={240} series={katSeries} options={katOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data.</p>}
         </div>
         <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
           <h3 className="mb-2 font-semibold text-theme-sm">Sebaran Dept</h3>
           {byDept.length > 0
-            ? <ReactApexChart key={dark ? 'dd' : 'dl'} type="pie" height={320} series={deptSeries} options={deptOpts} />
+            ? <ReactApexChart key={dark ? 'dd' : 'dl'} type="pie" height={240} series={deptSeries} options={deptOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data.</p>}
         </div>
-        <div className="rounded-2xl border bg-white p-4 lg:col-span-3 dark:bg-gray-900">
+        <div className="rounded-2xl border bg-white p-4 md:col-span-3 dark:bg-gray-900">
           <h3 className="mb-1 font-semibold text-theme-sm">Top 10 NRP — Judul SS Terbanyak</h3>
           <p className="mb-2 text-theme-xs text-gray-400">
             Bulan berjalan ({fmtDate(start)} – {fmtDate(end)}) · dihitung dari Tanggal Laporan,
@@ -681,7 +681,7 @@ export default function SsPage() {
             {' '}· {fmtNum(topP?.total_nrp ?? 0)} NRP membuat {fmtNum(topP?.total_ss ?? 0)} judul pada rentang ini
           </p>
           {topNrp.length > 0
-            ? <ReactApexChart key={dark ? 'imd' : 'iml'} type="bar" height={400} series={innoSeries} options={innoOpts} />
+            ? <ReactApexChart key={dark ? 'imd' : 'iml'} type="bar" height={300} series={innoSeries} options={innoOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Tidak ada data.</p>}
         </div>
       </div>
