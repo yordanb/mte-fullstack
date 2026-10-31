@@ -324,7 +324,7 @@ export default function SsPage() {
       toolbar: { show: false },
       background: 'transparent',
     },
-    colors: ['#3b82f6', dark ? '#374151' : '#e5e7eb'],
+    colors: ['#3b82f6', '#f97316'],
     plotOptions: {
       bar: {
         horizontal: true,
@@ -336,8 +336,7 @@ export default function SsPage() {
     dataLabels: {
       enabled: true,
       style: { fontSize: '9px', colors: ['#ffffff'] },
-      formatter: (v: number, opts?: any) =>
-        (opts?.seriesIndex ?? 0) === 0 && v > 0 ? fmtNum(v) : '',
+      formatter: (v: number, opts?: any) => (v > 0 ? fmtNum(v) : ''),
     },
     grid: { borderColor: gridColor },
     legend: { position: 'bottom' as const, labels: { colors: textColor } },
