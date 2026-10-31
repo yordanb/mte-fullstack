@@ -1007,24 +1007,29 @@ async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends
     positions = sorted(positions)
 
     rows = (await db.execute(text(f"""
-        WITH s AS (
-          SELECT nrp, tgl_laporan FROM ss_report
-          WHERE {where}
-            AND tgl_laporan IS NOT NULL
-            AND tgl_laporan BETWEEN :lo AND :hi
-        )
         SELECT pr.status AS status,
                pr.nrp AS nrp,
                (SELECT mm.nama FROM manpower_month mm WHERE mm.nrp = pr.nrp ORDER BY mm.periode DESC LIMIT 1) AS nama,
                date_trunc('month', s.tgl_laporan)::date AS bulan,
                EXTRACT(DAY FROM s.tgl_laporan)::int AS hari,
-               COUNT(*) AS jumlah
-        FROM s
-        JOIN manpower_profile pr ON pr.nrp = s.nrp
+               COUNT(s.no_ss) AS jumlah
+        FROM manpower_profile pr
+        LEFT JOIN ss_report s ON pr.nrp = s.nrp 
+          AND s.tgl_laporan IS NOT NULL
+          AND s.tgl_laporan BETWEEN :lo AND :hi
+          {f"AND {where.replace('tgl_laporan', 's.tgl_laporan')}" if where != "TRUE" else ""}
         WHERE pr.status IS NOT NULL
           AND pr.status NOT IN ('Mekanik', 'Repairman')
         GROUP BY 1, 2, 3, 4, 5
     """), p)).mappings().all()
+
+    all_members = (await db.execute(text("""
+        SELECT pr.status, pr.nrp,
+               (SELECT mm.nama FROM manpower_month mm WHERE mm.nrp = pr.nrp ORDER BY mm.periode DESC LIMIT 1) AS nama
+        FROM manpower_profile pr
+        WHERE pr.status IS NOT NULL
+          AND pr.status NOT IN ('Mekanik', 'Repairman')
+    """))).mappings().all()
 
     per: dict[tuple[str, str, str, str], list[int]] = {}
     for r in rows:
@@ -1097,34 +1102,42 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
     crews = sorted(crews, key=lambda c: (order.get(c, 999), c))
 
     rows = (await db.execute(text(f"""
-        WITH s AS (
-          SELECT nrp, tgl_laporan FROM ss_report
-          WHERE {where}
-            AND tgl_laporan IS NOT NULL
-            AND tgl_laporan BETWEEN :lo AND :hi
-        )
         SELECT pr.crew AS crew,
                pr.nrp AS nrp,
                (SELECT mm.nama FROM manpower_month mm WHERE mm.nrp = pr.nrp ORDER BY mm.periode DESC LIMIT 1) AS nama,
                date_trunc('month', s.tgl_laporan)::date AS bulan,
                EXTRACT(DAY FROM s.tgl_laporan)::int AS hari,
-               COUNT(*) AS jumlah
-        FROM s
-        JOIN manpower_profile pr ON pr.nrp = s.nrp
+               COUNT(s.no_ss) AS jumlah
+        FROM manpower_profile pr
+        LEFT JOIN ss_report s ON pr.nrp = s.nrp 
+          AND s.tgl_laporan IS NOT NULL
+          AND s.tgl_laporan BETWEEN :lo AND :hi
         WHERE pr.crew IS NOT NULL
           AND pr.status IN ('Mekanik', 'Repairman')
         GROUP BY 1, 2, 3, 4, 5
     """), p)).mappings().all()
 
+    # Get all manpower members per crew
+    all_members = (await db.execute(text("""
+        SELECT pr.crew, pr.nrp,
+               (SELECT mm.nama FROM manpower_month mm WHERE mm.nrp = pr.nrp ORDER BY mm.periode DESC LIMIT 1) AS nama
+        FROM manpower_profile pr
+        WHERE pr.crew IS NOT NULL
+          AND pr.status IN ('Mekanik', 'Repairman')
+    """))).mappings().all()
+
     per: dict[tuple[str, str, str, str], list[int]] = {}
     for r in rows:
         bulan = r["bulan"]
+        if not bulan:
+            continue
         key = (r["crew"], r["nrp"], r["nama"] or r["nrp"], bulan.strftime("%Y-%m"))
         arr = per.get(key)
         if arr is None:
             arr = [0] * calendar.monthrange(bulan.year, bulan.month)[1]
             per[key] = arr
-        arr[int(r["hari"]) - 1] += int(r["jumlah"])
+        if r["hari"]:
+            arr[int(r["hari"]) - 1] += int(r["jumlah"])
 
     months = []
     y, m = lo.year, lo.month
@@ -1134,10 +1147,14 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
         
         # Group by crew then member
         crew_map = {}
-        for (c, nrp, nama, mk_key), days in per.items():
-            if mk_key == mk:
-                if c not in crew_map: crew_map[c] = []
-                crew_map[c].append({"nrp": nrp, "nama": nama, "days": days, "total": sum(days)})
+        # Ensure ALL manpower members are present for every month
+        for mem in all_members:
+            c = mem["crew"]
+            nrp = mem["nrp"]
+            nama = mem["nama"] or nrp
+            days = per.get((c, nrp, nama, mk)) or [0] * ndays
+            if c not in crew_map: crew_map[c] = []
+            crew_map[c].append({"nrp": nrp, "nama": nama, "days": days, "total": sum(days)})
         
         month_crews = []
         for c in crews:
