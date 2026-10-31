@@ -1036,12 +1036,15 @@ async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends
     per: dict[tuple[str, str, str, str], list[int]] = {}
     for r in rows:
         bulan = r["bulan"]
+        if not bulan:
+            continue
         key = (r["status"], r["nrp"], r["nama"] or r["nrp"], bulan.strftime("%Y-%m"))
         arr = per.get(key)
         if arr is None:
             arr = [0] * calendar.monthrange(bulan.year, bulan.month)[1]
             per[key] = arr
-        arr[int(r["hari"]) - 1] += int(r["jumlah"])
+        if r["hari"]:
+            arr[int(r["hari"]) - 1] += int(r["jumlah"])
 
     months = []
     y, m = lo.year, lo.month
