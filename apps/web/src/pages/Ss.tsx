@@ -602,7 +602,7 @@ export default function SsPage() {
 
       {/* Charts */}
       <div className="mb-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-        <div className="rounded-2xl border bg-white p-4 md:col-span-2 dark:bg-gray-900">
+        <div className="rounded-2xl border bg-white px-4 py-3 md:col-span-2 dark:bg-gray-900">
           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
             <div>
               <h3 className="font-semibold text-theme-sm">Jumlah SS per Tanggal Laporan</h3>
@@ -647,11 +647,11 @@ export default function SsPage() {
             }} 
           />
         </div>
-        <div className="rounded-2xl border bg-white p-4 md:col-span-1 dark:bg-gray-900">
-          <h3 className="mb-1 font-semibold text-theme-sm">
+        <div className="rounded-2xl border bg-white px-3 py-2 md:col-span-1 dark:bg-gray-900">
+          <h3 className="mb-0.5 font-semibold text-theme-sm">
             Target SS per Crew — {fmtNum(targetCrew?.multiplier ?? 3)} SS per NRP
           </h3>
-          <p className="mb-2 text-theme-xs text-gray-500">
+          <p className="mb-1 text-theme-xs text-gray-500">
             Aktual {fmtNum(targetCrew?.total_aktual)} dari target{' '}
             {fmtNum(targetCrew?.total_target)} SS
             {crewTargetPct > 0 && <> · capaian <span className="text-gray-900 dark:text-gray-100">{fmtPct(crewTargetPct)}</span></>}
@@ -660,7 +660,7 @@ export default function SsPage() {
             )}
           </p>
           {crewTarget.length > 0
-            ? <ReactApexChart key={dark ? 'ctd' : 'ctl'} type="bar" height={240} series={crewTargetSeries} options={crewTargetOpts} />
+            ? <ReactApexChart key={dark ? 'ctd' : 'ctl'} type="bar" height={300} series={crewTargetSeries} options={crewTargetOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Belum ada data manpower / pengelompokan crew.</p>}
 </div>
         <div className="rounded-2xl border bg-white p-4 md:col-span-1 dark:bg-gray-900">
