@@ -660,7 +660,7 @@ export default function SsPage() {
             )}
           </p>
           {crewTarget.length > 0
-            ? <ReactApexChart key={dark ? 'ctd' : 'ctl'} type="bar" height={300} series={crewTargetSeries} options={crewTargetOpts} />
+            ? <ReactApexChart key={dark ? 'ctd' : 'ctl'} type="bar" height={320} series={crewTargetSeries} options={crewTargetOpts} />
             : <p className="py-10 text-center text-theme-sm text-gray-400">Belum ada data manpower / pengelompokan crew.</p>}
 </div>
         <div className="rounded-2xl border bg-white p-4 md:col-span-1 dark:bg-gray-900">
