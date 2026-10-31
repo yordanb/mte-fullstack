@@ -85,6 +85,7 @@ export default function SsPage() {
   const [crewDailyErr, setCrewDailyErr] = useState('')
   // Filter crew untuk tabel crew × hari. Kosong = semua crew.
   const [crewPick, setCrewPick] = useState<string[]>([])
+  const [showUnder3, setShowUnder3] = useState(false)
 
   const [rows, setRows] = useState<SsRecord[]>([])
   const [total, setTotal] = useState(0)
@@ -865,7 +866,17 @@ export default function SsPage() {
           <span className="text-theme-xs text-gray-500">
             dibuat (Tanggal Laporan) · anggota berstatus Mekanik &amp; Repairman
           </span>
-          <div className="ml-auto flex flex-wrap items-center gap-1">
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-theme-xs text-gray-600 dark:text-gray-400 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showUnder3}
+                onChange={(e) => setShowUnder3(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-800"
+              />
+              <span>&lt; 3 SS</span>
+            </label>
+            <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-0.5" />
             <span className="text-theme-xs text-gray-500">Crew:</span>
             <button
               onClick={() => setCrewPick([])}
@@ -901,7 +912,7 @@ export default function SsPage() {
             <p className="py-8 text-center text-theme-sm text-gray-400">Tidak ada data crew.</p>
           ) : (
             crewDaily.map((mo) => (
-              <CrewDailyTable key={mo.month} data={mo} selected={crewPick} />
+              <CrewDailyTable key={mo.month} data={mo} selected={crewPick} under3={showUnder3} />
             ))
           )}
         </div>
@@ -916,7 +927,7 @@ const MONTHS_ID = [
 ]
 
 /** Tabel crew × hari untuk satu bulan (jumlah SS dibuat per hari). */
-function CrewDailyTable({ data, selected }: { data: SsCrewDailyMonth; selected: string[] }) {
+function CrewDailyTable({ data, selected, under3 }: { data: SsCrewDailyMonth; selected: string[]; under3: boolean }) {
   const [y, m] = data.month.split('-').map(Number)
   const label = `${MONTHS_ID[m - 1] ?? data.month} ${y}`
 
@@ -926,7 +937,7 @@ function CrewDailyTable({ data, selected }: { data: SsCrewDailyMonth; selected: 
     .sort((a, b) => a.crew.localeCompare(b.crew, 'id'))
 
   const memberRows = filteredCrews.flatMap((c) =>
-    c.members.map((m) => ({ ...m, crew: c.crew }))
+    c.members.filter((m) => !under3 || m.total < 3).map((m) => ({ ...m, crew: c.crew }))
   ).sort((a, b) => a.nama.localeCompare(b.nama, 'id'))
 
   const dayTotals = Array.from({ length: data.days }, (_, i) =>
