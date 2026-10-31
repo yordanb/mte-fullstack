@@ -1021,7 +1021,7 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
         )
         SELECT pr.crew AS crew,
                pr.nrp AS nrp,
-               (SELECT MAX(nama) FROM manpower_month WHERE nrp = pr.nrp) AS nama,
+               (SELECT mm.nama FROM manpower_month mm WHERE mm.nrp = pr.nrp ORDER BY mm.periode DESC LIMIT 1) AS nama,
                date_trunc('month', s.tgl_laporan)::date AS bulan,
                EXTRACT(DAY FROM s.tgl_laporan)::int AS hari,
                COUNT(*) AS jumlah
@@ -1029,7 +1029,7 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
         JOIN manpower_profile pr ON pr.nrp = s.nrp
         WHERE pr.crew IS NOT NULL
           AND pr.status IN ('Mekanik', 'Repairman')
-        GROUP BY 1, 2, 3, 4
+        GROUP BY 1, 2, 3, 4, 5
     """), p)).mappings().all()
 
     per: dict[tuple[str, str, str, str], list[int]] = {}
