@@ -93,6 +93,9 @@ export default function SsPage() {
   const [staffPick, setStaffPick] = useState<string[]>([])
   const [showStaffUnder3, setShowStaffUnder3] = useState(false)
 
+  // Filter crew untuk tabel staff × hari (jika ada).
+  const [staffCrewPick, setStaffCrewPick] = useState<string[]>([])
+
   const [rows, setRows] = useState<SsRecord[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -220,6 +223,16 @@ export default function SsPage() {
 
   const toggleStaff = (st: string) =>
     setStaffPick((cur) => (cur.includes(st) ? cur.filter((s) => s !== st) : [...cur, st]))
+
+  // Daftar crew untuk tabel staff × hari, urut abjad.
+  const staffDailyCrews = useMemo(() => {
+    const set = new Set<string>()
+    staffDaily.forEach((mo) => mo.crews?.forEach((c) => set.add(c)))
+    return [...set].sort((a, b) => a.localeCompare(b, 'id'))
+  }, [staffDaily])
+
+  const toggleStaffCrew = (crew: string) =>
+    setStaffCrewPick((cur) => (cur.includes(crew) ? cur.filter((c) => c !== crew) : [...cur, crew]))
 
   const sortBy = (key: string) => {
     if (sort === key) setDir(dir === 'desc' ? 'asc' : 'desc')
@@ -983,6 +996,31 @@ export default function SsPage() {
                 >{st}</button>
               )
             })}
+            <div className="h-4 w-px bg-gray-200 dark:bg-gray-700 mx-0.5" />
+            <span className="text-theme-xs text-gray-500">Crew:</span>
+            <button
+              onClick={() => setStaffCrewPick([])}
+              className={`rounded-full border px-2 py-0.5 text-theme-xs transition ${
+                staffCrewPick.length === 0
+                  ? 'border-blue-500 bg-blue-50 font-semibold text-blue-700 dark:border-blue-400 dark:bg-blue-500/15 dark:text-blue-300'
+                  : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-white/5'
+              }`}
+            >Semua</button>
+            {staffDailyCrews.map((c) => {
+              const on = staffCrewPick.includes(c)
+              return (
+                <button
+                  key={c}
+                  onClick={() => toggleStaffCrew(c)}
+                  title={c}
+                  className={`rounded-full border px-2 py-0.5 text-theme-xs transition ${
+                    on
+                      ? 'border-blue-500 bg-blue-50 font-semibold text-blue-700 dark:border-blue-400 dark:bg-blue-500/15 dark:text-blue-300'
+                      : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-white/5'
+                  }`}
+                >{abbrName(c)}</button>
+              )
+            })}
           </div>
         </div>
         <div className="space-y-4 p-4">
@@ -994,7 +1032,7 @@ export default function SsPage() {
             <p className="py-8 text-center text-theme-sm text-gray-400">Tidak ada data staff.</p>
           ) : (
             staffDaily.map((mo) => (
-              <StaffDailyTable key={mo.month} data={mo} selected={staffPick} under3={showStaffUnder3} />
+              <StaffDailyTable key={mo.month} data={mo} selected={staffPick} selectedCrew={staffCrewPick} under3={showStaffUnder3} />
             ))
           )}
         </div>
@@ -1099,7 +1137,7 @@ function CrewDailyTable({ data, selected, under3 }: { data: SsCrewDailyMonth; se
 }
 
 /** Tabel posisi staff × hari untuk satu bulan (jumlah SS dibuat per hari). */
-function StaffDailyTable({ data, selected, under3 }: { data: SsStaffDailyMonth; selected: string[]; under3: boolean }) {
+function StaffDailyTable({ data, selected, selectedCrew, under3 }: { data: SsStaffDailyMonth; selected: string[]; selectedCrew: string[]; under3: boolean }) {
   const [y, m] = data.month.split('-').map(Number)
   const label = `${MONTHS_ID[m - 1] ?? data.month} ${y}`
 
@@ -1109,7 +1147,9 @@ function StaffDailyTable({ data, selected, under3 }: { data: SsStaffDailyMonth; 
     .sort((a, b) => a.status.localeCompare(b.status, 'id'))
 
   const memberRows = filteredPositions.flatMap((p) =>
-    p.members.filter((m) => !under3 || m.total < 3).map((m) => ({ ...m, status: p.status }))
+    p.members
+      .filter((m) => (!under3 || m.total < 3) && (selectedCrew.length === 0 || (m.crew && selectedCrew.includes(m.crew))))
+      .map((m) => ({ ...m, status: p.status }))
   ).sort((a, b) => a.nama.localeCompare(b.nama, 'id'))
 
   const dayTotals = Array.from({ length: data.days }, (_, i) =>

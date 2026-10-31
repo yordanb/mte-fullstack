@@ -1210,7 +1210,9 @@ export type SsStaffDailyMonth = {
   /** YYYY-MM */
   month: string
   days: number
-  positions: { status: string; members: { nrp: string; nama: string; days: number[]; total: number }[] }[]
+  positions: { status: string; members: { crew: string | null; nrp: string; nama: string; days: number[]; total: number }[] }[]
+  /** Daftar crew yang terlibat di bulan ini, untuk filter. */
+  crews: string[]
   totals: { days: number[]; total: number }
 }
 

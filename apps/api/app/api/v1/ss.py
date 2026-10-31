@@ -999,15 +999,29 @@ async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends
     where, p = _filters(f, with_date=False)
     p["lo"], p["hi"] = lo, hi
 
+    # Crew filter
+    crew_filter = f.get("crew")
+    crew_where = "AND pr.crew = :crew" if crew_filter else ""
+    if crew_filter:
+        p["crew"] = crew_filter
+
     # Fetch distinct staff positions
     positions = (await db.execute(text(
-        "SELECT DISTINCT status FROM manpower_profile "
-        "WHERE status IS NOT NULL AND status NOT IN ('Mekanik', 'Repairman')"
-    ))).scalars().all()
+        f"SELECT DISTINCT status FROM manpower_profile "
+        f"WHERE status IS NOT NULL AND status NOT IN ('Mekanik', 'Repairman') {crew_where}"
+    ), p)).scalars().all()
     positions = sorted(positions)
+
+    # Fetch distinct crews for staff
+    crews = (await db.execute(text(
+        f"SELECT DISTINCT crew FROM manpower_profile "
+        f"WHERE crew IS NOT NULL AND status NOT IN ('Mekanik', 'Repairman') {crew_where}"
+    ), p)).scalars().all()
+    crews = sorted(crews)
 
     rows = (await db.execute(text(f"""
         SELECT pr.status AS status,
+               pr.crew AS crew,
                pr.nrp AS nrp,
                (SELECT mm.nama FROM manpower_month mm WHERE mm.nrp = pr.nrp ORDER BY mm.periode DESC LIMIT 1) AS nama,
                date_trunc('month', s.tgl_laporan)::date AS bulan,
@@ -1021,24 +1035,26 @@ async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends
         WHERE pr.status IS NOT NULL
           AND pr.status NOT IN ('Mekanik', 'Repairman')
           AND pr.nrp NOT LIKE '50%'
-        GROUP BY 1, 2, 3, 4, 5
+          {crew_where}
+        GROUP BY 1, 2, 3, 4, 5, 6
     """), p)).mappings().all()
 
-    all_members = (await db.execute(text("""
-        SELECT pr.status, pr.nrp,
+    all_members = (await db.execute(text(f"""
+        SELECT pr.status, pr.crew, pr.nrp,
                (SELECT mm.nama FROM manpower_month mm WHERE mm.nrp = pr.nrp ORDER BY mm.periode DESC LIMIT 1) AS nama
         FROM manpower_profile pr
         WHERE pr.status IS NOT NULL
           AND pr.status NOT IN ('Mekanik', 'Repairman')
           AND pr.nrp NOT LIKE '50%'
-    """))).mappings().all()
+          {crew_where}
+    """), p)).mappings().all()
 
-    per: dict[tuple[str, str, str, str], list[int]] = {}
+    per: dict[tuple[str, str, str, str, str], list[int]] = {}
     for r in rows:
         bulan = r["bulan"]
         if not bulan:
             continue
-        key = (r["status"], r["nrp"], r["nama"] or r["nrp"], bulan.strftime("%Y-%m"))
+        key = (r["status"], r["crew"], r["nrp"], r["nama"] or r["nrp"], bulan.strftime("%Y-%m"))
         arr = per.get(key)
         if arr is None:
             arr = [0] * calendar.monthrange(bulan.year, bulan.month)[1]
@@ -1055,11 +1071,12 @@ async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends
         pos_map = {}
         for mem in all_members:
             st = mem["status"]
+            crew = mem["crew"]
             nrp = mem["nrp"]
             nama = mem["nama"] or nrp
-            days = per.get((st, nrp, nama, mk)) or [0] * ndays
+            days = per.get((st, crew, nrp, nama, mk)) or [0] * ndays
             if st not in pos_map: pos_map[st] = []
-            pos_map[st].append({"nrp": nrp, "nama": nama, "days": days, "total": sum(days)})
+            pos_map[st].append({"crew": crew, "nrp": nrp, "nama": nama, "days": days, "total": sum(days)})
         
         month_data = []
         for st in positions:
@@ -1077,6 +1094,7 @@ async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends
             "month": mk,
             "days": ndays,
             "positions": month_data,
+            "crews": crews,
             "totals": {"days": day_totals, "total": sum(day_totals)},
         })
         m += 1
