@@ -11,6 +11,7 @@ baris baru ditambahkan, baris lama diperbarui, data di luar file tidak dihapus.
 Hanya baris dengan DEPT di `DEPT_ALLOW` (saat ini SPL2) yang disimpan; baris
 DEPT lain dilewati dan dilaporkan sebagai `skipped_dept` pada ringkasan import.
 """
+import calendar
 import csv
 import datetime
 import io
@@ -978,6 +979,90 @@ async def get_records(
         p)).mappings().all()
     return {"total": total, "page": page, "page_size": page_size,
             "data": [dict(r) for r in rows]}
+
+
+CREW_ORDER = [
+    "Pumping", "Mobile", "Big Wheel", "PCH", "Lighting", "Tyre",
+    "LCE", "MTE", "General Crew",
+]
+
+
+@router.get("/crew-daily", dependencies=[Depends(require_role("admin"))])
+async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
+    """Jumlah SS per crew per hari untuk tiap bulan dalam rentang filter.
+
+    Dihitung dari TANGGAL LAPORAN (kapan SS dibuat). Baris = crew yang punya
+    anggota berstatus Mekanik/Repairman pada `manpower_profile`; hanya SS dari
+    anggota tersebut yang dihitung. Kolom = seluruh hari pada bulan itu
+    (1..akhir bulan), plus kolom Total dan baris Total.
+    """
+    today = datetime.date.today()
+    lo = f["start"] or today.replace(day=1)
+    hi = f["end"] or today
+    if lo > hi:
+        lo, hi = hi, lo
+
+    where, p = _filters(f, with_date=False)
+    p["lo"], p["hi"] = lo, hi
+
+    crews = (await db.execute(text(
+        "SELECT DISTINCT crew FROM manpower_profile "
+        "WHERE crew IS NOT NULL AND status IN ('Mekanik', 'Repairman')"
+    ))).scalars().all()
+    order = {c: i for i, c in enumerate(CREW_ORDER)}
+    crews = sorted(crews, key=lambda c: (order.get(c, 999), c))
+
+    rows = (await db.execute(text(f"""
+        WITH s AS (
+          SELECT nrp, tgl_laporan FROM ss_report
+          WHERE {where}
+            AND tgl_laporan IS NOT NULL
+            AND tgl_laporan BETWEEN :lo AND :hi
+        )
+        SELECT pr.crew AS crew,
+               date_trunc('month', s.tgl_laporan)::date AS bulan,
+               EXTRACT(DAY FROM s.tgl_laporan)::int AS hari,
+               COUNT(*) AS jumlah
+        FROM s
+        JOIN manpower_profile pr ON pr.nrp = s.nrp
+        WHERE pr.crew IS NOT NULL
+          AND pr.status IN ('Mekanik', 'Repairman')
+        GROUP BY 1, 2, 3
+    """), p)).mappings().all()
+
+    per: dict[tuple[str, str], list[int]] = {}
+    for r in rows:
+        bulan = r["bulan"]
+        key = (r["crew"], bulan.strftime("%Y-%m"))
+        arr = per.get(key)
+        if arr is None:
+            arr = [0] * calendar.monthrange(bulan.year, bulan.month)[1]
+            per[key] = arr
+        arr[int(r["hari"]) - 1] += int(r["jumlah"])
+
+    months = []
+    y, m = lo.year, lo.month
+    while (y, m) <= (hi.year, hi.month):
+        ndays = calendar.monthrange(y, m)[1]
+        mk = f"{y:04d}-{m:02d}"
+        crew_rows = []
+        day_totals = [0] * ndays
+        for c in crews:
+            arr = per.get((c, mk)) or [0] * ndays
+            crew_rows.append({"crew": c, "days": arr, "total": sum(arr)})
+            for i, n in enumerate(arr):
+                day_totals[i] += n
+        months.append({
+            "month": mk,
+            "days": ndays,
+            "crews": crew_rows,
+            "totals": {"days": day_totals, "total": sum(day_totals)},
+        })
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+    return {"months": months}
 
 
 EXPORT_HEADERS = [

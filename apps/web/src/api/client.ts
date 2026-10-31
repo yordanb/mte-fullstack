@@ -1197,6 +1197,20 @@ export async function fetchSsRecords(params: SsParams & { page?: number; page_si
   return r.data
 }
 
+/** Jumlah SS per crew per hari (Tanggal Laporan), satu blok per bulan. */
+export type SsCrewDailyMonth = {
+  /** YYYY-MM */
+  month: string
+  days: number
+  crews: { crew: string; days: number[]; total: number }[]
+  totals: { days: number[]; total: number }
+}
+
+export async function fetchSsCrewDaily(params: SsParams): Promise<{ months: SsCrewDailyMonth[] }> {
+  const r = await api.get('/v1/ss/crew-daily', { params })
+  return r.data
+}
+
 export async function exportSsCsv(params: SsParams): Promise<void> {
   const r = await api.get('/v1/ss/export', { params, responseType: 'blob' })
   const url = URL.createObjectURL(r.data as Blob)

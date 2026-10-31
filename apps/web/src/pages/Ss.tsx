@@ -6,8 +6,8 @@ import { DatePicker } from '../components/DatePicker'
 import {
   errMsg, todayLocal, monthStartLocal,
   fetchSsFilters, fetchSsKpi, fetchSsTrend, fetchSsEiictm, fetchSsTargetCrew,
-  fetchSsBreakdown, fetchSsTopNrp, fetchSsRecords, exportSsCsv,
-  type SsBasis, type SsBreak, type SsEiictm, type SsFilters, type SsTopNrpResp,
+  fetchSsBreakdown, fetchSsTopNrp, fetchSsRecords, exportSsCsv, fetchSsCrewDaily,
+  type SsBasis, type SsBreak, type SsCrewDailyMonth, type SsEiictm, type SsFilters, type SsTopNrpResp,
   type SsKpi, type SsRecord, type SsTargetCrew, type SsTrend,
 } from '../api/client'
 
@@ -81,6 +81,8 @@ export default function SsPage() {
   const [byKat, setByKat] = useState<SsBreak[]>([])
   const [byDept, setByDept] = useState<SsBreak[]>([])
   const [topP, setTopP] = useState<SsTopNrpResp | null>(null)
+  const [crewDaily, setCrewDaily] = useState<SsCrewDailyMonth[]>([])
+  const [crewDailyErr, setCrewDailyErr] = useState('')
 
   const [rows, setRows] = useState<SsRecord[]>([])
   const [total, setTotal] = useState(0)
@@ -160,6 +162,21 @@ export default function SsPage() {
       .finally(() => { if (alive) setLoadingRows(false) })
     return () => { alive = false }
   }, [params, page, pageSize, sort, dir])
+
+  // Tabel crew × hari: selalu memakai Tanggal Laporan (kapan SS dibuat),
+  // terlepas dari pilihan "Dasar tanggal" pada filter di atas.
+  useEffect(() => {
+    let alive = true
+    setCrewDailyErr('')
+    fetchSsCrewDaily({ ...params, date_basis: 'laporan' })
+      .then((r) => { if (alive) setCrewDaily(r.months) })
+      .catch((e) => {
+        if (!alive) return
+        setCrewDaily([])
+        setCrewDailyErr(errMsg(e))
+      })
+    return () => { alive = false }
+  }, [params])
 
   const resetFilter = () => {
     setBasis('menilai'); setStart(monthStart); setEnd(today)
@@ -827,6 +844,102 @@ export default function SsPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Jumlah SS per Crew per Hari — di bawah Detail SS */}
+      <div className="mt-3 rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+        <div className="flex flex-wrap items-baseline gap-x-2 border-b px-4 py-2">
+          <span className="text-theme-sm font-semibold">Jumlah SS per Crew per Hari</span>
+          <span className="text-theme-xs text-gray-500">
+            dibuat (Tanggal Laporan) · anggota berstatus Mekanik &amp; Repairman
+          </span>
+        </div>
+        <div className="space-y-4 p-4">
+          {crewDailyErr ? (
+            <p className="py-8 text-center text-theme-sm text-gray-400">
+              Gagal memuat tabel: {crewDailyErr}
+            </p>
+          ) : crewDaily.length === 0 ? (
+            <p className="py-8 text-center text-theme-sm text-gray-400">Tidak ada data crew.</p>
+          ) : (
+            crewDaily.map((mo) => <CrewDailyTable key={mo.month} data={mo} />)
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const MONTHS_ID = [
+  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+]
+
+/** Tabel crew × hari untuk satu bulan (jumlah SS dibuat per hari). */
+function CrewDailyTable({ data }: { data: SsCrewDailyMonth }) {
+  const [y, m] = data.month.split('-').map(Number)
+  const label = `${MONTHS_ID[m - 1] ?? data.month} ${y}`
+
+  return (
+    <div>
+      <div className="mb-1 flex flex-wrap items-baseline gap-x-2">
+        <h4 className="text-theme-sm font-semibold">{label}</h4>
+        <span className="text-theme-xs text-gray-400">
+          {data.days} hari · {fmtNum(data.totals.total)} SS
+        </span>
+      </div>
+      <div className="w-full overflow-auto">
+        <table className="border-collapse text-theme-xs" style={{ width: 'max-content', minWidth: '100%' }}>
+          <thead className="bg-gray-50 dark:bg-gray-800">
+            <tr className="border-b">
+              <th className="sticky left-0 z-10 bg-gray-50 px-2 py-1.5 text-left font-semibold dark:bg-gray-800">
+                Crew
+              </th>
+              {Array.from({ length: data.days }, (_, i) => (
+                <th key={i} className="px-1.5 py-1.5 text-center font-medium tabular-nums text-gray-500">
+                  {i + 1}
+                </th>
+              ))}
+              <th className="px-2 py-1.5 text-right font-semibold">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.crews.map((c) => (
+              <tr key={c.crew} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-white/5">
+                <td className="sticky left-0 z-10 bg-white px-2 py-1.5 whitespace-nowrap dark:bg-gray-900">
+                  {c.crew}
+                </td>
+                {c.days.map((n, i) => (
+                  <td
+                    key={i}
+                    className={`px-1.5 py-1.5 text-center tabular-nums ${
+                      n ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-300 dark:text-gray-600'
+                    }`}
+                  >
+                    {n}
+                  </td>
+                ))}
+                <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{fmtNum(c.total)}</td>
+              </tr>
+            ))}
+            {data.crews.length === 0 && (
+              <tr>
+                <td colSpan={data.days + 2} className="px-4 py-6 text-center text-gray-400">
+                  Belum ada crew dengan status Mekanik/Repairman.
+                </td>
+              </tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 bg-gray-50 font-semibold dark:bg-gray-800">
+              <td className="sticky left-0 z-10 bg-gray-50 px-2 py-1.5 dark:bg-gray-800">Total</td>
+              {data.totals.days.map((n, i) => (
+                <td key={i} className="px-1.5 py-1.5 text-center tabular-nums">{n}</td>
+              ))}
+              <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(data.totals.total)}</td>
+            </tr>
+          </tfoot>
+        </table>
       </div>
     </div>
   )
