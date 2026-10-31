@@ -102,7 +102,8 @@ SQL_FILE="sync_manpower.sql"
         echo "UPDATE manpower_profile SET crew = '${REF_CREW[$n]}', status = '${REF_STATUS[$n]}', auto = FALSE, updated_by = 'sync from data-manpower', updated_at = NOW() WHERE nrp = '$n';"
     done
     for n in "${NOT_IN_REF[@]}"; do
-        echo "UPDATE manpower_profile SET status = 'Keluar', updated_by = 'sync: not in reference', updated_at = NOW() WHERE nrp = '$n' AND status != 'Keluar';"
+        # Set status NULL (diizinkan constraint) untuk yang tidak ada di referensi
+        echo "UPDATE manpower_profile SET status = NULL, crew = NULL, auto = FALSE, updated_by = 'sync: not in reference', updated_at = NOW() WHERE nrp = '$n' AND status IS NOT NULL;"
     done
     echo "COMMIT;"
 } > "$SQL_FILE"
