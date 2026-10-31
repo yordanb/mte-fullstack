@@ -987,15 +987,9 @@ CREW_ORDER = [
 ]
 
 
-@router.get("/crew-daily", dependencies=[Depends(require_role("admin"))])
-async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
-    """Jumlah SS per crew per hari untuk tiap bulan dalam rentang filter.
-
-    Dihitung dari TANGGAL LAPORAN (kapan SS dibuat). Baris = crew yang punya
-    anggota berstatus Mekanik/Repairman pada `manpower_profile`; hanya SS dari
-    anggota tersebut yang dihitung. Kolom = seluruh hari pada bulan itu
-    (1..akhir bulan), plus kolom Total dan baris Total.
-    """
+@router.get("/staff-daily", dependencies=[Depends(require_role("admin"))])
+async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
+    """Jumlah SS per posisi staff per hari untuk tiap bulan dalam rentang filter."""
     today = datetime.date.today()
     lo = f["start"] or today.replace(day=1)
     hi = f["end"] or today
@@ -1005,12 +999,12 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
     where, p = _filters(f, with_date=False)
     p["lo"], p["hi"] = lo, hi
 
-    crews = (await db.execute(text(
-        "SELECT DISTINCT crew FROM manpower_profile "
-        "WHERE crew IS NOT NULL AND status IN ('Mekanik', 'Repairman')"
+    # Fetch distinct staff positions
+    positions = (await db.execute(text(
+        "SELECT DISTINCT status FROM manpower_profile "
+        "WHERE status IS NOT NULL AND status NOT IN ('Mekanik', 'Repairman')"
     ))).scalars().all()
-    order = {c: i for i, c in enumerate(CREW_ORDER)}
-    crews = sorted(crews, key=lambda c: (order.get(c, 999), c))
+    positions = sorted(positions)
 
     rows = (await db.execute(text(f"""
         WITH s AS (
@@ -1019,7 +1013,7 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
             AND tgl_laporan IS NOT NULL
             AND tgl_laporan BETWEEN :lo AND :hi
         )
-        SELECT pr.crew AS crew,
+        SELECT pr.status AS status,
                pr.nrp AS nrp,
                (SELECT mm.nama FROM manpower_month mm WHERE mm.nrp = pr.nrp ORDER BY mm.periode DESC LIMIT 1) AS nama,
                date_trunc('month', s.tgl_laporan)::date AS bulan,
@@ -1027,15 +1021,15 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
                COUNT(*) AS jumlah
         FROM s
         JOIN manpower_profile pr ON pr.nrp = s.nrp
-        WHERE pr.crew IS NOT NULL
-          AND pr.status IN ('Mekanik', 'Repairman')
+        WHERE pr.status IS NOT NULL
+          AND pr.status NOT IN ('Mekanik', 'Repairman')
         GROUP BY 1, 2, 3, 4, 5
     """), p)).mappings().all()
 
     per: dict[tuple[str, str, str, str], list[int]] = {}
     for r in rows:
         bulan = r["bulan"]
-        key = (r["crew"], r["nrp"], r["nama"] or r["nrp"], bulan.strftime("%Y-%m"))
+        key = (r["status"], r["nrp"], r["nama"] or r["nrp"], bulan.strftime("%Y-%m"))
         arr = per.get(key)
         if arr is None:
             arr = [0] * calendar.monthrange(bulan.year, bulan.month)[1]
@@ -1048,31 +1042,28 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
         ndays = calendar.monthrange(y, m)[1]
         mk = f"{y:04d}-{m:02d}"
         
-        # Group by crew then member
-        crew_map = {}
-        for (c, nrp, nama, mk_key), days in per.items():
+        pos_map = {}
+        for (st, nrp, nama, mk_key), days in per.items():
             if mk_key == mk:
-                if c not in crew_map: crew_map[c] = []
-                crew_map[c].append({"nrp": nrp, "nama": nama, "days": days, "total": sum(days)})
+                if st not in pos_map: pos_map[st] = []
+                pos_map[st].append({"nrp": nrp, "nama": nama, "days": days, "total": sum(days)})
         
-        month_crews = []
-        for c in crews:
-            members = crew_map.get(c, [])
+        month_data = []
+        for st in positions:
+            members = pos_map.get(st, [])
             if members:
-                # sum all daily values for day_totals
-                month_crews.append({"crew": c, "members": sorted(members, key=lambda x: x["nama"])})
+                month_data.append({"status": st, "members": sorted(members, key=lambda x: x["nama"])})
         
-        # Calculate day totals across all shown members
         day_totals = [0] * ndays
-        for c in month_crews:
-            for mem in c["members"]:
+        for st_data in month_data:
+            for mem in st_data["members"]:
                 for i, n in enumerate(mem["days"]):
                     day_totals[i] += n
 
         months.append({
             "month": mk,
             "days": ndays,
-            "crews": month_crews,
+            "positions": month_data,
             "totals": {"days": day_totals, "total": sum(day_totals)},
         })
         m += 1
