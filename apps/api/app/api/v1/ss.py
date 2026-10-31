@@ -1071,6 +1071,98 @@ async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends
     return {"months": months}
 
 
+@router.get("/crew-daily", dependencies=[Depends(require_role("admin"))])
+async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
+    """Jumlah SS per crew per hari untuk tiap bulan dalam rentang filter.
+
+    Dihitung dari TANGGAL LAPORAN (kapan SS dibuat). Baris = crew yang punya
+    anggota berstatus Mekanik/Repairman pada `manpower_profile`; hanya SS dari
+    anggota tersebut yang dihitung. Kolom = seluruh hari pada bulan itu
+    (1..akhir bulan), plus kolom Total dan baris Total.
+    """
+    today = datetime.date.today()
+    lo = f["start"] or today.replace(day=1)
+    hi = f["end"] or today
+    if lo > hi:
+        lo, hi = hi, lo
+
+    where, p = _filters(f, with_date=False)
+    p["lo"], p["hi"] = lo, hi
+
+    crews = (await db.execute(text(
+        "SELECT DISTINCT crew FROM manpower_profile "
+        "WHERE crew IS NOT NULL AND status IN ('Mekanik', 'Repairman')"
+    ))).scalars().all()
+    order = {c: i for i, c in enumerate(CREW_ORDER)}
+    crews = sorted(crews, key=lambda c: (order.get(c, 999), c))
+
+    rows = (await db.execute(text(f"""
+        WITH s AS (
+          SELECT nrp, tgl_laporan FROM ss_report
+          WHERE {where}
+            AND tgl_laporan IS NOT NULL
+            AND tgl_laporan BETWEEN :lo AND :hi
+        )
+        SELECT pr.crew AS crew,
+               pr.nrp AS nrp,
+               (SELECT mm.nama FROM manpower_month mm WHERE mm.nrp = pr.nrp ORDER BY mm.periode DESC LIMIT 1) AS nama,
+               date_trunc('month', s.tgl_laporan)::date AS bulan,
+               EXTRACT(DAY FROM s.tgl_laporan)::int AS hari,
+               COUNT(*) AS jumlah
+        FROM s
+        JOIN manpower_profile pr ON pr.nrp = s.nrp
+        WHERE pr.crew IS NOT NULL
+          AND pr.status IN ('Mekanik', 'Repairman')
+        GROUP BY 1, 2, 3, 4, 5
+    """), p)).mappings().all()
+
+    per: dict[tuple[str, str, str, str], list[int]] = {}
+    for r in rows:
+        bulan = r["bulan"]
+        key = (r["crew"], r["nrp"], r["nama"] or r["nrp"], bulan.strftime("%Y-%m"))
+        arr = per.get(key)
+        if arr is None:
+            arr = [0] * calendar.monthrange(bulan.year, bulan.month)[1]
+            per[key] = arr
+        arr[int(r["hari"]) - 1] += int(r["jumlah"])
+
+    months = []
+    y, m = lo.year, lo.month
+    while (y, m) <= (hi.year, hi.month):
+        ndays = calendar.monthrange(y, m)[1]
+        mk = f"{y:04d}-{m:02d}"
+        
+        # Group by crew then member
+        crew_map = {}
+        for (c, nrp, nama, mk_key), days in per.items():
+            if mk_key == mk:
+                if c not in crew_map: crew_map[c] = []
+                crew_map[c].append({"nrp": nrp, "nama": nama, "days": days, "total": sum(days)})
+        
+        month_crews = []
+        for c in crews:
+            members = crew_map.get(c, [])
+            if members:
+                month_crews.append({"crew": c, "members": sorted(members, key=lambda x: x["nama"])})
+        
+        # Calculate day totals across all shown members
+        day_totals = [0] * ndays
+        for c in month_crews:
+            for mem in c["members"]:
+                for i, n in enumerate(mem["days"]):
+                    day_totals[i] += n
+
+        months.append({
+            "month": mk,
+            "days": ndays,
+            "crews": month_crews,
+            "totals": {"days": day_totals, "total": sum(day_totals)},
+        })
+        m += 1
+        if m > 12: m = 1; y += 1
+    return {"months": months}
+
+
 EXPORT_HEADERS = [
     "NO SS", "TANGGAL LAPORAN", "JUDUL", "PENCETUS IDE", "NRP", "DEPT", "DIVISI",
     "DISTRIK", "MANFAAT FINANCIAL", "TANGGAL MENILAI", "DINILAI OLEH", "GRADE SS",
