@@ -1020,6 +1020,7 @@ async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends
           {f"AND {where.replace('tgl_laporan', 's.tgl_laporan')}" if where != "TRUE" else ""}
         WHERE pr.status IS NOT NULL
           AND pr.status NOT IN ('Mekanik', 'Repairman')
+          AND pr.nrp NOT LIKE '50%'
         GROUP BY 1, 2, 3, 4, 5
     """), p)).mappings().all()
 
@@ -1029,6 +1030,7 @@ async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends
         FROM manpower_profile pr
         WHERE pr.status IS NOT NULL
           AND pr.status NOT IN ('Mekanik', 'Repairman')
+          AND pr.nrp NOT LIKE '50%'
     """))).mappings().all()
 
     per: dict[tuple[str, str, str, str], list[int]] = {}
@@ -1114,6 +1116,7 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
           AND s.tgl_laporan BETWEEN :lo AND :hi
         WHERE pr.crew IS NOT NULL
           AND pr.status IN ('Mekanik', 'Repairman')
+          AND pr.nrp NOT LIKE '50%'
         GROUP BY 1, 2, 3, 4, 5
     """), p)).mappings().all()
 
@@ -1124,6 +1127,7 @@ async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(
         FROM manpower_profile pr
         WHERE pr.crew IS NOT NULL
           AND pr.status IN ('Mekanik', 'Repairman')
+          AND pr.nrp NOT LIKE '50%'
     """))).mappings().all()
 
     per: dict[tuple[str, str, str, str], list[int]] = {}
