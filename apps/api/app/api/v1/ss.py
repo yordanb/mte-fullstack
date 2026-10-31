@@ -1050,10 +1050,13 @@ async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends
         mk = f"{y:04d}-{m:02d}"
         
         pos_map = {}
-        for (st, nrp, nama, mk_key), days in per.items():
-            if mk_key == mk:
-                if st not in pos_map: pos_map[st] = []
-                pos_map[st].append({"nrp": nrp, "nama": nama, "days": days, "total": sum(days)})
+        for mem in all_members:
+            st = mem["status"]
+            nrp = mem["nrp"]
+            nama = mem["nama"] or nrp
+            days = per.get((st, nrp, nama, mk)) or [0] * ndays
+            if st not in pos_map: pos_map[st] = []
+            pos_map[st].append({"nrp": nrp, "nama": nama, "days": days, "total": sum(days)})
         
         month_data = []
         for st in positions:
