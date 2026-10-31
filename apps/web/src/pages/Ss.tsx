@@ -83,6 +83,8 @@ export default function SsPage() {
   const [topP, setTopP] = useState<SsTopNrpResp | null>(null)
   const [crewDaily, setCrewDaily] = useState<SsCrewDailyMonth[]>([])
   const [crewDailyErr, setCrewDailyErr] = useState('')
+  // Filter crew untuk tabel crew × hari. Kosong = semua crew.
+  const [crewPick, setCrewPick] = useState<string[]>([])
 
   const [rows, setRows] = useState<SsRecord[]>([])
   const [total, setTotal] = useState(0)
@@ -183,6 +185,16 @@ export default function SsPage() {
     setDept(''); setKat(''); setGrade(''); setStatus(''); setTahap('')
     setQ(''); setSearch('')
   }
+
+  // Daftar crew pada tabel crew × hari, urut abjad.
+  const crewDailyCrews = useMemo(() => {
+    const set = new Set<string>()
+    crewDaily.forEach((mo) => mo.crews.forEach((c) => set.add(c.crew)))
+    return [...set].sort((a, b) => a.localeCompare(b, 'id'))
+  }, [crewDaily])
+
+  const toggleCrew = (crew: string) =>
+    setCrewPick((cur) => (cur.includes(crew) ? cur.filter((c) => c !== crew) : [...cur, crew]))
 
   const sortBy = (key: string) => {
     if (sort === key) setDir(dir === 'desc' ? 'asc' : 'desc')
@@ -848,11 +860,37 @@ export default function SsPage() {
 
       {/* Jumlah SS per Crew per Hari — di bawah Detail SS */}
       <div className="mt-3 rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-        <div className="flex flex-wrap items-baseline gap-x-2 border-b px-4 py-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-2 border-b px-4 py-2">
           <span className="text-theme-sm font-semibold">Jumlah SS per Crew per Hari</span>
           <span className="text-theme-xs text-gray-500">
             dibuat (Tanggal Laporan) · anggota berstatus Mekanik &amp; Repairman
           </span>
+          <div className="ml-auto flex flex-wrap items-center gap-1">
+            <span className="text-theme-xs text-gray-500">Crew:</span>
+            <button
+              onClick={() => setCrewPick([])}
+              className={`rounded-full border px-2 py-0.5 text-theme-xs transition ${
+                crewPick.length === 0
+                  ? 'border-blue-500 bg-blue-50 font-semibold text-blue-700 dark:border-blue-400 dark:bg-blue-500/15 dark:text-blue-300'
+                  : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-white/5'
+              }`}
+            >Semua</button>
+            {crewDailyCrews.map((c) => {
+              const on = crewPick.includes(c)
+              return (
+                <button
+                  key={c}
+                  onClick={() => toggleCrew(c)}
+                  title={c}
+                  className={`rounded-full border px-2 py-0.5 text-theme-xs transition ${
+                    on
+                      ? 'border-blue-500 bg-blue-50 font-semibold text-blue-700 dark:border-blue-400 dark:bg-blue-500/15 dark:text-blue-300'
+                      : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-white/5'
+                  }`}
+                >{abbrName(c)}</button>
+              )
+            })}
+          </div>
         </div>
         <div className="space-y-4 p-4">
           {crewDailyErr ? (
@@ -862,7 +900,9 @@ export default function SsPage() {
           ) : crewDaily.length === 0 ? (
             <p className="py-8 text-center text-theme-sm text-gray-400">Tidak ada data crew.</p>
           ) : (
-            crewDaily.map((mo) => <CrewDailyTable key={mo.month} data={mo} />)
+            crewDaily.map((mo) => (
+              <CrewDailyTable key={mo.month} data={mo} selected={crewPick} />
+            ))
           )}
         </div>
       </div>
@@ -876,16 +916,24 @@ const MONTHS_ID = [
 ]
 
 /** Tabel crew × hari untuk satu bulan (jumlah SS dibuat per hari). */
-function CrewDailyTable({ data }: { data: SsCrewDailyMonth }) {
+function CrewDailyTable({ data, selected }: { data: SsCrewDailyMonth; selected: string[] }) {
   const [y, m] = data.month.split('-').map(Number)
   const label = `${MONTHS_ID[m - 1] ?? data.month} ${y}`
+
+  // Crew terpilih (kosong = semua), urut abjad berdasarkan nama crew.
+  const rows = data.crews
+    .filter((c) => selected.length === 0 || selected.includes(c.crew))
+    .sort((a, b) => a.crew.localeCompare(b.crew, 'id'))
+  const dayTotals = Array.from({ length: data.days }, (_, i) =>
+    rows.reduce((s, c) => s + (c.days[i] ?? 0), 0))
+  const grand = rows.reduce((s, c) => s + c.total, 0)
 
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-baseline gap-x-2">
         <h4 className="text-theme-sm font-semibold">{label}</h4>
         <span className="text-theme-xs text-gray-400">
-          {data.days} hari · {fmtNum(data.totals.total)} SS
+          {rows.length} crew · {data.days} hari · {fmtNum(grand)} SS
         </span>
       </div>
       <div className="w-full overflow-auto">
@@ -904,10 +952,13 @@ function CrewDailyTable({ data }: { data: SsCrewDailyMonth }) {
             </tr>
           </thead>
           <tbody>
-            {data.crews.map((c) => (
+            {rows.map((c) => (
               <tr key={c.crew} className="border-b last:border-0 hover:bg-gray-50 dark:hover:bg-white/5">
-                <td className="sticky left-0 z-10 bg-white px-2 py-1.5 whitespace-nowrap dark:bg-gray-900">
-                  {c.crew}
+                <td
+                  className="sticky left-0 z-10 bg-white px-2 py-1.5 whitespace-nowrap dark:bg-gray-900"
+                  title={c.crew}
+                >
+                  {abbrName(c.crew)}
                 </td>
                 {c.days.map((n, i) => (
                   <td
@@ -922,10 +973,12 @@ function CrewDailyTable({ data }: { data: SsCrewDailyMonth }) {
                 <td className="px-2 py-1.5 text-right font-semibold tabular-nums">{fmtNum(c.total)}</td>
               </tr>
             ))}
-            {data.crews.length === 0 && (
+            {rows.length === 0 && (
               <tr>
                 <td colSpan={data.days + 2} className="px-4 py-6 text-center text-gray-400">
-                  Belum ada crew dengan status Mekanik/Repairman.
+                  {data.crews.length === 0
+                    ? 'Belum ada crew dengan status Mekanik/Repairman.'
+                    : 'Tidak ada crew yang dipilih.'}
                 </td>
               </tr>
             )}
@@ -933,10 +986,10 @@ function CrewDailyTable({ data }: { data: SsCrewDailyMonth }) {
           <tfoot>
             <tr className="border-t-2 bg-gray-50 font-semibold dark:bg-gray-800">
               <td className="sticky left-0 z-10 bg-gray-50 px-2 py-1.5 dark:bg-gray-800">Total</td>
-              {data.totals.days.map((n, i) => (
+              {dayTotals.map((n, i) => (
                 <td key={i} className="px-1.5 py-1.5 text-center tabular-nums">{n}</td>
               ))}
-              <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(data.totals.total)}</td>
+              <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(grand)}</td>
             </tr>
           </tfoot>
         </table>
