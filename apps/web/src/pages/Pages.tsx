@@ -784,7 +784,7 @@ const DRAGFLOW_PAIRS = [
   { ex: 'EX326', wp: 'WP1080' },
   { ex: 'EX312', wp: 'WP1081' },
   { ex: 'EX265', wp: 'WP791' },
-  { ex: 'EX339', wp: 'WP1039' },
+  { ex: 'EX339', wp: 'WP1309' },
   { ex: 'EX329', wp: 'WP1063' },
 ]
 const iso = (y: number, m: number, d: number) =>
