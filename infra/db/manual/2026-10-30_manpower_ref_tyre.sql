@@ -51,7 +51,6 @@ INSERT INTO ref_tyre (nrp, status) VALUES
   ('47100086', 'Staff'),
   ('61080877', 'Staff'),
   ('61102572', 'Staff'),
-  ('61122039', 'Staff'),
   ('61140407', 'Staff'),
   ('61232560', 'Staff');
 
@@ -114,7 +113,6 @@ JOIN (VALUES
     ('47100086', 'Staff'),
     ('61080877', 'Staff'),
     ('61102572', 'Staff'),
-    ('61122039', 'Staff'),
     ('61140407', 'Staff'),
     ('61232560', 'Staff')
 ) AS x(nrp, status) ON x.nrp = p.nrp
