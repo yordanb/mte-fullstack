@@ -565,32 +565,41 @@ async def update_manage(
 
 async def _autofill_logic(db: AsyncSession, user: dict):
     rows = (await db.execute(text("""
-        SELECT m.nrp, m.jabatan
-        FROM manpower_month m
-        JOIN manpower_profile p ON p.nrp = m.nrp
-        WHERE p.auto = TRUE OR (p.section IS NULL AND p.crew IS NULL AND p.status IS NULL)
+        SELECT p.nrp, p.section, p.crew, p.status, m.jabatan
+        FROM manpower_profile p
+        LEFT JOIN manpower_month m ON m.nrp = p.nrp
+        WHERE m.jabatan IS NOT NULL
         ORDER BY m.periode DESC
     """))).mappings().all()
-    seen = set()
-    count = 0
+    by = user.get("username", "api")
+    seen: set[str] = set()
+    checked = 0
+    filled = 0
+    skipped = 0
     for r in rows:
         nrp = r["nrp"]
         if nrp in seen:
             continue
         seen.add(nrp)
+        checked += 1
         sec, cr, st = classify(r["jabatan"])
-        if sec or cr or st:
-            await db.execute(text("""
-                UPDATE manpower_profile
-                SET section = COALESCE(section, :sec),
-                    crew = COALESCE(crew, :cr),
-                    status = COALESCE(status, :st),
-                    updated_by = :by, updated_at = NOW()
-                WHERE nrp = :nrp AND auto = TRUE
-            """), {"sec": sec, "cr": cr, "st": st, "by": user.get("username", "api"), "nrp": nrp})
-            count += 1
-    await db.execute(text("COMMIT"), {"by": user.get("username", "api")})
-    return {"ok": True, "updated_count": count}
+        if not (sec or cr or st):
+            skipped += 1
+            continue
+        res = await db.execute(text("""
+            UPDATE manpower_profile
+            SET section = COALESCE(section, :sec),
+                crew = COALESCE(crew, :cr),
+                status = COALESCE(status, :st),
+                updated_by = :by, updated_at = NOW()
+            WHERE nrp = :nrp
+              AND (section IS NULL OR crew IS NULL OR status IS NULL)
+        """), {"sec": sec, "cr": cr, "st": st, "by": by, "nrp": nrp})
+        if res.rowcount:
+            filled += 1
+    await db.execute(text("COMMIT"))
+    return {"ok": True, "checked": checked, "created": 0,
+            "filled": filled, "updated": filled, "skipped": skipped}
 
 @router.post("/auto-classify", dependencies=[Depends(require_menu("manpower", "edit"))])
 async def auto_classify(
