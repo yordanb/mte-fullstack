@@ -525,6 +525,15 @@ async def get_manage(
             "data": [dict(r) for r in rows]}
 
 
+@router.post("/manage/autofill", dependencies=[Depends(require_menu("manpower", "edit"))])
+async def autofill_manage(
+    body: dict | None = None,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    return await _autofill_logic(db, user)
+
+
 @router.post("/manage/{nrp}", dependencies=[Depends(require_menu("manpower", "edit"))])
 async def update_manage(
     nrp: str,
@@ -585,14 +594,6 @@ async def _autofill_logic(db: AsyncSession, user: dict):
 
 @router.post("/auto-classify", dependencies=[Depends(require_menu("manpower", "edit"))])
 async def auto_classify(
-    db: AsyncSession = Depends(get_db),
-    user: dict = Depends(get_current_user),
-):
-    return await _autofill_logic(db, user)
-
-@router.post("/manage/autofill", dependencies=[Depends(require_menu("manpower", "edit"))])
-async def autofill_manage(
-    body: dict | None = None,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
