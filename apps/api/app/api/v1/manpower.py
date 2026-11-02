@@ -8,8 +8,9 @@ import re
 
 import openpyxl
 from fastapi import (
-    APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile,
+    APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, Body,
 )
+from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -591,6 +592,7 @@ async def auto_classify(
 
 @router.post("/manage/autofill", dependencies=[Depends(require_menu("manpower", "edit"))])
 async def autofill_manage(
+    body: dict | None = None,
     db: AsyncSession = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
