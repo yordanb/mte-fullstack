@@ -583,5 +583,5 @@ async def auto_classify(
                 WHERE nrp = :nrp AND auto = TRUE
             """), {"sec": sec, "cr": cr, "st": st, "by": user.get("username", "api"), "nrp": nrp})
             count += 1
-    await db.execute(text("COMMIT"))
+    await db.execute(text("COMMIT"), {"by": user.get("username", "api")})
     return {"ok": True, "updated_count": count}
