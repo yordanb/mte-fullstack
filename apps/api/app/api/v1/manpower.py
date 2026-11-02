@@ -466,63 +466,244 @@ async def get_records(
             "data": [dict(r) for r in rows]}
 
 
-_MANAGE_SORTS = ("nrp", "nama", "jabatan", "dept", "section", "crew", "status",
-                 "updated_at")
+_MANAGE_SORTS = ("nrp", "nama", "jabatan", "dept", "divisi", "distrik",
+                 "section", "crew", "status", "ss_closed", "innovator_ss",
+                 "innovator_all")
+
+_MANAGE_SELECT = """
+    p.nrp,
+    p.name AS nama,
+    m.jabatan,
+    m.dept,
+    m.divisi,
+    m.distrik,
+    p.section,
+    p.crew,
+    p.status,
+    COALESCE(p.auto, FALSE) AS auto_filled,
+    COALESCE(m.ss_closed, 0) AS ss_closed,
+    COALESCE(m.innovator_ss, 0) AS innovator_ss,
+    COALESCE(m.innovator_all, 0) AS innovator_all
+"""
+
+
+def _manage_where(dept: str | None = None, section: str | None = None,
+                  crew: str | None = None, status: str | None = None,
+                  search: str | None = None) -> tuple[str, dict]:
+    """Filter untuk /manage; base tabel = manpower_profile (alias p)."""
+    conds: list[str] = []
+    p: dict = {}
+    if dept:
+        conds.append("m.dept = :dept")
+        p["dept"] = dept
+    if search:
+        conds.append("(p.name ILIKE :q OR p.nrp ILIKE :q OR m.jabatan ILIKE :q "
+                     "OR p.section ILIKE :q)")
+        p["q"] = f"%{search}%"
+    for col, val, key in (("p.section", section, "section"),
+                          ("p.crew", crew, "crew"),
+                          ("p.status", status, "status")):
+        if not val:
+            continue
+        if val == EMPTY:
+            conds.append(f"{col} IS NULL")
+        else:
+            conds.append(f"{col} = :{key}")
+            p[key] = val
+    return (" AND ".join(conds), p)
 
 
 @router.get("/manage", dependencies=[Depends(require_menu("manpower", "view"))])
-async def get_manage(
+async def manage_dashboard(
+    periode: str | None = Query(None),
+    dept: str | None = Query(None),
     section: str | None = Query(None),
     crew: str | None = Query(None),
     status: str | None = Query(None),
     search: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=200),
-    sort: str = Query("nrp"),
+    sort: str = Query("nama"),
     dir: str = Query("asc", pattern="^(asc|desc)$"),
     db: AsyncSession = Depends(get_db),
 ):
-    conds = ["status IS NOT NULL"]
-    p: dict = {}
-    if section:
-        if section == EMPTY:
-            conds.append("section IS NULL")
-        else:
-            conds.append("section = :section")
-            p["section"] = section
-    if crew:
-        if crew == EMPTY:
-            conds.append("crew IS NULL")
-        else:
-            conds.append("crew = :crew")
-            p["crew"] = crew
-    if status:
-        if status == EMPTY:
-            conds.append("status IS NULL")
-        else:
-            conds.append("status = :status")
-            p["status"] = status
-    if search:
-        conds.append("(nrp ILIKE :q OR name ILIKE :q)")
-        p["q"] = f"%{search}%"
-    where = "WHERE " + " AND ".join(conds) if conds else ""
+    """Ringkasan + daftar manpower beserta kelompoknya untuk satu bulan.
+
+    Master data = manpower_profile (sumber kebenaran personel aktif);
+    manpower_month hanya menyuplai jabatan/dept/metrik bulanan per NRP.
+    """
+    if periode:
+        try:
+            per = parse_period(periode)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    else:
+        per = (await db.execute(text("SELECT MAX(periode) FROM manpower_month"))).scalar()
+    if not per:
+        return {"periode": None, "manpower": 0, "classified": 0, "unclassified": 0,
+                "staff": 0, "mekanik": 0, "repairman": 0, "general_crew": 0,
+                "assessed": 0, "by_section": [], "by_crew": [], "by_status": [],
+                "sections": SECTIONS, "crews": CREWS, "statuses": STATUSES,
+                "depts": [], "total": 0, "page": 1, "page_size": page_size,
+                "data": [], "profiled": 0}
+
+    w, p = _manage_where(dept, section, crew, status, search)
+    join = ("FROM manpower_profile p "
+            "LEFT JOIN manpower_month m ON m.nrp = p.nrp AND m.periode = :periode")
+    p["periode"] = per
+
+    s = (await db.execute(text(f"""
+        SELECT COUNT(*) AS manpower,
+               -- Dept Head tidak punya Crew; dianggap lengkap tanpa Crew.
+               COUNT(*) FILTER (WHERE p.section IS NOT NULL
+                                  AND p.status IS NOT NULL
+                                  AND (p.crew IS NOT NULL
+                                       OR p.section = 'Dept Head')) AS classified,
+               COUNT(*) FILTER (WHERE p.status = 'Staff') AS staff,
+               COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik,
+               COUNT(*) FILTER (WHERE p.status = 'Repairman') AS repairman,
+               COUNT(*) FILTER (WHERE p.status = 'General Crew') AS general_crew,
+               COUNT(*) FILTER (WHERE p.status IS DISTINCT FROM 'General Crew') AS assessed,
+               COUNT(*) FILTER (WHERE p.name IS NOT NULL) AS profiled
+        {join} {('WHERE ' + w) if w else ''}
+    """), p)).mappings().first()
+
+    def _breakdown_sql(dim: str) -> str:
+        extra = ""
+        if dim == "crew":
+            extra = " WHEN p.crew IS NULL AND p.section = 'Dept Head' THEN 'Dept Head'"
+        return (
+            " SELECT CASE WHEN p." + dim + " IS NOT NULL THEN p." + dim
+            + " WHEN p.status = 'General Crew' THEN 'General Crew'"
+            + extra
+            + " ELSE '(belum diisi)' END AS label, COUNT(*) AS total,"
+            "        COUNT(*) FILTER (WHERE p.status = 'Staff') AS staff,"
+            "        COUNT(*) FILTER (WHERE p.status = 'Mekanik') AS mekanik,"
+            "        COUNT(*) FILTER (WHERE p.status = 'Repairman') AS repairman,"
+            "        COUNT(*) FILTER (WHERE p.status = 'General Crew') AS general_crew"
+            f" {join} {{where}} GROUP BY 1 ORDER BY total DESC, 1"
+        )
+
+    async def breakdown(dim: str, **skip):
+        ww, pp = _manage_where(dept, **{**dict(section=section, crew=crew,
+                                               status=status), **skip}, search=search)
+        rows = (await db.execute(text(_breakdown_sql(dim).format(
+            where=('WHERE ' + ww) if ww else '')), pp)).mappings().all()
+        return [{"label": r["label"], "total": int(r["total"] or 0),
+                 "staff": int(r["staff"] or 0), "mekanik": int(r["mekanik"] or 0),
+                 "repairman": int(r["repairman"] or 0),
+                 "general_crew": int(r["general_crew"] or 0)}
+                for r in rows]
+
+    by_section = await breakdown("section", section=None)
+    by_crew = await breakdown("crew", crew=None)
+    by_status = await breakdown("status", status=None)
+
+    depts = [r[0] for r in (await db.execute(text(
+        "SELECT DISTINCT dept FROM manpower_month WHERE periode = :p "
+        "AND dept IS NOT NULL ORDER BY 1"), {"p": per})).all()]
+
     if sort not in _MANAGE_SORTS:
         sort = "nrp"
     p["lim"] = page_size
     p["off"] = (page - 1) * page_size
     total = (await db.execute(text(
-        f"SELECT COUNT(*) FROM manpower_profile {where}"), p)).scalar() or 0
-    rows = (await db.execute(text(f"""
-        SELECT nrp, name AS nama, section, crew, status, auto, updated_by, updated_at,
-               (SELECT mm.jabatan FROM manpower_month mm WHERE mm.nrp = manpower_profile.nrp ORDER BY mm.periode DESC LIMIT 1) AS jabatan,
-               (SELECT mm.dept FROM manpower_month mm WHERE mm.nrp = manpower_profile.nrp ORDER BY mm.periode DESC LIMIT 1) AS dept
-        FROM manpower_profile
-        {where}
-        ORDER BY {sort} {dir.upper()} NULLS LAST, nrp
-        LIMIT :lim OFFSET :off
-    """), p)).mappings().all()
-    return {"total": total, "page": page, "page_size": page_size,
-            "data": [dict(r) for r in rows]}
+        f"SELECT COUNT(*) {join} {('WHERE ' + w) if w else ''}"), p)).scalar() or 0
+    rows = (await db.execute(text(
+        f"SELECT {_MANAGE_SELECT} {join} {('WHERE ' + w) if w else ''} "
+        f"ORDER BY {sort} {dir.upper()} NULLS LAST, p.nrp LIMIT :lim OFFSET :off"),
+        p)).mappings().all()
+
+    manpower = int(s["manpower"] or 0)
+    profiled = int(s["profiled"] or 0)
+    classified = int(s["classified"] or 0)
+    return {
+        "periode": per.strftime("%Y-%m"),
+        "manpower": manpower,
+        "profiled": profiled,
+        "classified": classified,
+        "unclassified": manpower - classified,
+        "staff": int(s["staff"] or 0),
+        "mekanik": int(s["mekanik"] or 0),
+        "repairman": int(s["repairman"] or 0),
+        "general_crew": int(s["general_crew"] or 0),
+        "assessed": int(s["assessed"] or 0),
+        "by_section": by_section,
+        "by_crew": by_crew,
+        "by_status": by_status,
+        "sections": SECTIONS,
+        "crews": CREWS,
+        "statuses": STATUSES,
+        "depts": depts,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "data": [dict(r) for r in rows],
+    }
+
+
+@router.patch("/manage/{nrp}", dependencies=[Depends(require_menu("manpower", "edit"))])
+async def update_manage(
+    nrp: str,
+    body: dict,
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ubah pengelompokan satu orang. Kirim "" untuk mengosongkan."""
+    key = (nrp or "").strip().upper()
+    if not key:
+        raise HTTPException(400, "NRP kosong")
+    exists = (await db.execute(text(
+        "SELECT 1 FROM manpower_profile WHERE nrp = :n LIMIT 1"), {"n": key})).scalar()
+    if not exists:
+        raise HTTPException(404, "Manpower tidak ditemukan")
+
+    sets, params = [], {"n": key, "u": user.get("username", "api")}
+    for field, allowed in (("section", SECTIONS), ("crew", CREWS), ("status", STATUSES)):
+        if field in body:
+            sets.append(f"{field} = :{field}")
+            params[field] = _pick(body[field], allowed, field)
+    name = _txt(body.get("nama"))
+    if name:
+        sets.append("name = :name")
+        params["name"] = name
+    if not sets:
+        raise HTTPException(400, "Tidak ada field yang diubah")
+
+    await db.execute(text(
+        f"UPDATE manpower_profile SET {', '.join(sets)}, auto = FALSE, "
+        f"updated_by = :u, updated_at = now() WHERE nrp = :n"), params)
+    await db.execute(text("COMMIT"))
+    row = (await db.execute(text(
+        "SELECT nrp, section, crew, status, auto AS auto_filled, updated_by, updated_at "
+        "FROM manpower_profile WHERE nrp = :n"), {"n": key})).mappings().first()
+    return dict(row) if row else {"nrp": key}
+
+
+@router.post("/manage/bulk", dependencies=[Depends(require_menu("manpower", "edit"))])
+async def bulk_update(
+    body: dict,
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ubah pengelompokan banyak orang sekaligus (field yang dikirim saja)."""
+    nrps = sorted({str(n).strip().upper() for n in (body.get("nrps") or [])
+                   if str(n).strip()})
+    if not nrps:
+        raise HTTPException(400, "Pilih minimal satu baris")
+    sets, params = [], {"n": nrps, "u": user.get("username", "api")}
+    for field, allowed in (("section", SECTIONS), ("crew", CREWS), ("status", STATUSES)):
+        if field in body:
+            sets.append(f"{field} = :{field}")
+            params[field] = _pick(body[field], allowed, field)
+    if not sets:
+        raise HTTPException(400, "Tidak ada field yang diubah")
+
+    res = await db.execute(text(
+        f"UPDATE manpower_profile SET {', '.join(sets)}, auto = FALSE, "
+        f"updated_by = :u, updated_at = now() WHERE nrp = ANY(:n)"), params)
+    await db.execute(text("COMMIT"))
+    return {"updated": res.rowcount or 0, "nrps": len(nrps)}
 
 
 @router.post("/manage/autofill", dependencies=[Depends(require_menu("manpower", "edit"))])
@@ -532,35 +713,6 @@ async def autofill_manage(
     user: dict = Depends(get_current_user),
 ):
     return await _autofill_logic(db, user)
-
-
-@router.post("/manage/{nrp}", dependencies=[Depends(require_menu("manpower", "edit"))])
-async def update_manage(
-    nrp: str,
-    body: dict,
-    user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    row = (await db.execute(text(
-        "SELECT nrp FROM manpower_profile WHERE nrp = :nrp"), {"nrp": nrp})).first()
-    if not row:
-        raise HTTPException(404, "Manpower tidak ditemukan")
-
-    sec = _pick(body.get("section"), SECTIONS, "Section")
-    cr = _pick(body.get("crew"), CREWS, "Crew")
-    st = _pick(body.get("status"), STATUSES, "Status")
-    name = _txt(body.get("nama"))
-
-    await db.execute(text("""
-        UPDATE manpower_profile
-        SET section = :sec, crew = :cr, status = :st, name = COALESCE(:name, name),
-            auto = FALSE, updated_by = :by, updated_at = NOW()
-        WHERE nrp = :nrp
-    """), {
-        "sec": sec, "cr": cr, "st": st, "name": name, "by": user.get("username", "api"), "nrp": nrp,
-    })
-    await db.execute(text("COMMIT"))
-    return {"ok": True}
 
 
 async def _autofill_logic(db: AsyncSession, user: dict):
