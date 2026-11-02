@@ -2001,6 +2001,6 @@ export async function bulkManpowerProfile(body: {
 export async function autofillManpowerProfile(): Promise<{
   checked: number; created: number; filled: number; updated: number; skipped: number
 }> {
-  const r = await api.post('/v1/manpower/manage/autofill')
+  const r = await api.post('/v1/manpower/manage/autofill', {})
   return r.data
 }
