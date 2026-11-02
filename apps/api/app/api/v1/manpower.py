@@ -587,6 +587,7 @@ async def manage_dashboard(
     async def breakdown(dim: str, **skip):
         ww, pp = _manage_where(dept, **{**dict(section=section, crew=crew,
                                                status=status), **skip}, search=search)
+        pp["periode"] = per
         rows = (await db.execute(text(_breakdown_sql(dim).format(
             where=('WHERE ' + ww) if ww else '')), pp)).mappings().all()
         return [{"label": r["label"], "total": int(r["total"] or 0),
