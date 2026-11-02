@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REF_FILE="./data-manpower/manpower_valid.txt"
+REF_FILE="./data-manpower/manpower valid.txt"
 DB_CONTAINER="mte-fs-db"
 DB_USER="mte"
 DB_NAME="mte"
