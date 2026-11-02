@@ -7,101 +7,83 @@ DB_USER="mte"
 DB_NAME="mte"
 
 if [[ ! -f "$REF_FILE" ]]; then
-    echo "Error: File $REF_FILE tidak ditemukan!"
+    echo "Error: File $REF_FILE tidak ditemukan di lokasi $REF_FILE!"
     exit 1
 fi
 
+echo "1. Memperbarui struktur tabel database (kolom name & section)..."
+docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" <<EOF
+ALTER TABLE public.manpower_profile ADD COLUMN IF NOT EXISTS name text NULL;
+ALTER TABLE public.manpower_profile DROP CONSTRAINT IF EXISTS manpower_profile_section_check;
+ALTER TABLE public.manpower_profile ADD CONSTRAINT manpower_profile_section_check 
+CHECK (section IS NULL OR section = ANY (ARRAY['Big Wheel - PCH'::text, 'SPEX Mobile - Lighting'::text, 'SPEX Pumping - Fabrication'::text, 'LCE'::text, 'MTE'::text, 'Tyre'::text, 'Dept Head'::text, 'General Crew'::text]));
+EOF
+
+echo "2. Membaca data dari file referensi..."
+declare -A REF_NAME
 declare -A REF_CREW
+declare -A REF_SECTION
 declare -A REF_STATUS
 
 while IFS=$'\t' read -r no nrp nama crew section || [[ -n "$no" ]]; do
     [[ "$no" == "No" || -z "$nrp" ]] && continue
     nrp=$(echo "$nrp" | tr -d '[:space:]')
-    raw_text="$crew $section"
+    
+    nama_clean=$(echo "$nama" | xargs)
+    crew_clean=$(echo "$crew" | xargs)
+    section_clean=$(echo "$section" | xargs)
 
-    # Tentukan Crew valid sesuai database check constraint
-    valid_crew=""
-    if [[ "$raw_text" =~ [Tt]yre ]]; then
-        valid_crew="Tyre"
-    elif [[ "$raw_text" =~ ([Bb]ig\ [Ww]heel) ]]; then
-        valid_crew="Big Wheel"
-    elif [[ "$raw_text" =~ [Pp][Cc][Hh] ]]; then
-        valid_crew="PCH"
-    elif [[ "$raw_text" =~ ([Mm]obile|[Tt]adano) ]]; then
-        valid_crew="Mobile"
-    elif [[ "$raw_text" =~ [Ll]ighting ]]; then
-        valid_crew="Lighting"
-    elif [[ "$raw_text" =~ [Pp]umping ]]; then
-        valid_crew="Pumping"
-    else
-        valid_crew="General Crew"
-    fi
-
-    # Tentukan Status valid
     status=""
-    if [[ "$raw_text" =~ [Ss]taff ]]; then
+    if [[ "$crew_clean" =~ [Ss]taff ]]; then 
         status="Staff"
-    else
+    else 
         status="Repairman"
     fi
 
     if [[ -n "$nrp" ]]; then
-        REF_CREW["$nrp"]="$valid_crew"
+        REF_NAME["$nrp"]="$nama_clean"
+        REF_CREW["$nrp"]="$crew_clean"
+        REF_SECTION["$nrp"]="$section_clean"
         REF_STATUS["$nrp"]="$status"
     fi
 done < "$REF_FILE"
 
-echo "Total NRP di referensi: ${#REF_CREW[@]}"
+echo "Total NRP di file referensi: ${#REF_NAME[@]}"
 
+echo "3. Mengambil data dari database..."
 mapfile -t DB_ROWS < <(docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A -F ',' -c \
-    "SELECT nrp, COALESCE(crew,''), COALESCE(status,'') FROM manpower_profile ORDER BY nrp;")
+    "SELECT nrp FROM manpower_profile;")
 
-declare -A DB_CREW
-declare -A DB_STATUS
-
-for row in "${DB_ROWS[@]}"; do
-    IFS=',' read -r nrp crew status <<< "$row"
-    [[ -n "$nrp" ]] && DB_CREW["$nrp"]="$crew" && DB_STATUS["$nrp"]="$status"
+declare -A DB_EXISTS
+for nrp in "${DB_ROWS[@]}"; do
+    nrp=$(echo "$nrp" | tr -d '[:space:]')
+    [[ -n "$nrp" ]] && DB_EXISTS["$nrp"]=1
 done
 
-TO_INSERT=()
-TO_UPDATE=()
-NOT_IN_REF=()
-
-for nrp in "${!REF_CREW[@]}"; do
-    if [[ -z "${DB_CREW[$nrp]+_}" ]]; then
-        TO_INSERT+=("$nrp")
-    elif [[ "${DB_CREW[$nrp]}" != "${REF_CREW[$nrp]}" || "${DB_STATUS[$nrp]}" != "${REF_STATUS[$nrp]}" ]]; then
-        TO_UPDATE+=("$nrp")
-    fi
-done
-
-for nrp in "${!DB_CREW[@]}"; do
-    if [[ -z "${REF_CREW[$nrp]+_}" ]]; then
-        NOT_IN_REF+=("$nrp")
-    fi
-done
-
-# ----- 4. Generate SQL -----
+echo "4. Membuat file SQL untuk sinkronisasi..."
 SQL_FILE="sync_manpower.sql"
 {
     echo "BEGIN;"
-
-    # INSERT / UPDATE yang ada di referensi (tidak diubah)
-    for n in "${TO_INSERT[@]}"; do
-        echo "INSERT INTO manpower_profile (nrp, crew, status, auto, updated_by, updated_at) VALUES ('$n', '${REF_CREW[$n]}', '${REF_STATUS[$n]}', FALSE, 'sync from manpower valid.txt', NOW()) ON CONFLICT (nrp) DO UPDATE SET crew = EXCLUDED.crew, status = EXCLUDED.status, auto = FALSE, updated_by = EXCLUDED.updated_by, updated_at = NOW();"
+    
+    for n in "${!REF_NAME[@]}"; do
+        name_esc=$(echo "${REF_NAME[$n]}" | sed "s/'/''/g")
+        crew_esc=$(echo "${REF_CREW[$n]}" | sed "s/'/''/g")
+        sec_esc=$(echo "${REF_SECTION[$n]}" | sed "s/'/''/g")
+        stat_esc="${REF_STATUS[$n]}"
+        
+        echo "INSERT INTO manpower_profile (nrp, name, crew, section, status, auto, updated_by, updated_at) VALUES ('$n', '$name_esc', '$crew_esc', '$sec_esc', '$stat_esc', FALSE, 'sync script complete', NOW()) ON CONFLICT (nrp) DO UPDATE SET name = EXCLUDED.name, crew = EXCLUDED.crew, section = EXCLUDED.section, status = EXCLUDED.status, updated_by = EXCLUDED.updated_by, updated_at = NOW();"
     done
-
-    for n in "${TO_UPDATE[@]}"; do
-        echo "UPDATE manpower_profile SET crew = '${REF_CREW[$n]}', status = '${REF_STATUS[$n]}', auto = FALSE, updated_by = 'sync from manpower valid.txt', updated_at = NOW() WHERE nrp = '$n';"
+    
+    for db_nrp in "${!DB_EXISTS[@]}"; do
+        if [[ -z "${REF_NAME[$db_nrp]+_}" ]]; then
+            echo "DELETE FROM manpower_profile WHERE nrp = '$db_nrp';"
+        fi
     done
-
-    # **HAPUS** baris yang tidak ada di referensi (NOT_IN_REF)
-    for n in "${NOT_IN_REF[@]}"; do
-        echo "DELETE FROM manpower_profile WHERE nrp = '$n';"
-    done
-
+    
     echo "COMMIT;"
 } > "$SQL_FILE"
 
-echo "Selesai generate $SQL_FILE dengan validasi Crew & Status."
+echo "5. Menjalankan SQL ke database..."
+cat "$SQL_FILE" | docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME"
+
+echo "=== SINKRONISASI SELESAI DENGAN SUKSES ==="
