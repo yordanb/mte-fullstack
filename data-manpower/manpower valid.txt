@@ -1,0 +1,187 @@
+No	NRP	Nama Lengkap	Crew	Section
+1	84030019	Abu Saleh	staff pumping fabrication	Pumping Fabrication
+2	61240440	Achmad Khomarudin	mekanik spex lighting	Lighting (SPEX)
+3	47180018	Achmad Rofik	mekanik pch	PCH
+4	61130169	Achmad Zaky Thoyib	mekanik spex mobile	Mobile (SPEX)
+5	61150605	Adi Firmansyah	mekanik spex pumping	Pumping (SPEX)
+6	61102572	Adi Wibowo Darmawinata	staff tyre	Tyre
+7	61240304	Aditya Ardi Kurniawan	mekanik spex lighting	Lighting (SPEX)
+8	47240087	Aditya Fajri Mukti	mekanik big wheel	Big Wheel
+9	61091943	Afandi Fazri	mekanik pch	PCH
+10	47250041	Agung Faisal	repairman tyre	Tyre (Repairman)
+11	61221718	Agung Putra	mekanik spex pumping	Pumping (SPEX)
+12	61240849	Agus Priyadi	mekanik pch	PCH
+13	61240305	Agus Ridho	mekanik spex pumping	Pumping (SPEX)
+14	61102185	Agus Suryanto	mekanik spex mobile	Mobile (SPEX)
+15	61232298	Ahmad Ali Komeini	mekanik pch	PCH
+16	61091087	Ahmad Fauzi	mekanik spex lighting	Lighting (SPEX)
+17	61180730	Ahmad Syafi'I Ulyatus Su'Udi	mekanik spex pumping	Pumping (SPEX)
+18	47090043	Akbar	staff mobile	Mobile
+19	61232560	Alan Heryantho	staff tyre	Tyre
+20	47240005	Alfi Zaid Ibnul	mekanik pch	PCH
+21	61240306	Alfian Fajar Nur Prayitno	mekanik spex lighting	Lighting (SPEX)
+22	47080069	Ali Romadhon	staff tyre	Tyre
+23	61091089	Ali Sofyan	mekanik pch	PCH
+24	47130028	Alpian	mekanik spex mobile	Mobile (SPEX)
+25	61231338	Ananda Mahardika Putra	staff lce	LCE
+26	61140468	Ananta Widodo	mekanik spex lighting	Lighting (SPEX)
+27	61171499	Andi Akfiyanto	mekanik big wheel	Big Wheel
+28	61140078	Andi Setiawan	mekanik spex pumping	Pumping (SPEX)
+29	61140407	Andina Ramadhon	staff tyre	Tyre
+30	61171680	Andri Budiarto	mekanik spex mobile	Mobile (SPEX)
+31	61120306	Andri Kurniawan	mekanik spex mobile	Mobile (SPEX)
+32	47100078	Andri Robi Triono	mekanik pch	PCH
+33	61130606	Andri Susanto	mekanik big wheel	Big Wheel
+34	61140066	Angga Setiawan	mekanik spex mobile	Mobile (SPEX)
+35	61181735	Ardian Bayuntara	mekanik spex pumping	Pumping (SPEX)
+36	61240188	Ari Winarto	mekanik big wheel	Big Wheel
+37	61091938	Aris Miftahudin	mekanik big wheel	Big Wheel
+38	61091947	Aris Yulianto	mekanik spex mobile	Mobile (SPEX)
+39	61080668	Arma Abdul Rohim	staff pch	PCH
+40	61240184	Bima Adi Pratama	mekanik spex mobile	Mobile (SPEX)
+41	61190627	Dani Susanto	mekanik big wheel	Big Wheel
+42	61112018	Dede Irawan	mekanik spex pumping	Pumping (SPEX)
+43	47230012	Defi Tri Nur Cahyo	mekanik spex mobile	Mobile (SPEX)
+44	61240027	Dendy Putra Pamungkas	mekanik spex pumping	Pumping (SPEX)
+45	61240307	Dhea Wardhana	mekanik spex mobile	Mobile (SPEX)
+46	61160021	Didit Irawan	mekanik big wheel	Big Wheel
+47	61181506	Diki Santoso	mekanik spex mobile	Mobile (SPEX)
+48	61160003	Dinil Nugroho	mekanik spex mobile	Mobile (SPEX)
+49	61040117	Edi Taufik	staff lce	LCE
+50	61000017	Edy Suparyanto	staff mobile	Mobile
+51	47220061	Eko Joko Susilo	mekanik spex pumping	Pumping (SPEX)
+52	61091851	Engga Jaka Permana	mekanik spex lighting	Lighting (SPEX)
+53	61240185	Faiz Syafrian	mekanik spex lighting	Lighting (SPEX)
+54	61171679	Fajar Faisal Nizam	mekanik spex mobile	Mobile (SPEX)
+55	61181505	Fandi Ahmad	mekanik pch	PCH
+56	84220019	Fardhal Satya Putra	mekanik pch	PCH
+57	61110634	Fatquludin	mekanik spex pumping	Pumping (SPEX)
+58	61232547	Ferdi Melson R	staff lce	LCE
+59	61080877	Ferry Heriyanto	staff tyre	Tyre
+60	47230120	Firdhaus Noval Rachmadhan	mekanik big wheel	Big Wheel
+61	61231800	Gerdy Pranaya Alfinal Hasni	staff mte	mte
+62	61080670	Gita Ari Purwo Sanyoto	mekanik spex pumping	Pumping (SPEX)
+63	61091253	Guntoro	mekanik pch	PCH
+64	47240085	Gus Brian Haloho	mekanik spex mobile	Mobile (SPEX)
+65	61250447	Hafi Dwi Wicaksono	mekanik spex lighting	Lighting (SPEX)
+66	61160025	Hafitz Karuniawan	mekanik spex pumping	Pumping (SPEX)
+67	61080530	Hamdani	staff pumping fabrication	Pumping Fabrication
+68	61970257	Hami Prasetyono	staff pch	PCH
+69	61140380	Hanif Dwi Suseno	mekanik spex pumping	Pumping (SPEX)
+70	47090085	Hario Adi Kirono	mekanik pch	PCH
+71	61080671	Haryanto	staff pch	PCH
+72	61122039	Hendra Wijaya Saputra	staff tyre	Tyre
+73	61130113	Henri Noerramahe	staff dept head	Dept Head
+74	61090629	Henri Wijanarko	staff pumping fabrication	Pumping Fabrication
+75	61092157	Hermanto	staff lighting	Lighting
+76	47230022	Ibrahim	mekanik spex pumping	Pumping (SPEX)
+77	61220788	Ilham Aryatuwanda Putra	staff pumping fabrication	Pumping Fabrication
+78	61160005	Ilham Yuwono	mekanik spex lighting	Lighting (SPEX)
+79	47180020	Iqbal Chaqiqi	mekanik big wheel	Big Wheel
+80	47080087	Jarwanto Agus Budiono	staff tyre	Tyre
+81	47060016	Joko Siswantoro	staff tyre	Tyre
+82	61240025	Julian Budi Pamungkas	mekanik spex lighting	Lighting (SPEX)
+83	47080088	Junaidi	staff tyre	Tyre
+84	47240086	Khafid Ali H	mekanik spex pumping	Pumping (SPEX)
+85	61230180	Khaniffan Adillah Haqqi	mekanik spex lighting	Lighting (SPEX)
+86	83110018	Kuduri Syahlan	mekanik spex pumping	Pumping (SPEX)
+87	61181748	M. Atourrohman	mekanik spex pumping	Pumping (SPEX)
+88	84100049	M. Miftah Farid	mekanik big wheel	Big Wheel
+89	47110026	Makbul	repairman tyre	Tyre (Repairman)
+90	61112294	Miftakhul Mukhasin	mekanik spex pumping	Pumping (SPEX)
+91	61121921	Misbahul Arifn	mekanik spex pumping	Pumping (SPEX)
+92	61240189	Mohammad Farhan Al Ghifari	mekanik big wheel	Big Wheel
+93	61150612	Muchamat Abdul Cholis	mekanik spex lighting	Lighting (SPEX)
+94	61180996	Muhamad Khumaedi	mekanik pch	PCH
+95	61160006	Muhammad Afandi	mekanik spex pumping	Pumping (SPEX)
+96	92040281	Muhammad Anwar	staff pumping fabrication	Pumping Fabrication
+97	47060017	Muhammad Arfah	staff tyre	Tyre
+98	47250038	Muhammad Dedi Armiadi	mekanik spex pumping	Pumping (SPEX)
+99	61160007	Muhammad Efendi	mekanik spex lighting	Lighting (SPEX)
+100	61150242	Muhammad Fikri	mekanik spex pumping	Pumping (SPEX)
+101	47100031	Muhammad Nur	repairman tyre	Tyre (Repairman)
+102	47230121	Muhammad Rizky	mekanik big wheel	Big Wheel
+103	47100038	Muhammad Sholihin	mekanik spex mobile	Mobile (SPEX)
+104	47230023	Muhammad Yunus	mekanik spex pumping	Pumping (SPEX)
+105	61060351	Muji Widiyarto	staff mobile	Mobile
+106	61091683	Mujiyo	mekanik big wheel	Big Wheel
+107	61110607	Mulyono	mekanik spex mobile	Mobile (SPEX)
+108	47130029	Mursalin	mekanik spex lighting	Lighting (SPEX)
+109	61190043	Nuh Fariska	mekanik spex pumping	Pumping (SPEX)
+110	61102067	Nur Ahmad Aziz	mekanik spex mobile	Mobile (SPEX)
+111	61130275	Nur Budiman	mekanik spex mobile	Mobile (SPEX)
+112	61091940	Nur Wahid	mekanik big wheel	Big Wheel
+113	61240851	Nur Yasin	mekanik spex lighting	Lighting (SPEX)
+114	61240196	Pamungkas Abi Mahendra	mekanik spex pumping	Pumping (SPEX)
+115	61111054	Patrick Heri Prasetyo	mekanik spex lighting	Lighting (SPEX)
+116	61160033	Pawit Martono	mekanik spex pumping	Pumping (SPEX)
+117	47090046	Pegy Indra Lesmana	staff pch	PCH
+118	61080679	Prapto	staff pumping fabrication	Pumping Fabrication
+119	61091685	Purwanto	staff big wheel	Big Wheel
+120	47080068	Purwito	staff tyre	Tyre
+121	61240074	Raditya Yudha Nur Andrianto	mekanik spex pumping	Pumping (SPEX)
+122	61130019	Rahmanto	mekanik spex mobile	Mobile (SPEX)
+123	61170806	Rahmat Fitriadi Mahendradatha	staff pumping fabrication	Pumping Fabrication
+124	61122894	Rakhmad Ardianto	staff lighting	Lighting
+125	61130734	Reulas Andri Sahputro	mekanik spex pumping	Pumping (SPEX)
+126	47230021	Rian Riyadi	mekanik pch	PCH
+127	47240006	Rio Adi Sutresno	mekanik spex pumping	Pumping (SPEX)
+128	61091689	Rio Trianda	mekanik pch	PCH
+129	47100086	Riyanto	staff tyre	Tyre
+130	61080678	Riyanto	staff lce	LCE
+131	47100032	Rizki Rahmadani	repairman tyre	Tyre (Repairman)
+132	61091686	Rohmat	mekanik spex mobile	Mobile (SPEX)
+133	84130001	Roilan H. Tampubolon	operator tadano	Mobile (Tadano Operator)
+134	61180997	Roni Arif Megi Z.	mekanik big wheel	Big Wheel
+135	61180982	Sammad Dintoro	mekanik spex pumping	Pumping (SPEX)
+136	61130372	Samuel Chris Nugroho	mekanik spex mobile	Mobile (SPEX)
+137	61112257	Santoso	mekanik big wheel	Big Wheel
+138	61190082	Sapto Kurniawan	mekanik spex pumping	Pumping (SPEX)
+139	47090047	Sarifullah	mekanik pch	PCH
+140	47180021	Saufianor	mekanik spex lighting	Lighting (SPEX)
+141	61101013	Setiyoko	mekanik spex mobile	Mobile (SPEX)
+142	61080439	Sigit Suseno	staff pumping fabrication	Pumping Fabrication
+143	61090286	Slamet Riyanto	staff big wheel	Big Wheel
+144	61160009	Sohibun Yuliana Saputra	mekanik spex lighting	Lighting (SPEX)
+145	61090060	Sony Darsono	staff big wheel	Big Wheel
+146	83170011	Sri Handa	mekanik spex pumping	Pumping (SPEX)
+147	47030017	Subagiyo	staff mobile	Mobile
+148	61130616	Suhendry	mekanik pch	PCH
+149	47080067	Supriadi	repairman tyre	Tyre (Repairman)
+150	61090783	Supriono	staff pumping fabrication	Pumping Fabrication
+151	61010031	Suryani	staff big wheel	Big Wheel
+152	61130028	Susilo Adi Saputro	mekanik spex lighting	Lighting (SPEX)
+153	61070360	Suyatno	mekanik spex mobile	Mobile (SPEX)
+154	47070019	Syahrul Nazar	staff tyre	Tyre
+155	47180022	Syaiful Anwar	mekanik pch	PCH
+156	61111055	Tajib Anhar	mekanik spex mobile	Mobile (SPEX)
+157	47240008	Tegar Imanuel	mekanik spex pumping	Pumping (SPEX)
+158	47230010	Tegar Rizky Ada	mekanik pch	PCH
+159	47250040	Teguh Karyadi Akbar	repairman tyre	Tyre (Repairman)
+160	47130026	Totok Ari Wibowo	mekanik spex mobile	Mobile (SPEX)
+161	61080718	Tri Agung Sutiawan	staff lce	LCE
+162	61130617	Tri Haryanto	mekanik big wheel	Big Wheel
+163	61240190	Tri Hendriyanto	mekanik big wheel	Big Wheel
+164	61220844	Tri Pujiyanto	staff pumping fabrication	Pumping Fabrication
+165	61070361	Tri Sutrisno	staff lighting	Lighting
+166	61130427	Tri Wahyudi	mekanik spex pumping	Pumping (SPEX)
+167	61171418	Triyono	mekanik spex pumping	Pumping (SPEX)
+168	61130239	Wahyu Hidayat	mekanik spex pumping	Pumping (SPEX)
+169	61160032	Wahyu Nugroho	mekanik spex pumping	Pumping (SPEX)
+170	61110614	Waskito	mekanik pch	PCH
+171	61970009	Wasono Kumpul	staff mobile	Mobile
+172	61121965	Widi Prasetio	staff lce	LCE
+173	61121966	Wimpi Tri Santoso	mekanik spex lighting	Lighting (SPEX)
+174	61121967	Winanto	mekanik spex mobile	Mobile (SPEX)
+175	61130241	Wisnu Priyo Pratigo	mekanik spex pumping	Pumping (SPEX)
+176	61130024	Yatim Mustofa	mekanik spex mobile	Mobile (SPEX)
+177	61240186	Yavick Bugiarso	mekanik spex pumping	Pumping (SPEX)
+178	61130605	Yoga Galeh Wahid Dian	mekanik spex pumping	Pumping (SPEX)
+179	84230013	Yogi Muhammad Firdana	mekanik spex mobile	Mobile (SPEX)
+180	47080086	Yohanes	staff tyre	Tyre
+181	61122292	Yordan Baniara	staff mte	mte
+182	47030018	Yoyok Kristianto	staff pumping fabrication	Pumping Fabrication
+183	61080024	Yudhi Ganesta Rifianto	staff mte	mte
+184	61120176	Yudi Utomo	mekanik big wheel	Big Wheel
+185	61130020	Yuliyanto	mekanik spex mobile	Mobile (SPEX)
+186	61240187	Yuwanto Nur Prasetyo	mekanik spex pumping	Pumping (SPEX)
