@@ -357,9 +357,9 @@ async def get_summary(
                COALESCE(SUM(m.qcc_closed) FILTER (WHERE {_PERF}), 0) AS qcc_closed,
                MAX(m.updated_at) AS updated_at
         FROM manpower_profile p
-        LEFT JOIN manpower_month m ON m.nrp = p.nrp AND m.periode = :periode
+        LEFT JOIN manpower_month m ON m.nrp = p.nrp AND m.periode = :per
         WHERE {where}
-    """), {**p, "gc": GENERAL_CREW, "periode": per})).mappings().first()
+    """), {**p, "gc": GENERAL_CREW, "per": per})).mappings().first()
     mp = row["manpower"] or 0
     gc = row["general_crew"] or 0
     assessed = row["assessed"] or 0
@@ -378,7 +378,7 @@ async def get_summary(
         LEFT JOIN manpower_month m ON m.nrp = p.nrp AND m.periode = :per
         WHERE {dw}
         GROUP BY 1 ORDER BY manpower DESC, 1
-    """), {**dp, "gc": GENERAL_CREW})).mappings().all()
+    """), {**dp, "gc": GENERAL_CREW, "per": per})).mappings().all()
     dept_rows = []
     for b in breaks:
         a = b["assessed"] or 0
