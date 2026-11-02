@@ -226,7 +226,7 @@ def parse_period(s: str) -> dt.date:
 
 
 def _where(periode: dt.date, dept: str | None, divisi: str | None, search: str | None) -> tuple[str, dict]:
-    conds = ["m.periode = :periode", "p.status IS NOT NULL"]
+    conds = ["p.status IS NOT NULL"]
     p: dict = {"periode": periode}
     if dept:
         conds.append("m.dept = :dept")
@@ -241,7 +241,7 @@ def _where(periode: dt.date, dept: str | None, divisi: str | None, search: str |
 
 
 def _perf_where(periode: dt.date, dept: str | None, divisi: str | None) -> tuple[str, dict]:
-    conds = ["m.periode = :periode", "p.status IS NOT NULL"]
+    conds = ["p.status IS NOT NULL"]
     p: dict = {"periode": periode}
     if dept:
         conds.append("m.dept = :dept")
@@ -260,14 +260,14 @@ async def get_periods(db: AsyncSession = Depends(get_db)):
     rows = (await db.execute(text(f"""
         SELECT to_char(m.periode, 'YYYY-MM') AS periode,
                (SELECT COUNT(*) FROM manpower_profile WHERE status IS NOT NULL) AS manpower,
-               COUNT(*) FILTER (WHERE p.status = :gc) AS general_crew,
-               COUNT(*) FILTER (WHERE {_PERF}) AS assessed,
-               COUNT(*) FILTER (WHERE m.innovator_ss > 0 AND {_PERF}) AS innovator_ss,
+               COUNT(p.nrp) FILTER (WHERE p.status = :gc) AS general_crew,
+               COUNT(p.nrp) FILTER (WHERE {_PERF}) AS assessed,
+               COUNT(p.nrp) FILTER (WHERE m.innovator_ss > 0 AND {_PERF}) AS innovator_ss,
                COALESCE(SUM(m.ss_closed) FILTER (WHERE {_PERF}), 0) AS ss_closed,
                MAX(m.updated_at) AS updated_at
         FROM manpower_profile p
         LEFT JOIN manpower_month m ON m.nrp = p.nrp
-        WHERE p.status IS NOT NULL
+        WHERE p.status IS NOT NULL AND m.periode IS NOT NULL
         GROUP BY m.periode ORDER BY m.periode DESC
     """), {"gc": GENERAL_CREW})).mappings().all()
     out = []
@@ -296,7 +296,7 @@ async def get_trend(
     divisi: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
-    conds, p = ["p.status IS NOT NULL"], {"gc": GENERAL_CREW}
+    conds, p = ["p.status IS NOT NULL", "m.periode IS NOT NULL"], {"gc": GENERAL_CREW}
     if dept:
         conds.append("m.dept = :dept")
         p["dept"] = dept
@@ -307,9 +307,9 @@ async def get_trend(
     rows = (await db.execute(text(f"""
         SELECT to_char(m.periode, 'YYYY-MM') AS periode,
                (SELECT COUNT(*) FROM manpower_profile WHERE status IS NOT NULL) AS manpower,
-               COUNT(*) FILTER (WHERE p.status = :gc) AS general_crew,
-               COUNT(*) FILTER (WHERE {_PERF}) AS assessed,
-               COUNT(*) FILTER (WHERE m.innovator_ss > 0 AND {_PERF}) AS innovator_ss,
+               COUNT(p.nrp) FILTER (WHERE p.status = :gc) AS general_crew,
+               COUNT(p.nrp) FILTER (WHERE {_PERF}) AS assessed,
+               COUNT(p.nrp) FILTER (WHERE m.innovator_ss > 0 AND {_PERF}) AS innovator_ss,
                COALESCE(SUM(m.ss_closed) FILTER (WHERE {_PERF}), 0) AS ss_closed
         FROM manpower_profile p
         LEFT JOIN manpower_month m ON m.nrp = p.nrp
@@ -345,12 +345,12 @@ async def get_summary(
         raise HTTPException(400, str(e))
     where, p = _perf_where(per, dept, divisi)
     row = (await db.execute(text(f"""
-        SELECT (SELECT COUNT(*) FROM manpower_profile WHERE status IS NOT NULL) AS manpower,
-               COUNT(*) FILTER (WHERE p.status = :gc) AS general_crew,
-               COUNT(*) FILTER (WHERE {_PERF}) AS assessed,
-               COUNT(*) FILTER (WHERE m.innovator_ss > 0 AND {_PERF}) AS innovator_ss,
-               COUNT(*) FILTER (WHERE m.innovator_qcc > 0 AND {_PERF}) AS innovator_qcc,
-               COUNT(*) FILTER (WHERE m.innovator_all > 0 AND {_PERF}) AS innovator_all,
+        SELECT COUNT(p.nrp) AS manpower,
+               COUNT(p.nrp) FILTER (WHERE p.status = :gc) AS general_crew,
+               COUNT(p.nrp) FILTER (WHERE {_PERF}) AS assessed,
+               COUNT(p.nrp) FILTER (WHERE m.innovator_ss > 0 AND {_PERF}) AS innovator_ss,
+               COUNT(p.nrp) FILTER (WHERE m.innovator_qcc > 0 AND {_PERF}) AS innovator_qcc,
+               COUNT(p.nrp) FILTER (WHERE m.innovator_all > 0 AND {_PERF}) AS innovator_all,
                COALESCE(SUM(m.ss_closed) FILTER (WHERE {_PERF}), 0) AS ss_closed,
                COALESCE(SUM(m.dt_closed) FILTER (WHERE {_PERF}), 0) AS dt_closed,
                COALESCE(SUM(m.qcp_closed) FILTER (WHERE {_PERF}), 0) AS qcp_closed,
