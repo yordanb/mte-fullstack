@@ -511,7 +511,7 @@ async def get_manage(
     p["off"] = (page - 1) * page_size
     total = (await db.execute(text(
         f"SELECT COUNT(*) FROM manpower_profile {where}"), p)).scalar() or 0
-    rows = (await db.execute(text(f\"\"\"
+    rows = (await db.execute(text(f"""
         SELECT nrp, name AS nama, section, crew, status, auto, updated_by, updated_at,
                (SELECT mm.jabatan FROM manpower_month mm WHERE mm.nrp = manpower_profile.nrp ORDER BY mm.periode DESC LIMIT 1) AS jabatan,
                (SELECT mm.dept FROM manpower_month mm WHERE mm.nrp = manpower_profile.nrp ORDER BY mm.periode DESC LIMIT 1) AS dept
@@ -519,7 +519,7 @@ async def get_manage(
         {where}
         ORDER BY {sort} {dir.upper()} NULLS LAST, nrp
         LIMIT :lim OFFSET :off
-    \"\"\""), p)).mappings().all()
+    """), p)).mappings().all()
     return {"total": total, "page": page, "page_size": page_size,
             "data": [dict(r) for r in rows]}
 
