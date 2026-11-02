@@ -1,48 +1,52 @@
 #!/usr/bin/env bash
-# sync_manpower.sh — jalankan di VPS (memerlukan docker & psql di container mte-fs-db)
+# sync_manpower.sh — Sumber utama: data-manpower/manpower_valid.txt
 set -euo pipefail
 
-MANPOWER_DIR="./data-manpower"
+REF_FILE="./data-manpower/manpower_valid.txt"
 DB_CONTAINER="mte-fs-db"
 DB_USER="mte"
 DB_NAME="mte"
 
-# ---------- 1. Bangun referensi dari file .txt ----------
+if [[ ! -f "$REF_FILE" ]]; then
+    echo "Error: File $REF_FILE tidak ditemukan!"
+    exit 1
+fi
+
+# ---------- 1. Bangun referensi dari manpower_valid.txt ----------
 declare -A REF_CREW
 declare -A REF_STATUS
 
-for f in "$MANPOWER_DIR"/*.txt; do
-    base=$(basename "$f" .txt)
-    crew=""
+# Lewati header (baris 1), baca kolom: NRP(2), Crew(4), Section(5)
+# Menggunakan AWK untuk handle tab dan spasi
+while IFS=$'\t' read -r no nrp nama crew section || [[ -n "$no" ]]; do
+    # Lewati baris header atau baris kosong
+    [[ "$no" == "No" || -z "$nrp" ]] && continue
+    
+    # Bersihkan whitespace
+    nrp=$(echo "$nrp" | tr -d '[:space:]')
+    crew_clean=$(echo "$crew" | xargs)
+    section_clean=$(echo "$section" | xargs)
+
+    # Tentukan Status berdasarkan Crew/Section
     status=""
-
-    case "$base" in
-        *tyre*) crew="Tyre" ;;
-        *"big wheel"*) crew="Big Wheel" ;;
-        *pch*) crew="PCH" ;;
-        *mobile*) crew="Mobile" ;;
-        *lighting*) crew="Lighting" ;;
-        *pumping*) crew="Pumping" ;;
-        *"operator tadano"*) crew="Mobile" ;;
-        *"dept head"*) crew="General Crew" ;;
-        *lce*) crew="LCE" ;;
-    esac
-
-    if [[ "$base" =~ (mekanik|repairman|operator) ]]; then
-        status="Repairman"
-    elif [[ "$base" =~ staff ]]; then
+    if [[ "$crew_clean" =~ [Ss]taff ]]; then
         status="Staff"
+    elif [[ "$crew_clean" =~ ([Mm]ekanik|[Rr]epairman|[Oo]perator) ]]; then
+        status="Repairman"
+    else
+        # Fallback: jika tidak ada kata kunci, cek Section
+        if [[ "$section_clean" =~ [Ss]taff ]]; then status="Staff"
+        else status="Repairman"; fi
     fi
 
-    if [[ -n "$crew" && -n "$status" ]]; then
-        while IFS= read -r line; do
-            nrp=$(echo "$line" | tr -d ' \t\r')
-            [[ -n "$nrp" ]] && REF_CREW["$nrp"]="$crew" && REF_STATUS["$nrp"]="$status"
-        done < "$f"
+    # Simpan ke map
+    if [[ -n "$nrp" ]]; then
+        REF_CREW["$nrp"]="$crew_clean"
+        REF_STATUS["$nrp"]="$status"
     fi
-done
+done < "$REF_FILE"
 
-echo "Total NRP di referensi: ${#REF_CREW[@]}"
+echo "Total NRP di referensi valid: ${#REF_CREW[@]}"
 
 # ---------- 2. Ambil data DB ----------
 mapfile -t DB_ROWS < <(docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A -F ',' -c \
@@ -77,38 +81,30 @@ for nrp in "${!DB_CREW[@]}"; do
     fi
 done
 
-# ---------- 4. Tampilkan ringkasan ----------
-echo
-echo "=== RINGKASAN ==="
-echo "INSERT baru: ${#TO_INSERT[@]}"
-for n in "${TO_INSERT[@]}"; do echo "  + $n (${REF_CREW[$n]} - ${REF_STATUS[$n]})"; done
-
-echo "UPDATE crew/status: ${#TO_UPDATE[@]}"
-for n in "${TO_UPDATE[@]}"; do
-    echo "  ~ $n: [${DB_CREW[$n]}/${DB_STATUS[$n]}] -> [${REF_CREW[$n]}/${REF_STATUS[$n]}]"
-done
-
-echo "Di DB tapi TIDAK di referensi (resign/keluar): ${#NOT_IN_REF[@]}"
-for n in "${NOT_IN_REF[@]}"; do echo "  - $n (${DB_CREW[$n]} - ${DB_STATUS[$n]})"; done
-
-# ---------- 5. Generate SQL ----------
+# ---------- 4. Generate SQL ----------
 SQL_FILE="sync_manpower.sql"
 {
     echo "BEGIN;"
+    # INSERT/UPDATE yang ada di referensi
     for n in "${TO_INSERT[@]}"; do
-        echo "INSERT INTO manpower_profile (nrp, crew, status, auto, updated_by, updated_at) VALUES ('$n', '${REF_CREW[$n]}', '${REF_STATUS[$n]}', FALSE, 'sync from data-manpower', NOW()) ON CONFLICT (nrp) DO UPDATE SET crew = EXCLUDED.crew, status = EXCLUDED.status, auto = FALSE, updated_by = EXCLUDED.updated_by, updated_at = NOW();"
+        echo "INSERT INTO manpower_profile (nrp, crew, status, auto, updated_by, updated_at) VALUES ('$n', '${REF_CREW[$n]}', '${REF_STATUS[$n]}', FALSE, 'sync from manpower_valid.txt', NOW());"
     done
     for n in "${TO_UPDATE[@]}"; do
-        echo "UPDATE manpower_profile SET crew = '${REF_CREW[$n]}', status = '${REF_STATUS[$n]}', auto = FALSE, updated_by = 'sync from data-manpower', updated_at = NOW() WHERE nrp = '$n';"
+        echo "UPDATE manpower_profile SET crew = '${REF_CREW[$n]}', status = '${REF_STATUS[$n]}', auto = FALSE, updated_by = 'sync from manpower_valid.txt', updated_at = NOW() WHERE nrp = '$n';"
     done
+    # Resign/Keluar (tidak ada di referensi)
     for n in "${NOT_IN_REF[@]}"; do
-        # Set status NULL (diizinkan constraint) untuk yang tidak ada di referensi
-        echo "UPDATE manpower_profile SET status = NULL, crew = NULL, auto = FALSE, updated_by = 'sync: not in reference', updated_at = NOW() WHERE nrp = '$n' AND status IS NOT NULL;"
+        echo "UPDATE manpower_profile SET status = NULL, crew = NULL, auto = FALSE, updated_by = 'sync: not in valid ref', updated_at = NOW() WHERE nrp = '$n' AND status IS NOT NULL;"
     done
     echo "COMMIT;"
 } > "$SQL_FILE"
 
 echo
+echo "Analisis Selesai:"
+echo " - Akan di-INSERT: ${#TO_INSERT[@]}"
+echo " - Akan di-UPDATE: ${#TO_UPDATE[@]}"
+echo " - Akan di-NULL (Resign): ${#NOT_IN_REF[@]}"
+echo
 echo "File SQL: $SQL_FILE"
-echo "Jalankan:"
+echo "Jalankan perintah ini di VPS:"
 echo "  cat $SQL_FILE | docker exec -i $DB_CONTAINER psql -U $DB_USER -d $DB_NAME"
