@@ -7,11 +7,11 @@ DB_USER="mte"
 DB_NAME="mte"
 
 if [[ ! -f "$REF_FILE" ]]; then
-    echo "Error: File $REF_FILE tidak ditemukan di lokasi $REF_FILE!"
+    echo "Error: File $REF_FILE tidak ditemukan!"
     exit 1
 fi
 
-echo "1. Memperbarui struktur tabel database (kolom name & section)..."
+echo "1. Memperbarui struktur tabel database..."
 docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" <<EOF
 ALTER TABLE public.manpower_profile ADD COLUMN IF NOT EXISTS name text NULL;
 ALTER TABLE public.manpower_profile DROP CONSTRAINT IF EXISTS manpower_profile_section_check;
@@ -19,7 +19,20 @@ ALTER TABLE public.manpower_profile ADD CONSTRAINT manpower_profile_section_chec
 CHECK (section IS NULL OR section = ANY (ARRAY['Big Wheel - PCH'::text, 'SPEX Mobile - Lighting'::text, 'SPEX Pumping - Fabrication'::text, 'LCE'::text, 'MTE'::text, 'Tyre'::text, 'Dept Head'::text, 'General Crew'::text]));
 EOF
 
-echo "2. Membaca data dari file referensi..."
+# Fungsi mapping crew mentah -> crew valid DB
+map_crew() {
+    local raw="$1"
+    if [[ "$raw" =~ [Tt]yre ]]; then echo "Tyre"; return; fi
+    if [[ "$raw" =~ ([Bb]ig\ [Ww]heel) ]]; then echo "Big Wheel"; return; fi
+    if [[ "$raw" =~ [Pp][Cc][Hh] ]]; then echo "PCH"; return; fi
+    if [[ "$raw" =~ ([Mm]obile|[Tt]adano) ]]; then echo "Mobile"; return; fi
+    if [[ "$raw" =~ [Ll]ighting ]]; then echo "Lighting"; return; fi
+    if [[ "$raw" =~ [Pp]umping ]]; then echo "Pumping"; return; fi
+    if [[ "$raw" =~ [Ll][Cc][Ee] ]]; then echo "LCE"; return; fi
+    if [[ "$raw" =~ [Mm][Tt][Ee] ]]; then echo "MTE"; return; fi
+    echo "General Crew"
+}
+
 declare -A REF_NAME
 declare -A REF_CREW
 declare -A REF_SECTION
@@ -28,27 +41,23 @@ declare -A REF_STATUS
 while IFS=$'\t' read -r no nrp nama crew section || [[ -n "$no" ]]; do
     [[ "$no" == "No" || -z "$nrp" ]] && continue
     nrp=$(echo "$nrp" | tr -d '[:space:]')
-    
     nama_clean=$(echo "$nama" | xargs)
     crew_clean=$(echo "$crew" | xargs)
     section_clean=$(echo "$section" | xargs)
 
-    status=""
-    if [[ "$crew_clean" =~ [Ss]taff ]]; then 
-        status="Staff"
-    else 
-        status="Repairman"
-    fi
+    valid_crew=$(map_crew "$crew_clean")
+    status="Repairman"
+    if [[ "$crew_clean" =~ [Ss]taff ]]; then status="Staff"; fi
 
     if [[ -n "$nrp" ]]; then
         REF_NAME["$nrp"]="$nama_clean"
-        REF_CREW["$nrp"]="$crew_clean"
+        REF_CREW["$nrp"]="$valid_crew"
         REF_SECTION["$nrp"]="$section_clean"
         REF_STATUS["$nrp"]="$status"
     fi
 done < "$REF_FILE"
 
-echo "Total NRP di file referensi: ${#REF_NAME[@]}"
+echo "Total NRP di referensi: ${#REF_NAME[@]}"
 
 echo "3. Mengambil data dari database..."
 mapfile -t DB_ROWS < <(docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME" -t -A -F ',' -c \
@@ -60,30 +69,26 @@ for nrp in "${DB_ROWS[@]}"; do
     [[ -n "$nrp" ]] && DB_EXISTS["$nrp"]=1
 done
 
-echo "4. Membuat file SQL untuk sinkronisasi..."
+echo "4. Membuat file SQL..."
 SQL_FILE="sync_manpower.sql"
 {
     echo "BEGIN;"
-    
     for n in "${!REF_NAME[@]}"; do
         name_esc=$(echo "${REF_NAME[$n]}" | sed "s/'/''/g")
         crew_esc=$(echo "${REF_CREW[$n]}" | sed "s/'/''/g")
         sec_esc=$(echo "${REF_SECTION[$n]}" | sed "s/'/''/g")
         stat_esc="${REF_STATUS[$n]}"
-        
         echo "INSERT INTO manpower_profile (nrp, name, crew, section, status, auto, updated_by, updated_at) VALUES ('$n', '$name_esc', '$crew_esc', '$sec_esc', '$stat_esc', FALSE, 'sync script complete', NOW()) ON CONFLICT (nrp) DO UPDATE SET name = EXCLUDED.name, crew = EXCLUDED.crew, section = EXCLUDED.section, status = EXCLUDED.status, updated_by = EXCLUDED.updated_by, updated_at = NOW();"
     done
-    
     for db_nrp in "${!DB_EXISTS[@]}"; do
         if [[ -z "${REF_NAME[$db_nrp]+_}" ]]; then
             echo "DELETE FROM manpower_profile WHERE nrp = '$db_nrp';"
         fi
     done
-    
     echo "COMMIT;"
 } > "$SQL_FILE"
 
-echo "5. Menjalankan SQL ke database..."
+echo "5. Menjalankan SQL..."
 cat "$SQL_FILE" | docker exec -i "$DB_CONTAINER" psql -U "$DB_USER" -d "$DB_NAME"
 
-echo "=== SINKRONISASI SELESAI DENGAN SUKSES ==="
+echo "=== SINKRONISASI SELESAI ==="
