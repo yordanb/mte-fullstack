@@ -553,11 +553,7 @@ async def update_manage(
     return {"ok": True}
 
 
-@router.post("/auto-classify", dependencies=[Depends(require_menu("manpower", "edit"))])
-async def auto_classify(
-    db: AsyncSession = Depends(get_db),
-    user: dict = Depends(get_current_user),
-):
+async def _autofill_logic(db: AsyncSession, user: dict):
     rows = (await db.execute(text("""
         SELECT m.nrp, m.jabatan
         FROM manpower_month m
@@ -585,3 +581,17 @@ async def auto_classify(
             count += 1
     await db.execute(text("COMMIT"), {"by": user.get("username", "api")})
     return {"ok": True, "updated_count": count}
+
+@router.post("/auto-classify", dependencies=[Depends(require_menu("manpower", "edit"))])
+async def auto_classify(
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    return await _autofill_logic(db, user)
+
+@router.post("/manage/autofill", dependencies=[Depends(require_menu("manpower", "edit"))])
+async def autofill_manage(
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    return await _autofill_logic(db, user)
