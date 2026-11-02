@@ -82,18 +82,25 @@ for nrp in "${!DB_CREW[@]}"; do
     fi
 done
 
+# ----- 4. Generate SQL -----
 SQL_FILE="sync_manpower.sql"
 {
     echo "BEGIN;"
+
+    # INSERT / UPDATE yang ada di referensi (tidak diubah)
     for n in "${TO_INSERT[@]}"; do
         echo "INSERT INTO manpower_profile (nrp, crew, status, auto, updated_by, updated_at) VALUES ('$n', '${REF_CREW[$n]}', '${REF_STATUS[$n]}', FALSE, 'sync from manpower valid.txt', NOW()) ON CONFLICT (nrp) DO UPDATE SET crew = EXCLUDED.crew, status = EXCLUDED.status, auto = FALSE, updated_by = EXCLUDED.updated_by, updated_at = NOW();"
     done
+
     for n in "${TO_UPDATE[@]}"; do
         echo "UPDATE manpower_profile SET crew = '${REF_CREW[$n]}', status = '${REF_STATUS[$n]}', auto = FALSE, updated_by = 'sync from manpower valid.txt', updated_at = NOW() WHERE nrp = '$n';"
     done
+
+    # **HAPUS** baris yang tidak ada di referensi (NOT_IN_REF)
     for n in "${NOT_IN_REF[@]}"; do
-        echo "UPDATE manpower_profile SET status = NULL, crew = NULL, auto = FALSE, updated_by = 'sync: not in valid ref', updated_at = NOW() WHERE nrp = '$n' AND (status IS NOT NULL OR crew IS NOT NULL);"
+        echo "DELETE FROM manpower_profile WHERE nrp = '$n';"
     done
+
     echo "COMMIT;"
 } > "$SQL_FILE"
 
