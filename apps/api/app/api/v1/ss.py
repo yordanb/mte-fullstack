@@ -594,6 +594,100 @@ async def get_kpi(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)
     }
 
 
+@router.get("/ab", dependencies=[Depends(require_role("admin"))])
+async def get_ss_ab(
+    year: int | None = Query(None, ge=2000, le=2100),
+    db: AsyncSession = Depends(get_db),
+):
+    """SS Grade A & B (approved) per tahun — untuk halaman SS AB.
+
+    Rentang default: 1 Januari tahun berjalan s/d hari ini (kalau tahun
+    berjalan), atau 1 Jan–31 Des untuk tahun lampau. "Approved" berarti
+    grade terisi; untuk halaman ini grade yang dihitung hanya A dan B.
+    Dasar tanggal: TANGGAL MENILAI (fallback TANGGAL LAPORAN bila kosong).
+    """
+    today = datetime.date.today()
+    yr = year or today.year
+    lo = datetime.date(yr, 1, 1)
+    hi = today if yr == today.year else datetime.date(yr, 12, 31)
+
+    base = ("grade IN ('A', 'B') "
+            "AND COALESCE(tgl_menilai, tgl_laporan) BETWEEN :lo AND :hi")
+    p = {"lo": lo, "hi": hi}
+
+    kpi = (await db.execute(text(f"""
+        SELECT COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE grade = 'A') AS grade_a,
+               COUNT(*) FILTER (WHERE grade = 'B') AS grade_b,
+               COALESCE(SUM(reward), 0)::float8 AS reward,
+               COALESCE(SUM(manfaat_fin), 0)::float8 AS manfaat,
+               COUNT(DISTINCT NULLIF(nrp, '')) AS pencetus
+        FROM ss_report WHERE {base}
+    """), p)).mappings().first()
+
+    # Kalender 12 bulan: jumlah SS A/B approved per bulan.
+    months = (await db.execute(text(f"""
+        SELECT EXTRACT(MONTH FROM COALESCE(tgl_menilai, tgl_laporan))::int AS m,
+               COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE grade = 'A') AS a,
+               COUNT(*) FILTER (WHERE grade = 'B') AS b,
+               COALESCE(SUM(reward), 0)::float8 AS reward
+        FROM ss_report WHERE {base}
+        GROUP BY 1 ORDER BY 1
+    """), p)).mappings().all()
+    by_month = {int(r["m"]): r for r in months}
+    calendar = []
+    for m in range(1, 13):
+        r = by_month.get(m)
+        calendar.append({
+            "month": m,
+            "total": int(r["total"] or 0) if r else 0,
+            "a": int(r["a"] or 0) if r else 0,
+            "b": int(r["b"] or 0) if r else 0,
+            "reward": float(r["reward"] or 0) if r else 0.0,
+        })
+
+    by_dept = (await db.execute(text(f"""
+        SELECT COALESCE(NULLIF(TRIM(dept), ''), '(kosong)') AS dept,
+               COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE grade = 'A') AS a,
+               COUNT(*) FILTER (WHERE grade = 'B') AS b
+        FROM ss_report WHERE {base}
+        GROUP BY 1 ORDER BY 2 DESC, 1
+    """), p)).mappings().all()
+
+    records = (await db.execute(text(f"""
+        SELECT no_ss, judul, pencetus, nrp, dept, grade, kualitas, reward,
+               manfaat_fin, tgl_laporan, tgl_menilai, dinilai_oleh
+        FROM ss_report WHERE {base}
+        ORDER BY COALESCE(tgl_menilai, tgl_laporan) DESC, no_ss
+        LIMIT 500
+    """), p)).mappings().all()
+
+    years = (await db.execute(text(
+        "SELECT DISTINCT EXTRACT(YEAR FROM COALESCE(tgl_menilai, tgl_laporan))::int "
+        "FROM ss_report WHERE grade IN ('A', 'B') ORDER BY 1 DESC"
+    ))).scalars().all()
+
+    return {
+        "year": yr,
+        "start": lo.isoformat(),
+        "end": hi.isoformat(),
+        "kpi": {
+            "total": int(kpi["total"] or 0),
+            "grade_a": int(kpi["grade_a"] or 0),
+            "grade_b": int(kpi["grade_b"] or 0),
+            "reward": float(kpi["reward"] or 0),
+            "manfaat": float(kpi["manfaat"] or 0),
+            "pencetus": int(kpi["pencetus"] or 0),
+        },
+        "calendar": calendar,
+        "by_dept": [dict(r) for r in by_dept],
+        "records": [dict(r) for r in records],
+        "years": [int(y) for y in years],
+    }
+
+
 @router.get("/eiictm", dependencies=[Depends(require_role("admin"))])
 async def get_eiictm(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
     """EIICTM — Employee Innovation Involvement Coverage Through Manpower.

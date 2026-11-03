@@ -1238,6 +1238,57 @@ export async function exportSsCsv(params: SsParams): Promise<void> {
   URL.revokeObjectURL(url)
 }
 
+// ─── SS AB (Grade A & B approved per tahun) ───────────
+export type SsAbKpi = {
+  total: number
+  grade_a: number
+  grade_b: number
+  reward: number
+  manfaat: number
+  pencetus: number
+}
+
+export type SsAbMonth = {
+  month: number
+  total: number
+  a: number
+  b: number
+  reward: number
+}
+
+export type SsAbDept = { dept: string; total: number; a: number; b: number }
+
+export type SsAbRecord = {
+  no_ss: string
+  judul: string | null
+  pencetus: string | null
+  nrp: string | null
+  dept: string | null
+  grade: string | null
+  kualitas: string | null
+  reward: number
+  manfaat_fin: number | null
+  tgl_laporan: string | null
+  tgl_menilai: string | null
+  dinilai_oleh: string | null
+}
+
+export type SsAbResp = {
+  year: number
+  start: string
+  end: string
+  kpi: SsAbKpi
+  calendar: SsAbMonth[]
+  by_dept: SsAbDept[]
+  records: SsAbRecord[]
+  years: number[]
+}
+
+export async function fetchSsAb(year?: number): Promise<SsAbResp> {
+  const r = await api.get('/v1/ss/ab', { params: year ? { year } : undefined })
+  return r.data
+}
+
 // --- Proker (program kerja) ----------------------------------------------
 export type ProkerStatus = 'DONE' | 'PLAN' | 'LATE' | 'MISSED'
 

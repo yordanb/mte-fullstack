@@ -16,6 +16,7 @@ import YazuPage from './pages/Yazu'
 import EwacsPage from './pages/Ewacs'
 import TarSupportPage from './pages/TarSupport'
 import SsPage from './pages/Ss'
+import SsAbPage from './pages/SsAb'
 import ProkerPage from './pages/Proker'
 import ProkerBoosterPage from './pages/ProkerBooster'
 import ProkerInjectorPage from './pages/ProkerInjector'
@@ -82,6 +83,7 @@ export default function App() {
       {page === 'ewacs' && can('ewacs', 'view') && <EwacsPage />}
       {page === 'tarsupport' && can('tarsupport', 'view') && <TarSupportPage />}
       {page === 'ss' && can('ss', 'view') && <SsPage />}
+      {page === 'ssab' && can('ss', 'view') && <SsAbPage />}
       {page === 'proker' && can('proker', 'view') && <ProkerPage />}
       {page === 'prokerbooster' && can('prokerbooster', 'view') && <ProkerBoosterPage />}
       {page === 'prokerinjector' && can('prokerinjector', 'view') && <ProkerInjectorPage />}
