@@ -1341,6 +1341,43 @@ async def export_csv(
     )
 
 
+@router.get("/ab/export", dependencies=[Depends(require_role("admin"))])
+async def export_ss_ab(
+    year: int | None = Query(None, ge=2000, le=2100),
+    db: AsyncSession = Depends(get_db),
+):
+    """CSV semua SS Grade A & B approved pada rentang SS AB (1 Jan s/d hari ini)."""
+    today = datetime.date.today()
+    yr = year or today.year
+    lo = datetime.date(yr, 1, 1)
+    hi = today if yr == today.year else datetime.date(yr, 12, 31)
+    base = ("grade IN ('A', 'B') "
+            "AND COALESCE(tgl_menilai, tgl_laporan) BETWEEN :lo AND :hi")
+    p = {"lo": lo, "hi": hi, "lim": MAX_EXPORT}
+    rows = (await db.execute(text(
+        f"SELECT {_SELECT} FROM ss_report WHERE {base} "
+        f"ORDER BY COALESCE(tgl_menilai, tgl_laporan) DESC NULLS LAST, no_ss LIMIT :lim"), p)
+    ).mappings().all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(EXPORT_HEADERS)
+    for r in rows:
+        w.writerow([
+            r["no_ss"], r["tgl_laporan"], r["judul"], r["pencetus"], r["nrp"],
+            r["dept"], r["divisi"], r["distrik"], r["manfaat_fin"], r["tgl_menilai"],
+            r["dinilai_oleh"], r["grade"], r["kualitas"], r["kategori"],
+            r["kategori_norm"], r["reward"], r["status_karyawan"],
+            r["status_ss"], r["outstanding"],
+        ])
+    body = "\ufeff" + buf.getvalue()
+    fname = f"ss_ab_{yr}_{datetime.date.today().isoformat()}.csv"
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
+
+
 @router.delete("/all", dependencies=[Depends(require_role("admin"))])
 async def clear_all(db: AsyncSession = Depends(get_db)):
     """Kosongkan data SS (untuk re-import dari nol)."""
