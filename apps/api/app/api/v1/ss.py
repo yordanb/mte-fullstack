@@ -680,8 +680,8 @@ async def get_ss_ab(
         "FROM ss_report WHERE grade IN ('A', 'B') ORDER BY 1 DESC"
     ))).scalars().all()
 
-    # SS yang masih waiting approval atas nama manajemen terpilih.
-    # Kondisi berjalan (tanpa batas tahun) — yang penting kondisi terkini.
+    # SS yang masih waiting approval atas nama manajemen terpilih — hanya
+    # status "Menunggu Penilaian oleh PM". Kondisi berjalan (tanpa batas tahun).
     wait_p = {f"w{i}": m.upper() for i, m in enumerate(WAITING_MANAGERS)}
     ph = " OR ".join(f"upper(COALESCE(management, '')) LIKE :w{i}"
                      for i in range(len(WAITING_MANAGERS)))
@@ -689,7 +689,10 @@ async def get_ss_ab(
         SELECT no_ss, tgl_laporan, judul, pencetus, nrp, dept, distrik,
                management, status_ss, outstanding_at
         FROM ss_report
-        WHERE outstanding = TRUE AND ({ph})
+        WHERE outstanding = TRUE
+          AND (upper(COALESCE(status_ss, '')) LIKE '%PENILAIAN OLEH PM%'
+               OR upper(COALESCE(status_ss, '')) LIKE '%PENDING PM%')
+          AND ({ph})
         ORDER BY outstanding_at DESC NULLS LAST, tgl_laporan DESC NULLS LAST
         LIMIT 500
     """), wait_p)).mappings().all()

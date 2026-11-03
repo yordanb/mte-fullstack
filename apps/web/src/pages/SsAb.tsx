@@ -357,9 +357,9 @@ export default function SsAbPage() {
       {data && (
         <div className="mt-3 rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
           <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2">
-            <span className="text-theme-sm font-semibold">Menunggu Approval</span>
+            <span className="text-theme-sm font-semibold">Menunggu Penilaian oleh PM</span>
             <span className="text-theme-xs text-gray-500">
-              SS outstanding atas nama manajemen terpilih · {fmtNum(waitRows.length)} baris
+              SS outstanding hanya dengan status "Menunggu Penilaian oleh PM" · {fmtNum(waitRows.length)} baris
             </span>
             <div className="ml-auto flex flex-wrap items-center gap-1">
               <button
