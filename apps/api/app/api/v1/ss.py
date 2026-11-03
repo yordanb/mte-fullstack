@@ -59,6 +59,17 @@ GENERAL_CREW = "General Crew"
 BATCH = 2000
 MAX_EXPORT = 100000
 
+# Daftar manajemen untuk bagian "Menunggu Approval" halaman SS AB.
+# SS outstanding yang kolom MANAGEMENT-nya memuat salah satu nama ini ditampilkan
+# di bawah tabel Detail SS AB (pencocokan substring, tidak peduli besar-kecil huruf).
+WAITING_MANAGERS = [
+    "Rachmad Rizky Nur Fabiyanto",
+    "Anom Bayu Aji",
+    "Gunarto",
+    "Muhammad Sulton",
+    "Guntur Jatmika",
+]
+
 # 29 varian teks di sumber -> ~12 kategori kanonik.
 KATEGORI_MAP = {
     "productivity": "Productivity",
@@ -669,6 +680,28 @@ async def get_ss_ab(
         "FROM ss_report WHERE grade IN ('A', 'B') ORDER BY 1 DESC"
     ))).scalars().all()
 
+    # SS yang masih waiting approval atas nama manajemen terpilih.
+    # Kondisi berjalan (tanpa batas tahun) — yang penting kondisi terkini.
+    wait_p = {f"w{i}": m.upper() for i, m in enumerate(WAITING_MANAGERS)}
+    ph = " OR ".join(f"upper(COALESCE(management, '')) LIKE :w{i}"
+                     for i in range(len(WAITING_MANAGERS)))
+    waiting_rows = (await db.execute(text(f"""
+        SELECT no_ss, tgl_laporan, judul, pencetus, nrp, dept, distrik,
+               management, status_ss, outstanding_at
+        FROM ss_report
+        WHERE outstanding = TRUE AND ({ph})
+        ORDER BY outstanding_at DESC NULLS LAST, tgl_laporan DESC NULLS LAST
+        LIMIT 500
+    """), wait_p)).mappings().all()
+    waiting = [dict(r) for r in waiting_rows]
+    # Rekap per manajemen (jumlah SS outstanding yang menyebut nama tersebut).
+    per_manager = [
+        {"manager": m,
+         "total": sum(1 for r in waiting
+                      if m.upper() in (r["management"] or "").upper())}
+        for m in WAITING_MANAGERS
+    ]
+
     return {
         "year": yr,
         "start": lo.isoformat(),
@@ -684,6 +717,9 @@ async def get_ss_ab(
         "calendar": calendar,
         "by_dept": [dict(r) for r in by_dept],
         "records": [dict(r) for r in records],
+        "waiting": waiting,
+        "waiting_managers": WAITING_MANAGERS,
+        "waiting_per_manager": per_manager,
         "years": [int(y) for y in years],
     }
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   errMsg, exportSsAbCsv, fetchSsAb,
-  type SsAbDept, type SsAbMonth, type SsAbRecord,
+  type SsAbDept, type SsAbMonth, type SsAbRecord, type SsAbWaiting,
 } from '../api/client'
 
 const fmtDate = (v?: string | null) => {
@@ -49,6 +49,9 @@ export default function SsAbPage() {
     calendar: SsAbMonth[]
     by_dept: SsAbDept[]
     records: SsAbRecord[]
+    waiting: SsAbWaiting[]
+    waiting_managers: string[]
+    waiting_per_manager: { manager: string; total: number }[]
     years: number[]
   } | null>(null)
   const [msg, setMsg] = useState('')
@@ -70,6 +73,14 @@ export default function SsAbPage() {
   // Pagination tabel (client-side; API dibatasi 500 baris terbaru).
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
+
+  // Filter tabel waiting approval: '' = semua manajemen, selain itu nama terpilih.
+  const [waitPick, setWaitPick] = useState('')
+  const waitRows = useMemo(() => {
+    const all = data?.waiting ?? []
+    if (!waitPick) return all
+    return all.filter((r) => (r.management ?? '').toUpperCase().includes(waitPick.toUpperCase()))
+  }, [data, waitPick])
 
   useEffect(() => {
     let alive = true
@@ -333,6 +344,92 @@ export default function SsAbPage() {
                     <td className="px-2 py-1.5 text-right tabular-nums">{r.manfaat_fin ? fmtRp(r.manfaat_fin) : '-'}</td>
                     <td className="max-w-[180px] truncate px-2 py-1.5 whitespace-nowrap" title={r.dinilai_oleh ?? ''}>
                       {r.dinilai_oleh ? titleName(r.dinilai_oleh) : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Waiting approval — open management */}
+      {data && (
+        <div className="mt-3 rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+          <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2">
+            <span className="text-theme-sm font-semibold">Menunggu Approval</span>
+            <span className="text-theme-xs text-gray-500">
+              SS outstanding atas nama manajemen terpilih · {fmtNum(waitRows.length)} baris
+            </span>
+            <div className="ml-auto flex flex-wrap items-center gap-1">
+              <button
+                className={`rounded-full px-2.5 py-1 text-theme-xs font-medium ${
+                  waitPick === ''
+                    ? 'bg-brand-500 text-white'
+                    : 'border text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'
+                }`}
+                onClick={() => setWaitPick('')}
+              >
+                Semua ({fmtNum(data.waiting.length)})
+              </button>
+              {data.waiting_per_manager.map((w) => (
+                <button
+                  key={w.manager}
+                  className={`rounded-full px-2.5 py-1 text-theme-xs font-medium ${
+                    waitPick === w.manager
+                      ? 'bg-brand-500 text-white'
+                      : 'border text-gray-500 hover:bg-gray-50 dark:hover:bg-white/5'
+                  }`}
+                  onClick={() => setWaitPick(waitPick === w.manager ? '' : w.manager)}
+                  title={w.manager}
+                >
+                  {titleName(w.manager.split(' ')[0])}… ({fmtNum(w.total)})
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="w-full overflow-auto" style={{ maxHeight: 460 }}>
+            <table className="border-collapse text-theme-xs" style={{ width: 'max-content', minWidth: '100%' }}>
+              <thead className="sticky top-0 z-20 bg-gray-50 dark:bg-gray-800">
+                <tr className="border-b">
+                  <th className="px-2 py-2 text-left font-semibold">No SS</th>
+                  <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Tgl Laporan</th>
+                  <th className="px-2 py-2 text-left font-semibold">Judul</th>
+                  <th className="px-2 py-2 text-left font-semibold">Pencetus</th>
+                  <th className="px-2 py-2 text-left font-semibold">Dept</th>
+                  <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Menunggu Sejak</th>
+                  <th className="px-2 py-2 text-left font-semibold">Status</th>
+                  <th className="px-2 py-2 text-left font-semibold">Manajemen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {waitRows.length === 0 && (
+                  <tr><td colSpan={8} className="px-2 py-6 text-center text-gray-400">
+                    Tidak ada SS waiting approval pada manajemen terpilih.
+                  </td></tr>
+                )}
+                {waitRows.map((r, i) => (
+                  <tr key={r.no_ss} className={i % 2 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''}>
+                    <td className="px-2 py-1.5 font-mono whitespace-nowrap">{r.no_ss}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{fmtDate(r.tgl_laporan)}</td>
+                    <td className="max-w-[380px] truncate px-2 py-1.5" title={r.judul ?? ''}>
+                      {r.judul ?? '-'}
+                    </td>
+                    <td className="px-2 py-1.5 whitespace-nowrap" title={r.pencetus ?? ''}>
+                      {titleName(r.pencetus) || '-'}
+                      <span className="block text-theme-xs text-gray-400">{r.nrp ?? ''}</span>
+                    </td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">{r.dept ?? '-'}</td>
+                    <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{fmtDate(r.outstanding_at)}</td>
+                    <td className="max-w-[160px] px-2 py-1.5 whitespace-nowrap">
+                      {r.status_ss ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" title={r.status_ss}>
+                          {r.status_ss}
+                        </span>
+                      ) : <span className="text-gray-400">-</span>}
+                    </td>
+                    <td className="max-w-[260px] truncate px-2 py-1.5" title={r.management ?? ''}>
+                      {r.management ? titleName(r.management) : '-'}
                     </td>
                   </tr>
                 ))}

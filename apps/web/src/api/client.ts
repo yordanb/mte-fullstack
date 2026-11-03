@@ -1281,7 +1281,24 @@ export type SsAbResp = {
   calendar: SsAbMonth[]
   by_dept: SsAbDept[]
   records: SsAbRecord[]
+  /** SS outstanding (waiting approval) atas nama manajemen terpilih. */
+  waiting: SsAbWaiting[]
+  waiting_managers: string[]
+  waiting_per_manager: { manager: string; total: number }[]
   years: number[]
+}
+
+export type SsAbWaiting = {
+  no_ss: string
+  tgl_laporan: string | null
+  judul: string | null
+  pencetus: string | null
+  nrp: string | null
+  dept: string | null
+  distrik: string | null
+  management: string | null
+  status_ss: string | null
+  outstanding_at: string | null
 }
 
 export async function fetchSsAb(year?: number): Promise<SsAbResp> {
