@@ -1417,6 +1417,49 @@ async def export_ss_ab(
     )
 
 
+WAITING_HEADERS = [
+    "NO SS", "TANGGAL LAPORAN", "JUDUL", "PENCETUS IDE", "NRP", "DEPT", "DISTRIK",
+    "MANAGEMENT", "STATUS SS", "MENUNGGU SEJAK",
+]
+
+
+@router.get("/ab/export-waiting", dependencies=[Depends(require_role("admin"))])
+async def export_ss_ab_waiting(
+    year: int | None = Query(None, ge=2000, le=2100),
+    db: AsyncSession = Depends(get_db),
+):
+    """CSV SS waiting approval — status "Menunggu Penilaian oleh PM" — per manajemen terpilih."""
+    wait_p = {f"w{i}": m.upper() for i, m in enumerate(WAITING_MANAGERS)}
+    ph = " OR ".join(f"upper(COALESCE(management, '')) LIKE :w{i}"
+                     for i in range(len(WAITING_MANAGERS)))
+    rows = (await db.execute(text(f"""
+        SELECT no_ss, tgl_laporan, judul, pencetus, nrp, dept, distrik,
+               management, status_ss, outstanding_at
+        FROM ss_report
+        WHERE outstanding = TRUE
+          AND (upper(COALESCE(status_ss, '')) LIKE '%PENILAIAN OLEH PM%'
+               OR upper(COALESCE(status_ss, '')) LIKE '%PENDING PM%')
+          AND ({ph})
+        ORDER BY outstanding_at DESC NULLS LAST, tgl_laporan DESC NULLS LAST
+        LIMIT {MAX_EXPORT}
+    """), wait_p)).mappings().all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(WAITING_HEADERS)
+    for r in rows:
+        w.writerow([
+            r["no_ss"], r["tgl_laporan"], r["judul"], r["pencetus"], r["nrp"],
+            r["dept"], r["distrik"], r["management"], r["status_ss"], r["outstanding_at"],
+        ])
+    body = "\ufeff" + buf.getvalue()
+    fname = (f"ss_waiting_pm_{datetime.date.today().isoformat()}.csv")
+    return Response(
+        content=body.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
+
+
 @router.delete("/all", dependencies=[Depends(require_role("admin"))])
 async def clear_all(db: AsyncSession = Depends(get_db)):
     """Kosongkan data SS (untuk re-import dari nol)."""

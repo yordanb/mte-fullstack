@@ -1321,6 +1321,18 @@ export async function exportSsAbCsv(year?: number): Promise<void> {
   URL.revokeObjectURL(url)
 }
 
+export async function exportSsAbWaitingCsv(): Promise<void> {
+  const r = await api.get('/v1/ss/ab/export-waiting', { responseType: 'blob' })
+  const url = URL.createObjectURL(r.data as Blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `ss_waiting_pm_${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 // --- Proker (program kerja) ----------------------------------------------
 export type ProkerStatus = 'DONE' | 'PLAN' | 'LATE' | 'MISSED'
 

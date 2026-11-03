@@ -2,7 +2,7 @@
 // plus kalender 12 bulan berisi jumlah SS AB approved di tiap bulan.
 import { useEffect, useMemo, useState } from 'react'
 import {
-  errMsg, exportSsAbCsv, fetchSsAb,
+  errMsg, exportSsAbCsv, exportSsAbWaitingCsv, fetchSsAb,
   type SsAbDept, type SsAbMonth, type SsAbRecord, type SsAbWaiting,
 } from '../api/client'
 
@@ -57,6 +57,7 @@ export default function SsAbPage() {
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
+  const [exportingWait, setExportingWait] = useState(false)
 
   const runExport = async () => {
     setExporting(true)
@@ -67,6 +68,18 @@ export default function SsAbPage() {
       setMsg(`export gagal: ${errMsg(e)}`)
     } finally {
       setExporting(false)
+    }
+  }
+
+  const runExportWaiting = async () => {
+    setExportingWait(true)
+    setMsg('')
+    try {
+      await exportSsAbWaitingCsv()
+    } catch (e) {
+      setMsg(`export gagal: ${errMsg(e)}`)
+    } finally {
+      setExportingWait(false)
     }
   }
 
@@ -361,7 +374,16 @@ export default function SsAbPage() {
             <span className="text-theme-xs text-gray-500">
               SS outstanding hanya dengan status "Menunggu Penilaian oleh PM" · {fmtNum(waitRows.length)} baris
             </span>
-            <div className="ml-auto flex flex-wrap items-center gap-1">
+            <button
+              className="ml-auto flex items-center gap-1 rounded-lg border px-2.5 py-1 text-theme-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:text-gray-300 dark:hover:bg-white/5"
+              onClick={runExportWaiting}
+              disabled={exportingWait}
+              title="Unduh SS waiting approval (status PM) sebagai CSV"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+              {exportingWait ? 'Mengunduh...' : 'Export CSV'}
+            </button>
+            <div className="flex flex-wrap items-center gap-1">
               <button
                 className={`rounded-full px-2.5 py-1 text-theme-xs font-medium ${
                   waitPick === ''
