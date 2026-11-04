@@ -947,6 +947,43 @@ export async function fetchYazuDcRaw(params: { year?: number; month?: number; id
   return r.data
 }
 
+// ─── Hourmeter (HM bulanan per unit, sumber upload Excel manual) ───
+export type HourmeterStats = {
+  periods: { period: string; units: number; values_cnt: number; uploaded_at: string; uploaded_by: string }[]
+  logs: { period: string; filename: string; rows_units: number; rows_values: number; status: string; error_msg: string | null; uploaded_by: string; uploaded_at: string }[]
+}
+export type HourmeterUnit = {
+  cn: string
+  egi: string | null
+  opening: number | null
+  vals: Record<string, number>
+  last_day: number | null
+  final: number | null
+  delta: number | null
+}
+export type HourmeterPivot = {
+  period: string
+  days_in_month: number
+  units: HourmeterUnit[]
+}
+
+export async function uploadHourmeter(file: File, year: number, month: number) {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('year', String(year))
+  form.append('month', String(month))
+  const r = await api.post(`/v1/hourmeter/upload`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+export async function fetchHourmeterStats(): Promise<HourmeterStats> {
+  const r = await api.get(`/v1/hourmeter/stats`)
+  return r.data
+}
+export async function fetchHourmeterPivot(year?: number, month?: number): Promise<HourmeterPivot> {
+  const r = await api.get(`/v1/hourmeter/pivot`, { params: { year, month } })
+  return r.data
+}
+
 // ─── Ewacs Performance ────────────────────────────
 export type EwacsKpi = {
   pa: number; scm_dur: number; usm_dur: number; scm_pct: number; usm_pct: number

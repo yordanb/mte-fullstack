@@ -27,6 +27,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'fureport', label: 'Report Follow Up' },
   ] },
   { title: 'Technical Expert', items: [
+    { key: 'hourmeter', label: 'Hourmeter' },
     { key: 'ppm', label: 'PPM' },
     { key: 'measurement', label: 'Measurement' },
     { key: 'yazu', label: 'Yazu P2H' },

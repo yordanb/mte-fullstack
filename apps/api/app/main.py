@@ -17,6 +17,7 @@ from app.api.v1.mom import router as mom_router
 from app.api.v1.riwayat import router as riwayat_router
 from app.api.v1.yazu import router as yazu_router, do_sync
 from app.api.v1.yazu_dc import router as yazu_dc_router, do_sync as do_sync_dc
+from app.api.v1.hourmeter import router as hourmeter_router
 from app.api.v1.ewacs import router as ewacs_router
 from app.api.v1.ss import router as ss_router
 from app.api.v1.proker import router as proker_router
@@ -120,6 +121,7 @@ app.include_router(mom_router)
 app.include_router(riwayat_router)
 app.include_router(yazu_router)
 app.include_router(yazu_dc_router)
+app.include_router(hourmeter_router)
 app.include_router(ewacs_router)
 app.include_router(ss_router)
 app.include_router(proker_router)

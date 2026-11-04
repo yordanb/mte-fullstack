@@ -14,6 +14,7 @@ import PpmPage from './pages/Ppm'
 import MeasurementPage from './pages/Measurement'
 import YazuPage from './pages/Yazu'
 import YazuDailyCheckPage from './pages/YazuDailyCheck'
+import HourmeterPage from './pages/Hourmeter'
 import EwacsPage from './pages/Ewacs'
 import TarSupportPage from './pages/TarSupport'
 import SsPage from './pages/Ss'
@@ -80,6 +81,7 @@ export default function App() {
       {page === 'riwayat' && can('riwayat', 'view') && <RiwayatPage />}
       {page === 'ppm' && can('ppm', 'view') && <PpmPage />}
       {page === 'measurement' && can('measurement', 'view') && <MeasurementPage />}
+      {page === 'hourmeter' && can('hourmeter', 'view') && <HourmeterPage />}
       {page === 'yazu' && can('yazu', 'view') && <YazuPage />}
       {page === 'yazudc' && can('yazu', 'view') && <YazuDailyCheckPage />}
       {page === 'ewacs' && can('ewacs', 'view') && <EwacsPage />}

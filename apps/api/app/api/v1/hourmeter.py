@@ -1,0 +1,308 @@
+"""Hourmeter — pencatatan HM bulanan dari upload Excel (sheet HM_Manual).
+
+Konsep: user meng-upload file Excel per bulan (format persis seperti
+"hm pumping okt 26.xlsx"); system mengganti seluruh data periode tersebut.
+
+Struktur sheet yang didukung:
+  Baris judul   : sel tanggal tanggal-1 periode (mis. 2026-10-01) — boleh merged
+  Baris header  : No | EGI | CN Unit | <HM opening (31 Agu)> | 1..31 (day) | Max
+                  — kolom opening = datetime tepat di kiri kolom hari=1;
+                  — kolom hari = datetime dengan .day berurutan 1..31
+                    (tahun/bulan yang tersimpan di file boleh "kacau",
+                     yang dipakai hanya angka hari-nya)
+  Baris data    : EGI, CN, opening numeric, nilai HM sparse numeric per hari
+"""
+import io
+import logging
+from calendar import monthrange
+from datetime import datetime, date
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.deps import get_current_user, require_role
+from app.db.session import get_db
+
+router = APIRouter(prefix="/v1/hourmeter", tags=["hourmeter"])
+log = logging.getLogger("hourmeter")
+
+
+def _cell_num(v) -> int | None:
+    """Nilai numerik dari sel: int/float langsung; string diputuskan pemisahnya.
+
+    Aturan pemisah (HM berformat naskah Indonesia):
+    - koma & titik bersamaan → pemisah TERAKHIR adalah desimal ('1.234.567,8')
+    - hanya koma → desimal bila ≤2 digit di belakang ('46,5'), selain itu ribuan ('46,383')
+    - hanya titik → desimal bila ≤2 digit di belakang ('46383.5'), selain itu ribuan ('46.383')
+    """
+    if v is None or v == "":
+        return None
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)):
+        f = float(v)
+    else:
+        s = str(v).strip().replace(" ", "").replace("\u00a0", "")
+        if not s or s in ("-", "–", "."):
+            return None
+        if "," in s and "." in s:
+            if s.rfind(",") > s.rfind("."):
+                s = s.replace(".", "").replace(",", ".")   # 1.234.567,8
+            else:
+                s = s.replace(",", "")                     # 1,234.5
+        elif "," in s:
+            head, _, tail = s.rpartition(",")
+            s = f"{head}.{tail}" if len(tail) <= 2 else s.replace(",", "")
+        elif "." in s:
+            head, _, tail = s.rpartition(".")
+            s = s if len(tail) <= 2 else s.replace(".", "")
+        try:
+            f = float(s)
+        except ValueError:
+            return None
+    return int(f)
+
+
+def parse_hourmeter_xlsx(data: bytes) -> dict:
+    """Parse sheet pertama yang berisi 'CN Unit'. Return dict terstruktur.
+
+    Raise ValueError dengan pesan berbahasa Indonesia bila format tak dikenal.
+    """
+    from openpyxl import load_workbook
+
+    wb = load_workbook(io.BytesIO(data), data_only=True, read_only=True)
+    header_row_idx, ws_hdr = None, None
+    for ws in wb.worksheets:
+        rows = [list(r) for r in ws.iter_rows(values_only=True)]
+        for i, row in enumerate(rows[:10]):
+            if row and any(
+                isinstance(v, str) and v.strip().upper() == "CN UNIT" for v in row
+            ):
+                header_row_idx, ws_hdr = i, rows
+                break
+        if header_row_idx is not None:
+            break
+    if header_row_idx is None:
+        raise ValueError("Sheet dengan kolom 'CN Unit' tidak ditemukan di file Excel")
+    hdr = ws_hdr[header_row_idx]
+
+    # ── Periode: tanggal tanggal-1 bulan pada baris-baris di atas header ──
+    period_date: datetime | None = None
+    for i in range(header_row_idx):
+        for v in ws_hdr[i]:
+            if isinstance(v, datetime):
+                period_date = v
+                break
+        if period_date is not None:
+            break
+    period = f"{period_date.year}-{period_date.month:02d}" if period_date else None
+
+    # ── Kolom hari: datetime dengan .day==1, lalu berurutan naik ──
+    day_cols: list[tuple[int, int]] = []          # (index kolom, day)
+    opening_col: int | None = None
+    start = None
+    for j, v in enumerate(hdr):
+        if isinstance(v, datetime) and 1 <= v.day <= 31:
+            if v.day == 1:
+                start = j
+                break
+    if start is None:
+        raise ValueError(
+            "Kolom hari tidak dikenali (butuh deret tanggal tampil '01'..'31' di baris header)"
+        )
+    day = 1
+    j = start
+    while j < len(hdr):
+        v = hdr[j]
+        if isinstance(v, datetime) and v.day == day:
+            day_cols.append((j, day))
+            day += 1
+            j += 1
+        else:
+            break
+    if day_cols:
+        k = start - 1
+        if k >= 0 and isinstance(hdr[k], datetime):
+            opening_col = k
+
+    # ── Kolom identitas ──
+    cn_col = egi_col = None
+    for j, v in enumerate(hdr):
+        if isinstance(v, str):
+            u = v.strip().upper()
+            if u == "CN UNIT":
+                cn_col = j
+            elif u == "EGI":
+                egi_col = j
+    if cn_col is None:
+        raise ValueError("Kolom 'CN Unit' tidak ditemukan di baris header")
+
+    # ── Baris data ──
+    units: list[dict] = []
+    seen: set[str] = set()
+    for row in ws_hdr[header_row_idx + 1:]:
+        if cn_col >= len(row):
+            continue
+        cn = row[cn_col]
+        if cn is None or str(cn).strip() == "":
+            continue
+        cn = str(cn).strip().upper().replace(" ", "")
+        if cn in seen:
+            continue
+        seen.add(cn)
+        egi = row[egi_col] if egi_col is not None and len(row) > egi_col else None
+        egi = str(egi).strip() if egi is not None else None
+        opening = _cell_num(row[opening_col]) if opening_col is not None else None
+        vals: dict[int, int] = {}
+        for j, d in day_cols:
+            v = _cell_num(row[j]) if len(row) > j else None
+            if v is not None:
+                vals[d] = v
+        units.append({"cn": cn, "egi": egi, "opening": opening, "vals": vals})
+
+    if not units:
+        raise ValueError("Tidak ada baris unit terbaca di file")
+    return {"period": period, "units": units, "days": [d for _, d in day_cols]}
+
+
+# ─── Endpoints ────────────────────────────────────────────
+
+@router.post("/upload", dependencies=[Depends(require_role("inputer", "admin"))])
+async def upload_hourmeter(
+    file: UploadFile = File(...),
+    year: int | None = Form(None),
+    month: int | None = Form(None),
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Upload file Excel HM → ganti seluruh data periode tersebut.
+
+    Periode dibaca dari file (baris judul); bila user memilih bulan/tahun di UI,
+    dipakai sebagai validasi silang — mismatch ditolak agar tak salah periode.
+    """
+    raw = await file.read()
+    try:
+        parsed = parse_hourmeter_xlsx(raw)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        log.exception("parsing hourmeter xlsx gagal")
+        raise HTTPException(400, f"File Excel tidak dapat dibaca: {e}")
+
+    file_period = parsed["period"]
+    if year and month:
+        sel = f"{year}-{month:02d}"
+        if file_period and file_period != sel:
+            raise HTTPException(
+                400,
+                f"Periode file ({file_period}) tidak sama dengan pilihan ({sel}). "
+                "Periksa pilihan bulan/tahun atau file yang diupload.",
+            )
+        period = sel
+    else:
+        if not file_period:
+            raise HTTPException(
+                400,
+                "Periode tidak terbaca dari file — pilih Bulan & Tahun di UI, "
+                "atau pastikan baris judul berisi tanggal periode.",
+            )
+        period = file_period
+
+    units = parsed["units"]
+    if not units:
+        raise HTTPException(400, "Tidak ada baris CN Unit terbaca dari file")
+
+    try:
+        # Ganti seluruh periode (unit yang tidak ada di file baru ikut hilang)
+        await db.execute(text("DELETE FROM hourmeter_daily WHERE period = :p"), {"p": period})
+        await db.execute(text("DELETE FROM hourmeter_opening WHERE period = :p"), {"p": period})
+        op = [{"p": period, "cn": u["cn"], "egi": u["egi"], "opening": u["opening"]} for u in units]
+        await db.execute(text("""
+            INSERT INTO hourmeter_opening(period, cn, egi, opening)
+            VALUES (:p, :cn, :egi, :opening)
+        """), op)
+        vp = [
+            {"p": period, "cn": u["cn"], "d": d, "v": v}
+            for u in units for d, v in u["vals"].items()
+        ]
+        if vp:
+            await db.execute(text("""
+                INSERT INTO hourmeter_daily(period, cn, day, hm)
+                VALUES (:p, :cn, :d, :v)
+            """), vp)
+        nval = len(vp)
+        await db.execute(text("""
+            INSERT INTO hourmeter_upload_log(period, filename, rows_units, rows_values, status, uploaded_by)
+            VALUES (:p, :f, :u, :v, 'success', :who)
+        """), {"p": period, "f": file.filename, "u": len(units), "v": nval, "who": user["username"]})
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        log.exception("gagal simpan hourmeter")
+        raise HTTPException(500, f"gagal simpan: {e}")
+    return {"ok": True, "period": period, "units": len(units), "values": nval}
+
+
+@router.get("/stats")
+async def stats(db: AsyncSession = Depends(get_db), _user=Depends(get_current_user)):
+    """Daftar periode yang sudah di-upload + ringkasannya."""
+    periods = (await db.execute(text("""
+        SELECT o.period,
+               COUNT(*)                          AS units,
+               COALESCE(SUM(d.n), 0)             AS values_cnt,
+               MAX(o.uploaded_at)                AS uploaded_at,
+               MAX(o.uploaded_by)                AS uploaded_by
+        FROM hourmeter_opening o
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*) AS n FROM hourmeter_daily
+          WHERE period = o.period AND cn = o.cn
+        ) d ON TRUE
+        GROUP BY o.period ORDER BY o.period DESC
+    """))).mappings().all()
+    logs = (await db.execute(text("""
+        SELECT period, filename, rows_units, rows_values, status, error_msg, uploaded_by, uploaded_at
+        FROM hourmeter_upload_log ORDER BY id DESC LIMIT 10
+    """))).mappings().all()
+    return {"periods": [dict(r) for r in periods], "logs": [dict(r) for r in logs]}
+
+
+@router.get("/pivot")
+async def pivot(
+    year: int = Query(None), month: int = Query(None, ge=1, le=12),
+    db: AsyncSession = Depends(get_db), _user=Depends(get_current_user),
+):
+    """Grid HM: baris = CN unit, kolom = hari, + opening & akhir & selisih."""
+    today = date.today()
+    year = year or today.year
+    month = month or today.month
+    days_in_month = monthrange(year, month)[1]
+    period = f"{year}-{month:02d}"
+
+    op_rows = (await db.execute(text("""
+        SELECT cn, egi, opening FROM hourmeter_opening
+        WHERE period = :p ORDER BY cn
+    """), {"p": period})).mappings().all()
+    val_rows = (await db.execute(text("""
+        SELECT cn, day, hm FROM hourmeter_daily
+        WHERE period = :p ORDER BY cn, day
+    """), {"p": period})).fetchall()
+
+    cells: dict[str, dict[int, int]] = {}
+    for r in val_rows:
+        cells.setdefault(r[0], {})[r[1]] = r[2]
+
+    units = []
+    for r in op_rows:
+        cn = r["cn"]
+        vals = cells.get(cn, {})
+        opening = r["opening"]
+        last_day = max(vals) if vals else None
+        final = vals[last_day] if last_day is not None else opening
+        delta = (final - opening) if (final is not None and opening is not None) else None
+        units.append({
+            "cn": cn, "egi": r["egi"], "opening": opening,
+            "vals": {str(d): v for d, v in vals.items()},
+            "last_day": last_day, "final": final, "delta": delta,
+        })
+    return {"period": period, "days_in_month": days_in_month, "units": units}
