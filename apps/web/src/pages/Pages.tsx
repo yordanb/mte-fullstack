@@ -66,7 +66,7 @@ export function Dashboard() {
       {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-theme-sm text-red-700">{err}</p>}
       {lastUp && (
         <p className="text-theme-sm text-gray-500">
-          Last update: {lastUp.filename} • {fmtDT(lastUp.created_at)} • {lastUp.status} • ok {lastUp.ok_rows}/{lastUp.total_rows}
+          Last update: {fmtDT(lastUp.created_at)}
           {lastUp.uploaded_by ? ` oleh ${lastUp.uploaded_by}` : ''}
         </p>
       )}
@@ -483,6 +483,7 @@ export function DbrPage() {
   const [page, setPage] = useState(1)
   const [msg, setMsg] = useState('')
   const [hideContinue, setHideContinue] = useState(false)
+  const [lastUp, setLastUp] = useState<ImportStatus | null>(null)
   const shown = hideContinue ? rows.filter((r) => (r.action ?? '').toUpperCase() !== 'CONTINUE') : rows
   const fmtD = (v?: string | null) => {
     if (!v) return ''
@@ -490,6 +491,13 @@ export function DbrPage() {
     if (isNaN(d.getTime())) return String(v)
     const month = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Ags','Sep','Okt','Nov','Des'][d.getMonth()]
     return `${d.getDate()} ${month} ${d.getFullYear() % 100}`
+  }
+  const fmtDT = (v?: string) => {
+    if (!v) return ''
+    const d = new Date(v)
+    if (isNaN(d.getTime())) return String(v)
+    const p = (n: number) => String(n).padStart(2, '0')
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`
   }
   const load = async (p = 1) => {
     try {
@@ -499,7 +507,7 @@ export function DbrPage() {
       setRows(r.data); setTotal(r.total); setPage(r.page)
     } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
-  useEffect(() => { load(1); fetchDbrCodes().then(setCodes).catch(() => null) }, [])
+  useEffect(() => { load(1); fetchDbrCodes().then(setCodes).catch(() => null); fetchLatestImport('DBR').then(setLastUp).catch(() => null) }, [])
   const pages = Math.max(1, Math.ceil(total / 20))
   return (
     <div className="flex flex-col gap-4">
@@ -521,6 +529,12 @@ export function DbrPage() {
         </label>
       </div>
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
+      {lastUp && (
+        <p className="text-theme-sm text-gray-500">
+          Last update: {fmtDT(lastUp.created_at)}
+          {lastUp.uploaded_by ? ` oleh ${lastUp.uploaded_by}` : ''}
+        </p>
+      )}
       <div className="overflow-x-auto rounded-2xl border bg-white">
         <table className="w-full border-collapse text-center text-theme-sm">
           <thead className="bg-[#d6e4c9] font-semibold">

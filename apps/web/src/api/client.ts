@@ -354,8 +354,8 @@ export async function fetchImportStatus(id: string): Promise<ImportStatus> {
   return r.data
 }
 
-export async function fetchLatestImport(): Promise<ImportStatus | null> {
-  const r = await api.get('/v1/imports/latest')
+export async function fetchLatestImport(sheet?: string): Promise<ImportStatus | null> {
+  const r = await api.get('/v1/imports/latest', sheet ? { params: { sheet } } : undefined)
   return r.data?.id ? r.data : null
 }
 

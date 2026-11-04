@@ -157,14 +157,17 @@ async def upload_excel(
     return {"import_id": import_id, "status": "PROCESSING"}
 
 @router.get("/latest")
-async def latest_import(db: AsyncSession = Depends(get_db),
+async def latest_import(sheet: str | None = Query(None),
+                        db: AsyncSession = Depends(get_db),
                         user=Depends(get_current_user)):
-    """Upload report oli terakhir (DBR dikecualikan via sheet)."""
+    """Upload terakhir. Default: report oli (DBR & SS dikecualikan via sheet).
+    Bila `sheet` diberikan (mis. 'DBR'), ambil upload terakhir khusus sheet itu."""
+    w = "WHERE sheet = :s" if sheet else "WHERE sheet NOT IN ('DBR', 'SS')"
+    params = {"s": sheet} if sheet else {}
     row = (await db.execute(text(
         "SELECT id, filename, status, total_rows, ok_rows, fail_rows, "
-        "processed_rows, uploaded_by, created_at FROM imports "
-        "WHERE sheet NOT IN ('DBR', 'SS') "
-        "ORDER BY created_at DESC LIMIT 1"))).mappings().first()
+        f"processed_rows, uploaded_by, created_at FROM imports {w} "
+        "ORDER BY created_at DESC LIMIT 1"), params)).mappings().first()
     return dict(row) if row else {}
 
 @router.get("/{import_id}")

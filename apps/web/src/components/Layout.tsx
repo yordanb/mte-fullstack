@@ -6,7 +6,7 @@ type MenuGroup = { title: string; items: MenuItem[] }
 
 const GROUPS: MenuGroup[] = [
   { title: 'Monitoring', items: [
-    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'dashboard', label: 'Dashboard Oil Lab' },
     { key: 'dbr', label: 'DBR Breakdown' },
     { key: 'performance', label: 'Performance' },
     { key: 'timeline', label: 'Timeline Mingguan' },
