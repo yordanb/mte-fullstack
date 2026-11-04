@@ -26,6 +26,10 @@ import 'package:mte_data_center/src/features/equipment/presentation/equipment_fo
 import 'package:mte_data_center/src/features/equipment/presentation/equipment_page.dart';
 import 'package:mte_data_center/src/features/mom/presentation/mom_page.dart';
 import 'package:mte_data_center/src/features/performance/presentation/performance_page.dart';
+import 'package:mte_data_center/src/features/proker/presentation/proker_booster_page.dart';
+import 'package:mte_data_center/src/features/proker/presentation/proker_injector_page.dart';
+import 'package:mte_data_center/src/features/proker/presentation/proker_primer_page.dart';
+import 'package:mte_data_center/src/features/proker/presentation/proker_thermostat_page.dart';
 
 /// GoRouter Milestone 1: /login, / (dashboard), + route stub milestone
 /// berikutnya. Redirect ke /login bila tanpa token; /users & /audit
@@ -63,6 +67,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/fui', builder: (c, s) => const FuiPage()),
       GoRoute(path: '/ss', builder: (c, s) => const SsPage()),
       GoRoute(path: '/ssab', builder: (c, s) => const SsabPage()),
+      GoRoute(path: '/proker', builder: (c, s) => const ProkerPrimerPage()),
+      GoRoute(
+          path: '/prokerbooster', builder: (c, s) => const ProkerBoosterPage()),
+      GoRoute(
+          path: '/prokerinjector',
+          builder: (c, s) => const ProkerInjectorPage()),
+      GoRoute(
+          path: '/prokerthermo',
+          builder: (c, s) => const ProkerThermostatPage()),
       GoRoute(path: '/suggestion', builder: (c, s) => const SuggestionPage()),
       GoRoute(
         path: '/suggestion/new',
