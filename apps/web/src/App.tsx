@@ -87,12 +87,12 @@ export default function App() {
       {page === 'ewacs' && can('ewacs', 'view') && <EwacsPage />}
       {page === 'tarsupport' && can('tarsupport', 'view') && <TarSupportPage />}
       {page === 'ss' && can('ss', 'view') && <SsPage />}
-      {page === 'ssab' && can('ss', 'view') && <SsAbPage />}
+      {page === 'ssab' && can('ssab', 'view') && <SsAbPage />}
       {page === 'proker' && can('proker', 'view') && <ProkerPage />}
       {page === 'prokerbooster' && can('prokerbooster', 'view') && <ProkerBoosterPage />}
       {page === 'prokerinjector' && can('prokerinjector', 'view') && <ProkerInjectorPage />}
       {page === 'manpower' && can('manpower', 'view') && <ManpowerPage />}
-      {page === 'manpowermanage' && can('manpower', 'view') && <ManpowerGroupPage />}
+      {page === 'manpowermanage' && can('manpowermanage', 'view') && <ManpowerGroupPage />}
       {page === 'import' && <ImportPage />}
       {page === 'users' && me.role === 'admin' && <UsersPage />}
       {page === 'audit' && me.role === 'admin' && <AuditPage />}

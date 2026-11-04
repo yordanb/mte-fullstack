@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { fetchUsers, createUser, patchUser, deleteUser, fetchPerms, setPerm, fetchMe, errMsg, type PermRow } from '../api/client'
 
 const ROLES = ['admin', 'inputer', 'mekanik', 'viewer', 'planner', 'group leader', 'section head', 'adm te', 'adm lce']
-const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'equipment', 'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak', 'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement', 'yazu', 'yazudc', 'ewacs', 'tarsupport', 'ss', 'proker', 'prokerbooster', 'prokerinjector', 'manpower']
+const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'equipment', 'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak', 'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement', 'yazu', 'yazudc', 'ewacs', 'tarsupport', 'ss', 'ssab', 'proker', 'prokerbooster', 'prokerinjector', 'manpower', 'manpowermanage']
 const ACTS = [
   { key: 'can_view', label: 'Lihat' },
   { key: 'can_add', label: 'Tambah' },
@@ -107,7 +107,7 @@ export default function UsersPage() {
                   if (!row) return null
                   return (
                     <tr key={m} className="border-t">
-                      <td className="border px-2 py-2 text-left">{m === 'yazu' ? 'yazu — Yazu P2H' : m === 'yazudc' ? 'yazudc — Yazu Daily Check' : m === 'proker' ? 'proker — GMC Pompa Primer' : m === 'prokerbooster' ? 'prokerbooster — midlife eng booster' : m === 'prokerinjector' ? 'prokerinjector — midlife injector primer' : m === 'manpower' ? 'manpower — manpower inovasi & dashboard manpower' : m}</td>
+                      <td className="border px-2 py-2 text-left">{m === 'yazu' ? 'yazu — Yazu P2H' : m === 'yazudc' ? 'yazudc — Yazu Daily Check' : m === 'ss' ? 'ss — Sugestion System' : m === 'ssab' ? 'ssab — SS AB' : m === 'manpower' ? 'manpower — Manpower Inovasi' : m === 'manpowermanage' ? 'manpowermanage — Manajemen Manpower' : m === 'proker' ? 'proker — GMC Pompa Primer' : m === 'prokerbooster' ? 'prokerbooster — midlife eng booster' : m === 'prokerinjector' ? 'prokerinjector — midlife injector primer' : m}</td>
                       {ACTS.map((a) => (
                         <td key={a.key} className="border px-2 py-2">
                           <input type="checkbox" checked={row[a.key]}

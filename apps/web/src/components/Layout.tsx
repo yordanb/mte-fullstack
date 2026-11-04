@@ -41,7 +41,7 @@ const GROUPS: MenuGroup[] = [
   { title: 'Agent', items: [
     { key: 'ss', label: 'Sugestion System' },
     { key: 'ssab', label: 'SS AB' },
-    { key: 'manpowermanage', label: 'Manpower', perm: 'manpower' },
+    { key: 'manpowermanage', label: 'Manpower', perm: 'manpowermanage' },
     { key: 'manpower', label: 'Manpower Inovasi' },
   ] },
   { title: 'Administrasi', items: [
