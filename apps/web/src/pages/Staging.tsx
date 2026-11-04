@@ -12,7 +12,7 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   fetchStagingGroups, createStagingGroup, patchStagingGroup, deleteStagingGroup,
   addStagingPump, deleteStagingPump, reorderStagingPumps, moveStagingPump, copyStagingConfig,
-  fetchStagingChanges,
+  fetchStagingChanges, searchStagingEquipment,
   can, errMsg,
   type StagingGroup, type StagingPump, type StagingChange,
 } from '../api/client'
@@ -457,25 +457,114 @@ function MovePumpModal({ pump, currentGroupId, groups, onClose, onDone }: {
   )
 }
 
-// ─── Add Group Modal ──────────────────────────────────────
+// ─── Add Group Modal (format cepat: paste sekali, grup jadi) ──
 
-function AddGroupModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [groupNo, setGroupNo] = useState('1')
+// Parse format cepat: "Sump C3 [Transfer] - WP764 - WP1126 - WP1066 - WP1130"
+// → { sump, system, cn }. Pemisah pump: '-', tab, baris baru, atau koma;
+// dash unicode (– — −) dinormalisasi agar hasil copy Excel/Word tetap aman.
+function parseQuickGroup(text: string): { sump: string; system: string; cn: string[] } | null {
+  const t = text
+    .replace(/[\u2011-\u2015\u2212]/g, '-')   // unicode dash → '-'
+    .replace(/\t/g, '\n')                     // tab (salinan Excel) → pemisah
+  const m = t.match(/^\s*(.+?)\s*\[(.+?)\]\s*[-:]?\s*([\s\S]*)$/)
+  if (!m) return null
+  const sump = m[1].replace(/^[-:,\s]+|[-:,\s]+$/g, '').trim().replace(/\s+/g, ' ')
+  const system = m[2].trim()
+  const cn = m[3].split(/[-,\n]+/).map((s) => s.trim()).filter(Boolean)
+    .map((s) => s.toUpperCase().replace(/\s/g, ''))
+  if (!sump || !system || cn.length === 0) return null
+  return { sump, system, cn }
+}
+
+function AddGroupModal({ period, nextGroupNo, onClose, onSaved }: {
+  period: string; nextGroupNo: number; onClose: () => void; onSaved: () => void
+}) {
+  const [quick, setQuick] = useState('')
+  const parsed = useMemo(() => parseQuickGroup(quick), [quick])
+  const [groupNo, setGroupNo] = useState(String(nextGroupNo))
   const [sump, setSump] = useState('')
   const [sistem, setSistem] = useState('')
+  const [chainText, setChainText] = useState('')
+  const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
+  const [warnCN, setWarnCN] = useState<string[]>([])
+
+  // Autofill manual fields setiap teks format cepat berubah & parse valid
+  // (field tetap bisa dikoreksi manual setelah terisi).
+  useEffect(() => {
+    if (!parsed) return
+    setSump(parsed.sump)
+    setSistem(parsed.system)
+    setChainText(parsed.cn.join(' - '))
+  }, [quick]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const parsedCNs = useMemo(() => {
+    const arr = chainText.split('-').map((s) => s.trim().toUpperCase().replace(/\s/g, '')).filter(Boolean)
+    return [...new Set(arr)]   // dedupe CN yang dobel di paste
+  }, [chainText])
+
   const save = async () => {
+    setMsg(''); setWarnCN([])
+    if (!sistem.trim()) { setMsg('Sistem pemompaan wajib diisi'); return }
+    setBusy(true)
     try {
-      setMsg('')
-      if (!sistem) { setMsg('Sistem pemompaan wajib diisi'); return }
-      await createStagingGroup({ group_no: parseInt(groupNo) || 1, sump_name: sump || undefined, system_type: sistem, is_active: true })
-      onSaved(); onClose()
-    } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+      // Pra-validasi CN di master equipment (kategori PUMPING) supaya grup
+      // tidak terlanjur dibuat bila ada CN salah ketik.
+      if (parsedCNs.length > 0) {
+        const res = await Promise.all(parsedCNs.map(async (cn) => {
+          try {
+            const r = await searchStagingEquipment(cn)
+            return r.data.some((e) => e.cn === cn) ? null : cn
+          } catch { return cn }
+        }))
+        const bad = res.filter(Boolean) as string[]
+        if (bad.length > 0) { setWarnCN(bad); setBusy(false); return }
+      }
+      const grp = await createStagingGroup({
+        group_no: parseInt(groupNo) || nextGroupNo,
+        sump_name: sump || undefined, system_type: sistem, is_active: true,
+      })
+      let failed: string[] = []
+      for (let i = 0; i < parsedCNs.length; i++) {
+        try { await addStagingPump(grp.id, { pump_cn: parsedCNs[i], role_order: i }, period) }
+        catch { failed.push(parsedCNs[i]) }
+      }
+      onSaved()
+      if (failed.length === 0) onClose()
+      else setMsg(`Grup dibuat. Pump gagal masuk: ${failed.join(', ')} — tambahkan manual atau hapus grup lalu ulangi.`)
+    } catch (e) {
+      setMsg(`gagal: ${errMsg(e)}`)
+    }
+    setBusy(false)
   }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-5 dark:bg-gray-900">
         <h3 className="font-semibold">Tambah Grup Staging</h3>
+        <label className="mt-3 block text-theme-sm">
+          Format cepat — paste teks berikut:
+          <input
+            className="mt-1 w-full rounded-lg border px-3 py-2 font-mono text-theme-sm"
+            value={quick}
+            onChange={(e) => setQuick(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && parsed) save() }}
+            placeholder="Sump C3 [Transfer] - WP764 - WP1126 - WP1066 - WP1130"
+            autoFocus
+          />
+        </label>
+        {quick.trim() && !parsed && (
+          <p className="mt-1 text-theme-xs text-amber-600">
+            Format: nama [Sistem] - CN pump - CN pump … — sistem pemompaan wajib di dalam [ kurung siku ].
+          </p>
+        )}
+        {parsed && (
+          <div className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-theme-xs text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300">
+            Terbaca: Sump <b>{parsed.sump}</b> • Sistem <b>{parsed.system}</b> • {parsed.cn.length} pump berurutan
+          </div>
+        )}
+
+        {/* Field detail — terisi otomatis dari format cepat, tetap bisa diedit */}
         <div className="mt-3 flex flex-col gap-3">
           <label className="text-theme-sm">No urut
             <input className="mt-1 w-full rounded-lg border px-3 py-2" type="number" value={groupNo} onChange={(e) => setGroupNo(e.target.value)} />
@@ -487,11 +576,33 @@ function AddGroupModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
             <input className="mt-1 w-full rounded-lg border px-3 py-2" value={sistem} onChange={(e) => setSistem(e.target.value)} list="staging-sys2" placeholder="cth SARABAKAWA" />
             <datalist id="staging-sys2">{SYSTEMS.map((s) => <option key={s} value={s} />)}</datalist>
           </label>
+          <label className="text-theme-sm">Pump berurutan (Primer → Booster)
+            <input className="mt-1 w-full rounded-lg border px-3 py-2 font-mono text-theme-sm" value={chainText}
+              onChange={(e) => { setChainText(e.target.value.toUpperCase()); setMsg('') }}
+              placeholder="WP764 - WP1126 - WP1066 - WP1130" />
+          </label>
+          {parsedCNs.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {parsedCNs.map((cn, i) => (
+                <span key={cn} className="flex items-center gap-1 rounded-md bg-gray-100 px-1.5 py-0.5 text-theme-xs font-medium dark:bg-gray-700">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: roleColor(i).pipe }} />
+                  {i === 0 ? `${cn} (Primer)` : `${cn} (Booster ${i})`}
+                </span>
+              ))}
+            </div>
+          )}
+          {warnCN.length > 0 && (
+            <p className="text-theme-xs text-red-600">
+              Tidak ditemukan di master equipment (PUMPING): <b>{warnCN.join(', ')}</b> — perbaiki daftar pump di atas.
+            </p>
+          )}
         </div>
         {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
-          <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={save}>Simpan</button>
+          <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={save} disabled={busy}>
+            {busy ? 'Menyimpan...' : 'Simpan'}
+          </button>
         </div>
       </div>
     </div>
@@ -707,6 +818,11 @@ export default function StagingPage() {
 
   const activePump = activeId ? allPumps.get(activeId) : null
   const hasData = groups.some((g) => g.pumps.length > 0)
+  // No urut grup baru: grup terakhir + 1 (untuk modal format cepat)
+  const nextGroupNo = useMemo(
+    () => (groups.length ? Math.max(...groups.map((g) => g.group_no)) + 1 : 1),
+    [groups],
+  )
 
   return (
     <div className="flex flex-col gap-4">
@@ -795,7 +911,7 @@ export default function StagingPage() {
       <ChangesPanel period={period} />
 
       {/* Modals */}
-      {showAdd && <AddGroupModal onClose={() => setShowAdd(false)} onSaved={load} />}
+      {showAdd && <AddGroupModal period={period} nextGroupNo={nextGroupNo} onClose={() => setShowAdd(false)} onSaved={load} />}
       {showCopy && <CopyModal curPeriod={period} onClose={() => setShowCopy(false)} onDone={load} />}
     </div>
   )
