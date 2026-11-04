@@ -15,6 +15,7 @@ ROLE_INHERITS: dict[str, str] = {
     "group leader": "mekanik",
     "section head": "viewer",
     "adm te": "inputer",
+    "adm lce": "inputer",
 }
 
 async def get_current_user(creds=Depends(bearer), db: AsyncSession = Depends(get_db)):
