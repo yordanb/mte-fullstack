@@ -48,14 +48,22 @@ def _parse_time(raw: str) -> str:
 
 
 # Normalisasi penulisan EGI yang salah saat import CSV.
+# Kunci dicocokkan setelah huruf besar & spasi dihapus, jadi kunci "LEGRA140"
+# juga menangkap "LEGRA 140" (spasi) dsb.
 EGI_FIX = {
     "LS4-2000": "LS42000",
     "LS4-6000": "LS46000",
+    "LEGRA140": "LEGRA140",
+    "RF-85MW": "RF85MW",
+    "EGS630-6": "EGS6306",
+    "EGS63060": "EGS6306",
 }
 
 
 def _norm_egi(raw: str | None) -> str | None:
-    """Perbaiki varian EGI salah tulis: 'LS4-2000' → 'LS42000', 'LS4-6000' → 'LS46000'.
+    """Perbaiki varian EGI salah tulis, mis.:
+    'LS4-2000' → 'LS42000', 'LEGRA 140' → 'LEGRA140', 'RF-85MW' → 'RF85MW',
+    'EGS630-6' / 'EGS63060' → 'EGS6306'.
 
     Pencocokan mengabaikan besar/kecil huruf & spasi; nilai lain disimpan apa adanya.
     """
