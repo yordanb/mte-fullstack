@@ -29,7 +29,7 @@ const GROUPS: MenuGroup[] = [
   { title: 'Technical Expert', items: [
     { key: 'ppm', label: 'PPM' },
     { key: 'measurement', label: 'Measurement' },
-    { key: 'yazu', label: 'Yazu' },
+    { key: 'yazu', label: 'Yazu P2H' },
     { key: 'yazudc', label: 'Yazu Daily Check' },
     { key: 'ewacs', label: 'Ewacs Performance' },
     { key: 'tarsupport', label: 'TAR Support' },
