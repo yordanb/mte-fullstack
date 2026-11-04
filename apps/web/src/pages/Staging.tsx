@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
-  DndContext, closestCorners, PointerSensor, KeyboardSensor,
+  DndContext, closestCorners, pointerWithin, PointerSensor, KeyboardSensor,
   useSensor, useSensors, type DragEndEvent, type DragStartEvent,
-  type DragOverEvent, DragOverlay, useDroppable,
+  type DragOverEvent, DragOverlay, useDroppable, type CollisionDetection,
 } from '@dnd-kit/core'
 import {
   SortableContext, sortableKeyboardCoordinates, useSortable,
@@ -74,7 +74,9 @@ function HPipe({ color = '#94a3b8' }: { color?: string }) {
 
 // ─── Sortable Pump Card (horizontal) ─────────────────────
 
-function SortablePump({ pump, groupId, onChanged }: { pump: StagingPump; groupId: number; onChanged: () => void }) {
+function SortablePump({ pump, groupId, groups, onChanged }: {
+  pump: StagingPump; groupId: number; groups: StagingGroup[]; onChanged: () => void
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: pump.id })
   const rc = roleColor(pump.role_order)
   const style = {
@@ -83,17 +85,18 @@ function SortablePump({ pump, groupId, onChanged }: { pump: StagingPump; groupId
     opacity: isDragging ? 0.2 : 1,
   }
   const [confirmDel, setConfirmDel] = useState(false)
+  const [showMove, setShowMove] = useState(false)
   return (
     <div ref={setNodeRef} style={style} className="flex shrink-0 items-center">
       <div className={`relative w-24 rounded-xl border-2 ${rc.border} ${rc.bg} shadow-sm`}>
-        {/* Drag handle top bar */}
+        {/* Drag handle top bar — diperbesar agar mudah digenggam */}
         <button {...attributes} {...listeners}
-          className={`flex w-full cursor-grab items-center justify-center rounded-t-[10px] ${rc.bg} py-0.5 active:cursor-grabbing`}
-          title="Drag untuk pindah / ubah urutan">
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className={rc.text}>
-            <circle cx="3" cy="3" r="0.8" /><circle cx="7" cy="3" r="0.8" />
-            <circle cx="3" cy="5" r="0.8" /><circle cx="7" cy="5" r="0.8" />
-            <circle cx="3" cy="7" r="0.8" /><circle cx="7" cy="7" r="0.8" />
+          className={`flex w-full cursor-grab touch-none items-center justify-center rounded-t-[10px] border-b border-black/5 ${rc.bg} py-1.5 active:cursor-grabbing`}
+          title="Tahan & seret: lepas di baris grup lain = pindah grup, geser di baris yang sama = ubah urutan">
+          <svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor" className={rc.text}>
+            <circle cx="4" cy="3" r="1.1" /><circle cx="10" cy="3" r="1.1" />
+            <circle cx="4" cy="6" r="1.1" /><circle cx="10" cy="6" r="1.1" />
+            <circle cx="4" cy="9" r="1.1" /><circle cx="10" cy="9" r="1.1" />
           </svg>
         </button>
         {/* Content */}
@@ -101,6 +104,15 @@ function SortablePump({ pump, groupId, onChanged }: { pump: StagingPump; groupId
           <span className="block truncate text-theme-sm font-semibold text-gray-800 dark:text-gray-200">{pump.pump_cn}</span>
           {pump.unit_type && <span className="block truncate text-theme-xs text-gray-400">{pump.unit_type}</span>}
         </div>
+        {/* Move to another group (explicit, tanpa harus drag) */}
+        {canEdit() && groups.length > 1 && (
+          <div className="absolute -bottom-1.5 -left-1.5 z-20">
+            <button className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-gray-400 shadow border hover:text-brand-500"
+              onClick={(e) => { e.stopPropagation(); setShowMove(true) }} title="Pindah ke grup lain">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 5h6M6 3l2 2-2 2" /></svg>
+            </button>
+          </div>
+        )}
         {/* Delete */}
         {canEdit() && (
           <div className="absolute -right-1.5 -top-1.5 z-20">
@@ -123,6 +135,10 @@ function SortablePump({ pump, groupId, onChanged }: { pump: StagingPump; groupId
         )}
         {/* Click outside to cancel confirm */}
         {confirmDel && <div className="fixed inset-0 z-10 cursor-default" onClick={(e) => { e.stopPropagation(); setConfirmDel(false) }} />}
+        {showMove && (
+          <MovePumpModal pump={pump} currentGroupId={groupId} groups={groups}
+            onClose={() => setShowMove(false)} onDone={onChanged} />
+        )}
       </div>
     </div>
   )
@@ -130,8 +146,8 @@ function SortablePump({ pump, groupId, onChanged }: { pump: StagingPump; groupId
 
 // ─── Group Row (horizontal pump chain) ───────────────────
 
-function GroupRow({ group, period, onChanged, isDropTarget }: {
-  group: StagingGroup; period: string; onChanged: () => void
+function GroupRow({ group, period, groups, onChanged, isDropTarget }: {
+  group: StagingGroup; period: string; groups: StagingGroup[]; onChanged: () => void
   isDropTarget: boolean
 }) {
   const { setNodeRef } = useDroppable({ id: `group-${group.id}` })
@@ -237,7 +253,7 @@ function GroupRow({ group, period, onChanged, isDropTarget }: {
           <SortableContext items={itemIds} strategy={horizontalListSortingStrategy}>
             {pumps.map((p, idx) => (
               <div key={p.id} className="flex shrink-0 items-center">
-                <SortablePump pump={p} groupId={group.id} onChanged={onChanged} />
+                <SortablePump pump={p} groupId={group.id} groups={groups} onChanged={onChanged} />
                 {idx < pumps.length - 1 && <HPipe color={roleColor(p.role_order).pipe} />}
               </div>
             ))}
@@ -340,6 +356,101 @@ function EditGroupModal({ group, onClose, onSaved }: {
         <div className="mt-4 flex justify-end gap-2">
           <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
           <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={save}>Simpan</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Move Pump Modal (pindah antar-grup, tanpa drag) ──────
+
+function MovePumpModal({ pump, currentGroupId, groups, onClose, onDone }: {
+  pump: StagingPump; currentGroupId: number; groups: StagingGroup[]
+  onClose: () => void; onDone: () => void
+}) {
+  const curGrp = groups.find((g) => g.id === currentGroupId)
+  const others = useMemo(
+    () => groups.filter((g) => g.id !== currentGroupId && g.is_active),
+    [groups, currentGroupId],
+  )
+  const [gid, setGid] = useState<number | null>(others[0]?.id ?? null)
+  const target = others.find((g) => g.id === gid) ?? null
+
+  // Posisi yang tersedia di grup tujuan: sebelum tiap pump yang ada + paling belakang.
+  const positions = useMemo(() => {
+    if (!target) return []
+    const opts = target.pumps.map((p, i) => ({
+      value: p.role_order,
+      label: `Posisi ${i + 1} — ${p.role_order === 0 ? 'Primer' : `Booster ${p.role_order}`} (menggeser ${p.pump_cn})`,
+    }))
+    const maxRole = target.pumps.length > 0
+      ? Math.max(...target.pumps.map((p) => p.role_order)) : -1
+    opts.push({
+      value: maxRole + 1,
+      label: `Paling belakang — ${maxRole + 1 === 0 ? 'Primer' : `Booster ${maxRole + 1}`}`,
+    })
+    return opts
+  }, [target])
+
+  const [role, setRole] = useState<number | null>(
+    positions.length ? positions[positions.length - 1].value : null,
+  )
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  // Saat grup tujuan berubah, reset pilihan posisi ke paling belakang.
+  useEffect(() => {
+    setRole(positions.length ? positions[positions.length - 1].value : null)
+  }, [gid]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const doMove = async () => {
+    if (gid == null || role == null) { setMsg('Pilih grup tujuan & posisi'); return }
+    setBusy(true); setMsg('')
+    try {
+      await moveStagingPump(pump.id, gid, role)
+      onDone(); onClose()
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`); setBusy(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 dark:bg-gray-900">
+        <h3 className="font-semibold">Pindah {pump.pump_cn}</h3>
+        <p className="mt-1 text-theme-sm text-gray-500">
+          Dari: <strong>Grup {curGrp?.group_no ?? '-'}</strong> ({curGrp?.system_type}) — {pump.role_label}
+        </p>
+        {others.length === 0 ? (
+          <p className="mt-3 text-theme-sm text-gray-500">
+            Belum ada grup aktif lain sebagai tujuan. Buat grup baru dulu lewat "+ Tambah Grup".
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-col gap-3">
+            <label className="text-theme-sm">Grup tujuan
+              <select className="mt-1 w-full rounded-lg border px-3 py-2" value={gid ?? ''} onChange={(e) => setGid(+e.target.value)}>
+                {others.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    Grup {g.group_no} — {g.sump_name || '(tanpa sump)'} [{g.system_type}] ({g.pumps.length} pump)
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-theme-sm">Posisi di grup tujuan
+              <select className="mt-1 w-full rounded-lg border px-3 py-2" value={role ?? ''} onChange={(e) => setRole(+e.target.value)} disabled={!target}>
+                {positions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <span className="mt-1 block text-theme-xs text-gray-400">
+                Pump yang dilewati akan bergeser satu posisi ke belakang. Riwayat pindah dicatat otomatis.
+              </span>
+            </label>
+          </div>
+        )}
+        {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button className="rounded-lg border px-4 py-2" onClick={onClose}>Batal</button>
+          <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={doMove}
+            disabled={busy || others.length === 0}>
+            {busy ? 'Memindah...' : 'Pindahkan'}
+          </button>
         </div>
       </div>
     </div>
@@ -499,6 +610,23 @@ export default function StagingPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
+  // Deteksi target drop: utamakan elemen yang pointer benar-benar berada di
+  // atasnya (pointerWithin) — closestCorners murni sering "menangkap" pompa
+  // di baris asal saat kursor berada di antara dua baris, sehingga drag
+  // antar-grup terasa tidak jalan (highlight grup tujuan tak menyala, drop
+  // dianggap reorder di grup asal). Pump (id numerik) diprioritaskan di atas
+  // droppable baris 'group-N' (string) agar posisi sisip presisi; lepas di
+  // area kosong baris = masuk paling belakang.
+  const collisionDetection: CollisionDetection = (args) => {
+    const within = pointerWithin(args)
+    if (within.length > 0) {
+      const pumps = within.filter((c) => typeof c.id === 'number')
+      if (pumps.length > 0) return [...pumps, ...within.filter((c) => typeof c.id !== 'number')]
+      return within
+    }
+    return closestCorners(args)
+  }
+
   // Map pump id → group id for cross-group detection
   const pumpToGroup = useMemo(() => {
     const m = new Map<number, number>()
@@ -514,6 +642,8 @@ export default function StagingPage() {
   }, [groups])
 
   const handleDragStart = (e: DragStartEvent) => { setActiveId(e.active.id as number) }
+
+  const handleDragCancel = () => { setActiveId(null); setOverGroupId(null) }
 
   const handleDragOver = (e: DragOverEvent) => {
     const { over } = e
@@ -534,9 +664,11 @@ export default function StagingPage() {
     setActiveId(null)
     setOverGroupId(null)
     const { active, over } = e
-    if (!over) return
+    // Fallback: bila over null (mis. dilepas tepat di celah antar baris),
+    // pakai collision pertama dari dnd-kit supaya drop tidak "hilang".
+    const overId = over?.id ?? e.collisions?.[0]?.id
+    if (overId == null) return
     const activePumpId = active.id as number
-    const overId = over.id
     const fromGid = pumpToGroup.get(activePumpId)
     // Resolve target group: pump id → group, atau droppable "group-N"
     let toGid: number | undefined
@@ -619,20 +751,34 @@ export default function StagingPage() {
 
       {/* All groups — horizontal rows, single DndContext */}
       {!loading && groups.length > 0 && (
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={collisionDetection}
+          onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
+          {/* Hint saat drag aktif: tunjukkan apa yang terjadi kalau dilepas sekarang */}
+          {activePump && (() => {
+            const fromG = pumpToGroup.get(activePump.id)
+            const tgt = groups.find((g) => g.id === overGroupId)
+            const cross = tgt && fromG && tgt.id !== fromG
+            return (
+              <div className={`pointer-events-none fixed left-1/2 top-2 z-50 -translate-x-1/2 whitespace-nowrap rounded-full px-4 py-1.5 text-theme-xs text-white shadow-lg ${cross ? 'bg-emerald-600' : 'bg-gray-900/80'}`}>
+                {cross
+                  ? <>Lepaskan → pindah <b>{activePump.pump_cn}</b> ke Grup {tgt.group_no} ({tgt.system_type})</>
+                  : <>Menyeret <b>{activePump.pump_cn}</b> — lepas di baris grup lain untuk memindahkan</>}
+              </div>
+            )
+          })()}
           <div className="flex flex-col gap-2">
             {groups.map((g) => (
-              <GroupRow key={g.id} group={g} period={period} onChanged={load} isDropTarget={overGroupId === g.id && pumpToGroup.get(activeId ?? -1) !== g.id} />
+              <GroupRow key={g.id} group={g} period={period} groups={groups} onChanged={load} isDropTarget={overGroupId === g.id && pumpToGroup.get(activeId ?? -1) !== g.id} />
             ))}
           </div>
           <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
             {activePump ? (
               <div className="w-24 rounded-xl border-2 shadow-2xl scale-105" style={{ borderColor: roleColor(activePump.role_order).pipe }}>
-                <div className={`flex justify-center rounded-t-[10px] ${roleColor(activePump.role_order).bg} py-0.5`}>
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" className={roleColor(activePump.role_order).text}>
-                    <circle cx="3" cy="3" r="0.8" /><circle cx="7" cy="3" r="0.8" />
-                    <circle cx="3" cy="5" r="0.8" /><circle cx="7" cy="5" r="0.8" />
-                    <circle cx="3" cy="7" r="0.8" /><circle cx="7" cy="7" r="0.8" />
+                <div className={`flex justify-center rounded-t-[10px] ${roleColor(activePump.role_order).bg} py-1.5 border-b border-black/5`}>
+                  <svg width="14" height="12" viewBox="0 0 14 12" fill="currentColor" className={roleColor(activePump.role_order).text}>
+                    <circle cx="4" cy="3" r="1.1" /><circle cx="10" cy="3" r="1.1" />
+                    <circle cx="4" cy="6" r="1.1" /><circle cx="10" cy="6" r="1.1" />
+                    <circle cx="4" cy="9" r="1.1" /><circle cx="10" cy="9" r="1.1" />
                   </svg>
                 </div>
                 <div className="bg-white px-2 py-1.5 dark:bg-gray-800">
