@@ -791,7 +791,7 @@ function EqDetail({ row, onClose }: { row: Equipment; onClose: () => void }) {
 
 const ACT_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
 const ACT_CREWS = ['Pumping', 'Lighting', 'Mobile', 'Grader', 'PCH']
-const ACT_CATS = ['Proker', 'FUI', 'USM', 'SCM', 'Daily Check Dragflow', 'Washing PLTS', 'Daily Check Waterfill']
+const ACT_CATS = ['Proker', 'FUI', 'USM', 'SCM', 'Daily Check Dragflow', 'Washing PLTS', 'Daily Check Waterfill', 'Replace Gland Packing']
 
 const DRAGFLOW_PAIRS = [
   { ex: 'EX264', wp: 'WP792' },
@@ -1071,7 +1071,7 @@ export function ActivityPage() {
       {form && (
         <ActForm
           key={form.initial?.id ?? `new-${sel}`}
-          date={sel} initial={form.initial}
+          date={sel} initial={form.initial} catOptions={catOpts}
           onClose={() => setForm(null)} onSaved={afterSave}
         />
       )}
@@ -1241,8 +1241,8 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
   )
 }
 
-function ActForm({ date, initial, onClose, onSaved }: {
-  date: string; initial: Activity | null; onClose: () => void; onSaved: () => void
+function ActForm({ date, initial, catOptions, onClose, onSaved }: {
+  date: string; initial: Activity | null; catOptions: string[]; onClose: () => void; onSaved: () => void
 }) {
   const [d, setD] = useState(initial?.date ?? date)
   const [title, setTitle] = useState(initial?.title ?? '')
@@ -1260,6 +1260,27 @@ function ActForm({ date, initial, onClose, onSaved }: {
   const crewOpts = initial?.crew && initial.crew.trim() && !ACT_CREWS.includes(initial.crew.trim())
     ? [...ACT_CREWS, initial.crew.trim()]
     : ACT_CREWS
+  // Kategori: hanya pilih dari daftar (bawaan + yang sudah ada di data) — tanpa ketik manual.
+  const catChoices = (() => {
+    const base = Array.from(new Set([...ACT_CATS, ...catOptions.filter(Boolean)]))
+    const cur = initial?.category ?? ''
+    if (cur.trim() && !base.includes(cur)) base.push(cur)
+    return base
+  })()
+  const isDc = category === 'Daily Check Dragflow'
+  // Check "DC Dragflow": kategori & crew diisi otomatis; opsi Shift muncul karena kategori DC.
+  // Saat dibatalkan (dicentang ulang): kategori kembali ke pilihan sebelumnya & shift direset.
+  const prevCatRef = useRef('')
+  const toggleDc = (on: boolean) => {
+    if (on) {
+      if (!isDc) prevCatRef.current = category
+      setCategory('Daily Check Dragflow')
+      setCrew('Pumping')
+    } else {
+      setCategory(prevCatRef.current)
+      setShift(null)
+    }
+  }
   const save = async () => {
     if (busy) return
     try {
@@ -1298,9 +1319,16 @@ function ActForm({ date, initial, onClose, onSaved }: {
       <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-5">
         <h3 className="font-semibold">{initial ? 'Ubah aktivitas' : 'Tambah aktivitas'}</h3>
         <div className="mt-3 flex flex-col gap-2">
-          <label className="text-theme-sm">Tanggal
-            <div className="mt-1"><DatePicker value={d} onChange={(v) => setD(v)} /></div>
-          </label>
+          <div className="flex items-end gap-3">
+            <label className="text-theme-sm">Tanggal
+              <div className="mt-1"><DatePicker value={d} onChange={(v) => setD(v)} /></div>
+            </label>
+            <label className={`flex h-10 cursor-pointer items-center gap-2 rounded-lg border px-3 text-theme-sm ${isDc ? 'border-brand-500 bg-brand-50 font-medium text-brand-600 dark:bg-brand-500/10' : 'text-gray-600 dark:text-gray-300'}`}
+              title="Tandai aktivitas Daily Check Dragflow: Kategori otomatis terisi, Crew jadi Pumping, dan pilihan Shift muncul.">
+              <input type="checkbox" className="h-4 w-4 accent-brand-500" checked={isDc} onChange={(e) => toggleDc(e.target.checked)} />
+              DC Dragflow
+            </label>
+          </div>
           <label className="text-theme-sm">Judul<input className={inp} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="cth Perbaikan pompa WP855" /></label>
           {category === 'Daily Check Dragflow' ? (
             <>
@@ -1333,11 +1361,14 @@ function ActForm({ date, initial, onClose, onSaved }: {
                 </select>
               </label>
               <label className="text-theme-sm">Kategori
-                <input className={inp} list="act-cat-form" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="pilih / ketik manual" />
+                <select className={inp} value={category}
+                  onChange={(e) => { const v = e.target.value; if (v === 'Daily Check Dragflow') toggleDc(true); else setCategory(v) }}>
+                  <option value="">— pilih kategori —</option>
+                  {catChoices.map((c) => (<option key={c} value={c}>{c}</option>))}
+                </select>
               </label>
             </div>
           )}
-          <datalist id="act-cat-form">{ACT_CATS.map((c) => (<option key={c} value={c} />))}</datalist>
           <div className="grid grid-cols-2 gap-2">
             {category === 'Daily Check Dragflow' ? (
               <label className="text-theme-sm">Unit / CN
