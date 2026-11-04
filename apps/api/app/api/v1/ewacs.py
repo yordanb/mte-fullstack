@@ -47,6 +47,24 @@ def _parse_time(raw: str) -> str:
     return s
 
 
+# Normalisasi penulisan EGI yang salah saat import CSV.
+EGI_FIX = {
+    "LS4-2000": "LS42000",
+    "LS4-6000": "LS46000",
+}
+
+
+def _norm_egi(raw: str | None) -> str | None:
+    """Perbaiki varian EGI salah tulis: 'LS4-2000' → 'LS42000', 'LS4-6000' → 'LS46000'.
+
+    Pencocokan mengabaikan besar/kecil huruf & spasi; nilai lain disimpan apa adanya.
+    """
+    s = (raw or '').strip()
+    if not s:
+        return None
+    return EGI_FIX.get(s.upper().replace(' ', ''), s)
+
+
 @router.post("/import", dependencies=[Depends(require_role("inputer", "admin"))])
 async def import_csv(
     file: UploadFile = File(...),
@@ -98,7 +116,7 @@ async def import_csv(
             "tanggal": d,
             "crew": (row.get('Crew') or '').strip() or None,
             "cn": cn,
-            "egi": (row.get('EGI_1') or '').strip() or None,
+            "egi": _norm_egi(row.get('EGI_1')),
             "trouble_desc": (row.get('TroubleDescription_1') or '').strip() or None,
             "shift": (row.get('Shift') or '').strip() or None,
             "kode": kode,
