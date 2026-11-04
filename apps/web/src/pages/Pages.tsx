@@ -483,6 +483,7 @@ export function DbrPage() {
   const [page, setPage] = useState(1)
   const [msg, setMsg] = useState('')
   const [hideContinue, setHideContinue] = useState(false)
+  const [pumping, setPumping] = useState(false)
   const [lastUp, setLastUp] = useState<ImportStatus | null>(null)
   const shown = hideContinue ? rows.filter((r) => (r.action ?? '').toUpperCase() !== 'CONTINUE') : rows
   const fmtD = (v?: string | null) => {
@@ -499,13 +500,22 @@ export function DbrPage() {
     const p = (n: number) => String(n).padStart(2, '0')
     return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`
   }
-  const load = async (p = 1) => {
+  const load = async (p = 1, pump = pumping, codeV = code) => {
     try {
       setMsg('')
       const r = await fetchDbr({ date_from: df || undefined, date_to: dt || undefined,
-        cn: cn.toUpperCase() || undefined, code: code || undefined, page: p, page_size: 20 })
+        cn: cn.toUpperCase() || undefined,
+        prefix: pump ? 'WP' : undefined,
+        code: pump ? undefined : (codeV || undefined), page: p, page_size: 20 })
       setRows(r.data); setTotal(r.total); setPage(r.page)
     } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
+  }
+  // Filter cepat "Pumping": C/N diawali WP, semua code (dropdown Code diabaikan).
+  const togglePumping = () => {
+    const nv = !pumping
+    setPumping(nv)
+    if (nv) setCode('')
+    load(1, nv, '')
   }
   useEffect(() => { load(1); fetchDbrCodes().then(setCodes).catch(() => null); fetchLatestImport('DBR').then(setLastUp).catch(() => null) }, [])
   const pages = Math.max(1, Math.ceil(total / 20))
@@ -516,7 +526,9 @@ export function DbrPage() {
         <span>–</span>
         <DatePicker value={dt} min={df} onChange={(v) => setDt(v)} />
         <input className="w-28 rounded-lg border px-3 py-2" value={cn} onChange={(e) => setCn(e.target.value.toUpperCase())} placeholder="C/N cth TL960" />
-        <select className="rounded-lg border px-3 py-2" value={code} onChange={(e) => setCode(e.target.value)}>
+        <select className="rounded-lg border px-3 py-2 disabled:opacity-60" value={code} disabled={pumping}
+          onChange={(e) => setCode(e.target.value)}
+          title={pumping ? 'Code: semua (nonaktif saat filter Pumping aktif)' : undefined}>
           <option value="">Code: semua</option>
           <option value="__EMPTY__">Code: (kosong)</option>
           {codes.map((c) => (<option key={c} value={c}>{c}</option>))}
@@ -527,6 +539,13 @@ export function DbrPage() {
           <input type="checkbox" checked={hideContinue} onChange={(e) => setHideContinue(e.target.checked)} />
           Sembunyikan CONTINUE
         </label>
+        <button type="button" onClick={togglePumping}
+          title="Tampilkan hanya unit Pumping (C/N diawali WP) — semua code"
+          className={`rounded-lg border px-3 py-2 text-theme-sm font-medium ${pumping
+            ? 'border-brand-500 bg-brand-500 text-white'
+            : 'bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-white/5'}`}>
+          Pumping
+        </button>
       </div>
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
       {lastUp && (
