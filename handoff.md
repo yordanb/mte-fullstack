@@ -307,9 +307,8 @@ profil (avatar + ganti password) + dark mode + notifikasi.
 - **Fix pasangan DC Dragflow EX339 (2026-10-31, sudah merge ke main)**:
   pair EX339 diubah WP1039 → WP1309 (mobile `activity_page.dart` + web
   `Pages.tsx`). `flutter analyze` + build web lolos.
-- **Paritas web terbaru (per 2026-11-04, (1) & (2) dikerjakan di branch
-  `mobile/paritas-nov2026` — lihat entri berikutnya; (3) menunggu modul
-  Proker di mobile)**:
+- **Paritas web terbaru (per 2026-11-04, (1) & (2) sudah merge ke main;
+  (3) menunggu modul Proker di mobile)**:
   (1) form Activity web — Kategori dropdown (tanpa ketik manual) + opsi
   "Replace Gland Packing", centang "DC Dragflow" di kanan Tanggal (auto
   kategori Daily Check Dragflow + Shift + crew Pumping) — commit
@@ -319,7 +318,7 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   Proker, Proker Booster, Proker Injector, Proker Thermostat CAT
   (`Thermostat.tsx`) — `b04f818`. Normalisasi EGI Ewacs (V60/V61 +
   `EGI_FIX`) murni server-side — tidak perlu aksi mobile.
-- **Paritas web Nov 2026 (2026-11-04, branch `mobile/paritas-nov2026`)**:
+- **Paritas web Nov 2026 (2026-11-04, sudah merge ke main)**:
   - Activity form (web `4934628`): Kategori select-only — bawaan `ACT_CATS`
     + kategori dari data `GET /activities/filters` + opsi "Replace Gland
     Packing" + kategori lama saat ubah; crew juga select-only (crew lama
