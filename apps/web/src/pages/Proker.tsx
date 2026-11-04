@@ -1,4 +1,4 @@
-// Proker Midlife Eng CAT — program kerja midlife engine Caterpillar (2.000 jam).
+// Proker GMC Pompa Primer — program kerja GMC Engine Pompa Primer (2.000 jam).
 // Master unit CAT di kiri; pilih C/N -> riwayat eksekusi proker muncul di kanan.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DatePicker } from '../components/DatePicker'
@@ -375,7 +375,7 @@ export default function ProkerPage() {
       {stats && (
         <>
         <p className="mb-2 text-theme-xs text-gray-500">
-          Program kerja <span className="font-semibold text-gray-600 dark:text-gray-300">Midlife Engine Caterpillar (2.000 jam)</span> —
+          Program kerja <span className="font-semibold text-gray-600 dark:text-gray-300">GMC Engine Pompa Primer (2.000 jam)</span> —
           hanya unit ber-engine CAT yang ditampilkan.
         </p>
         <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -34,7 +34,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'yazudc', label: 'Yazu Daily Check' },
     { key: 'ewacs', label: 'Ewacs Performance' },
     { key: 'tarsupport', label: 'TAR Support' },
-    { key: 'proker', label: 'Proker Midlife Eng CAT' },
+    { key: 'proker', label: 'Proker GMC Pompa Primer' },
     { key: 'prokerbooster', label: 'Proker Midlife Eng Booster' },
     { key: 'prokerinjector', label: 'Proker Midlife Injector Primer' },
   ] },
