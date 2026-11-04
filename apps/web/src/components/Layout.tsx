@@ -13,6 +13,8 @@ const GROUPS: MenuGroup[] = [
   ] },
   { title: 'Operasional', items: [
     { key: 'activity', label: 'Activity' },
+    { key: 'yazu', label: 'Yazu P2H' },
+    { key: 'yazudc', label: 'Yazu Daily Check' },
   { key: 'bomak', label: 'Bomak R1BI' },
     { key: 'equipment', label: 'Equipment' },
     { key: 'staging', label: 'Staging Pump' },
@@ -30,8 +32,6 @@ const GROUPS: MenuGroup[] = [
     { key: 'hourmeter', label: 'Hourmeter' },
     { key: 'ppm', label: 'PPM' },
     { key: 'measurement', label: 'Measurement' },
-    { key: 'yazu', label: 'Yazu P2H' },
-    { key: 'yazudc', label: 'Yazu Daily Check' },
     { key: 'ewacs', label: 'Ewacs Performance' },
     { key: 'tarsupport', label: 'TAR Support' },
     { key: 'proker', label: 'Proker GMC Pompa Primer' },
