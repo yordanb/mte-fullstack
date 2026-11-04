@@ -697,6 +697,58 @@ function CopyModal({ curPeriod, onClose, onDone }: {
   )
 }
 
+// ─── Group Table View (tampilan tabel sederhana) ─────────
+
+function GroupTableView({ groups }: { groups: StagingGroup[] }) {
+  return (
+    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+      <table className="w-full text-theme-sm">
+        <thead>
+          <tr className="border-b bg-gray-50 text-left dark:bg-gray-800">
+            <th className="px-3 py-2 font-semibold">No</th>
+            <th className="px-3 py-2 font-semibold">Sump</th>
+            <th className="px-3 py-2 font-semibold">Sistem</th>
+            <th className="px-3 py-2 font-semibold">Urutan Pump (Primer → Booster)</th>
+            <th className="px-3 py-2 text-center font-semibold">Jml</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((g, i) => (
+            <tr key={g.id}
+              className={`border-b last:border-0 dark:border-gray-700 ${g.is_active ? '' : 'opacity-50'} ${i % 2 ? 'bg-gray-50/50 dark:bg-gray-800/30' : 'bg-white dark:bg-gray-900'}`}>
+              <td className="px-3 py-2.5 font-bold text-gray-500">{g.group_no}</td>
+              <td className="whitespace-nowrap px-3 py-2.5 font-medium">{(g.sump_name || '').replace(/\n/g, ' ').trim() || '-'}</td>
+              <td className="whitespace-nowrap px-3 py-2.5 text-gray-500 dark:text-gray-400">
+                {g.system_type}
+                {!g.is_active && <span className="ml-1.5 rounded-full bg-gray-100 px-1.5 py-0.5 text-theme-xs text-gray-400 dark:bg-gray-800">non-aktif</span>}
+              </td>
+              <td className="px-3 py-2.5">
+                {g.pumps.length === 0 ? (
+                  <span className="text-gray-400">—</span>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    {g.pumps.map((p, pi) => (
+                      <span key={p.id} className="flex items-center gap-2">
+                        {pi > 0 && <span className="text-gray-300 dark:text-gray-600">→</span>}
+                        <span className="flex items-center gap-1 whitespace-nowrap">
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: roleColor(p.role_order).pipe }} />
+                          <span className="font-medium">{p.pump_cn}</span>
+                          <span className="text-theme-xs text-gray-400">{p.role_order === 0 ? 'Primer' : `Booster ${p.role_order}`}</span>
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </td>
+              <td className="px-3 py-2.5 text-center tabular-nums text-gray-500">{g.pumps.length > 0 ? g.pumps.length : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 // ─── Main Page ────────────────────────────────────────────
 
 export default function StagingPage() {
@@ -708,6 +760,11 @@ export default function StagingPage() {
   const [showCopy, setShowCopy] = useState(false)
   const [activeId, setActiveId] = useState<number | null>(null)
   const [overGroupId, setOverGroupId] = useState<number | null>(null)
+  // Tampilan: 'kartu' (DnD) atau 'tabel' (pinjaman ringkas) — tersimpan antar kunjungan
+  const [view, setView] = useState<'kartu' | 'tabel'>(
+    () => (localStorage.getItem('mte_staging_view') === 'tabel' ? 'tabel' : 'kartu'),
+  )
+  const switchView = (v: 'kartu' | 'tabel') => { setView(v); localStorage.setItem('mte_staging_view', v) }
 
   const load = async () => {
     try { setMsg(''); setLoading(true); setGroups((await fetchStagingGroups(period)).data) }
@@ -841,6 +898,22 @@ export default function StagingPage() {
             <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => setShowAdd(true)}>+ Tambah Grup</button>
           </>
         )}
+        {/* Toggle tampilan Kartu ↔ Tabel (terlihat juga untuk role view) */}
+        <button
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-theme-sm ${view === 'tabel' ? 'bg-brand-500 text-white' : 'border hover:bg-gray-50 dark:hover:bg-white/5'}`}
+          onClick={() => switchView(view === 'tabel' ? 'kartu' : 'tabel')}
+          title="Ganti tampilan: kartu ↔ tabel">
+          {view === 'tabel' ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <rect x="4" y="6" width="16" height="5" rx="1.5" /><rect x="4" y="14" width="10" height="5" rx="1.5" />
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+              <rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M9 10v10" />
+            </svg>
+          )}
+          {view === 'tabel' ? 'Kartu' : 'Tabel'}
+        </button>
         <span className="text-theme-sm text-gray-500">{groups.length} grup</span>
       </div>
 
@@ -866,7 +939,10 @@ export default function StagingPage() {
       )}
 
       {/* All groups — horizontal rows, single DndContext */}
-      {!loading && groups.length > 0 && (
+      {!loading && groups.length > 0 && view === 'tabel' && (
+        <GroupTableView groups={groups} />
+      )}
+      {!loading && groups.length > 0 && view === 'kartu' && (
         <DndContext sensors={sensors} collisionDetection={collisionDetection}
           onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
           {/* Hint saat drag aktif: tunjukkan apa yang terjadi kalau dilepas sekarang */}
