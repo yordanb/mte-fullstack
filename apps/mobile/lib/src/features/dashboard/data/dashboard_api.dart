@@ -137,8 +137,12 @@ class DashboardApi {
     return list.map((e) => LabRow.fromJson((e as Map).cast<String, dynamic>())).toList();
   }
 
-  Future<ImportStatus?> latestImport() async {
-    final r = await _dio.get('/v1/imports/latest');
+  /// GET /v1/imports/latest — default upload oli; `sheet` (cth 'DBR')
+  /// mengambil upload terakhir khusus sheet itu (imports.py + web aaed7e8).
+  Future<ImportStatus?> latestImport({String? sheet}) async {
+    final r = await _dio.get('/v1/imports/latest', queryParameters: {
+      if (sheet != null && sheet.isNotEmpty) 'sheet': sheet,
+    });
     if (r.data is Map) {
       return ImportStatus.fromJson((r.data as Map).cast<String, dynamic>());
     }

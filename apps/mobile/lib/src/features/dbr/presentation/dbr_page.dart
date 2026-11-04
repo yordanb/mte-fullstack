@@ -54,11 +54,35 @@ class _DbrPageState extends ConsumerState<DbrPage> {
     ref.read(dbrFilterProvider.notifier).apply(dateFrom: df, dateTo: dt);
   }
 
+  /// Dropdown Code; nonaktif selama filter Pumping aktif (web ce41a49).
+  Widget _codeDropdown(DbrFilter f, List<String> codeList) {
+    final dd = DropdownButton<String>(
+      value: f.pumping || f.code.isEmpty
+          ? ''
+          : (codeList.contains(f.code) || f.code == '__EMPTY__' ? f.code : ''),
+      hint: const Text('Code: semua'),
+      items: [
+        const DropdownMenuItem(value: '', child: Text('Code: semua')),
+        const DropdownMenuItem(value: '__EMPTY__', child: Text('Code: (kosong)')),
+        for (final c in codeList) DropdownMenuItem(value: c, child: Text(c)),
+      ],
+      onChanged: f.pumping
+          ? null
+          : (v) => ref.read(dbrFilterProvider.notifier).apply(code: v ?? ''),
+    );
+    if (!f.pumping) return dd;
+    return Tooltip(
+      message: 'Code: semua (nonaktif saat filter Pumping aktif)',
+      child: dd,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final f = ref.watch(dbrFilterProvider);
     final recAsync = ref.watch(dbrRecordsProvider);
     final codesAsync = ref.watch(dbrCodesProvider);
+    final lastUpAsync = ref.watch(dbrLastImportProvider);
     final codeList = switch (codesAsync) {
       AsyncData(:final value) => value,
       _ => const <String>[],
@@ -104,18 +128,7 @@ class _DbrPageState extends ConsumerState<DbrPage> {
                     ),
                   ),
                 ),
-                DropdownButton<String>(
-                  value: f.code.isEmpty ? '' : (codeList.contains(f.code) || f.code == '__EMPTY__' ? f.code : ''),
-                  hint: const Text('Code: semua'),
-                  items: [
-                    const DropdownMenuItem(value: '', child: Text('Code: semua')),
-                    const DropdownMenuItem(value: '__EMPTY__', child: Text('Code: (kosong)')),
-                    for (final c in codeList) DropdownMenuItem(value: c, child: Text(c)),
-                  ],
-                  onChanged: (v) => ref
-                      .read(dbrFilterProvider.notifier)
-                      .apply(code: v ?? ''),
-                ),
+                _codeDropdown(f, codeList),
                 FilledButton(
                   onPressed: () => ref.read(dbrFilterProvider.notifier).apply(
                         cn: _cn.text.trim(),
@@ -129,8 +142,32 @@ class _DbrPageState extends ConsumerState<DbrPage> {
                   onSelected: (v) =>
                       ref.read(dbrFilterProvider.notifier).setHideContinue(v),
                 ),
+                Tooltip(
+                  message: 'Tampilkan hanya unit Pumping (C/N diawali WP) — semua code',
+                  child: FilterChip(
+                    label: const Text('Pumping'),
+                    selected: f.pumping,
+                    onSelected: (v) =>
+                        ref.read(dbrFilterProvider.notifier).setPumping(v),
+                  ),
+                ),
               ],
             ),
+          ),
+          // Last update upload DBR terakhir (web aaed7e8).
+          lastUpAsync.when(
+            data: (last) => last == null
+                ? const SizedBox.shrink()
+                : Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child: Text(
+                      'Last update: ${fmtDT(last.createdAt)}'
+                      '${(last.uploadedBy?.isNotEmpty ?? false) ? ' oleh ${last.uploadedBy}' : ''}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
           ),
           Expanded(
             child: recAsync.when(
@@ -149,6 +186,7 @@ class _DbrPageState extends ConsumerState<DbrPage> {
                       child: RefreshIndicator(
                         onRefresh: () async {
                           ref.invalidate(dbrRecordsProvider);
+                          ref.invalidate(dbrLastImportProvider);
                           await ref.read(dbrRecordsProvider.future);
                         },
                         child: DbrTable(rows: shown),

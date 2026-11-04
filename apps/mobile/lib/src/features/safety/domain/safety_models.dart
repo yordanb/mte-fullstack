@@ -1,4 +1,4 @@
-/// Model Safety Bomak + R1BI — kontrak safety.py, r1bi.py + client.ts:235-311.
+// Model Safety Bomak + R1BI — kontrak safety.py, r1bi.py + client.ts:235-311.
 
 /// Nama >2 kata jadi 2 kata + 1 huruf (cth RAHMAT FITRIADI M).
 String shortName(String? v) {

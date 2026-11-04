@@ -431,18 +431,9 @@ class _RecapTab extends ConsumerWidget {
   }
 }
 
-/// Pasangan Excavator–Water Pump untuk Daily Check Dragflow (web Pages.tsx).
-const _dragflowPairs = [
-  ('EX264', 'WP792'),
-  ('EX326', 'WP1080'),
-  ('EX312', 'WP1081'),
-  ('EX265', 'WP791'),
-  ('EX339', 'WP1309'),
-  ('EX329', 'WP1063'),
-];
-
 /// Tab DC Dragflow: cross-tab unit × tanggal, HM per shift (web 5357b3a).
 /// S1 biru, S2 amber. Data dari recap kategori "Daily Check Dragflow".
+/// Pasangan unit: `dragflowPairs` di domain (EX339 = WP1309).
 class _DcDragflowTab extends ConsumerWidget {
   const _DcDragflowTab();
 
@@ -478,7 +469,7 @@ class _DcDragflowTab extends ConsumerWidget {
               for (final a in dcData) {
                 final d = a.date.length >= 10 ? a.date.substring(0, 10) : a.date;
                 final s = a.shift ?? 1;
-                for (final pair in _dragflowPairs) {
+                for (final pair in dragflowPairs) {
                   if (a.cn == pair.$1 || a.cn == pair.$2) {
                     dcMap['${pair.$1}|$d|$s'] = a.hm;
                   }
@@ -495,7 +486,7 @@ class _DcDragflowTab extends ConsumerWidget {
                         DataColumn(label: Text('$d', style: const TextStyle(fontSize: 10))),
                     ],
                     rows: [
-                      for (final pair in _dragflowPairs)
+                      for (final pair in dragflowPairs)
                         DataRow(cells: [
                           DataCell(Text(pair.$1, style: const TextStyle(fontWeight: FontWeight.bold))),
                           for (var d = 1; d <= daysIn; d++)
