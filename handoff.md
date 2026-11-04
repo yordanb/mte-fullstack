@@ -160,8 +160,27 @@ profil (avatar + ganti password) + dark mode + notifikasi.
 
 ## 8. Perintah & alur kerja paralel
 
-- Kerja di branch turun
-...[truncated 615 chars]
+> **Catatan (2026-11-04)**: teks asli bagian ini terpotong literal
+> (`...[truncated 615 chars]`) sejak commit `145442e` dan tidak pernah
+> masuk repo. Isi di bawah **direkonstruksi** dari kebiasaan repo —
+> koreksi bila ada aturan lama yang belum tercakup.
+
+- Kerja di branch turun dari `main` (pola `mobile/<topik>` /
+  `web/<topik>` / `chore/<topik>`; mis. `mobile/safety-bomak-r1bi`,
+  `web/activity-timeline`) — jangan commit langsung ke `main`.
+- Setelah selesai & merge ke `main`, tandai di §9 dokumen ini dengan
+  "(sudah merge ke main)" (pola commit `docs: tandai ...`).
+- **Migrasi DB**: buat file `infra/db/V<n>__nama.sql`; cek dulu nomor
+  di folder — pernah bentrok (V18: projects vs timeline). Penerapan di
+  VPS manual, tanpa migration runner.
+- **Verifikasi wajib sebelum menyatakan selesai**: mobile `flutter
+  analyze` + `flutter test` (+ APK terbuild); web `npx tsc --noEmit` +
+  `vite build`.
+- **Perintah cepat**: backend+web lokal `docker compose up -d --build`
+  (§2); mobile `flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8802`.
+- Jangan commit file kerja non-kode (mis. `data-manpower/*`, hasil
+  build); deploy VPS (pull + migrasi + rebuild container) dijalankan
+  manual oleh user — jangan asumsikan akses SSH.
 
 ## 9. Progress mobile Flutter (MTE Data Center)
 
@@ -231,6 +250,12 @@ profil (avatar + ganti password) + dark mode + notifikasi.
 - **SEMUA MILESTONE MOBILE SELESAI (M1–M7).** Sisa: uji E2E vs produksi +
   build release (keystore) bila diperlukan.
 - **Mobile Safety Bomak+R1BI (2026-10-14, sudah merge ke main)**:
+  halaman `/bomak` + menu drawer (gate `bomak.view`): switch Bomak/R1BI,
+  navigasi bulan, filter section/risiko/cari, Sync (timeout 10 mnt,
+  `bomak.add`), salin WA via clipboard (format persis web), tabel 13/10
+  kolom + badge P1-P5/HIGH RISK + thumb Drive, cakupan per section,
+  pengecualian 7 poin, paginasi 20. `permMenus` mobile jadi 12 aktual.
+  `analyze` bersih, 28 test lolos, APK terbuild.
 - **Dashboard parameter merah (2026-10-14, sudah merge ke main)**:
   kartu dashboard kini menampilkan parameter ber-grade bukan-N
   (nama + nilai, merah, ` - `-separated, urutan VISC..Na) di bawah info
@@ -250,12 +275,6 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   badge priority/status, overdue indicator), form meeting + item
   (bottom sheet). `permMenus` 14 (`mom`), menu drawer "Meeting",
   route `/mom`. `analyze` bersih, 31 test, APK terbuild.
-  halaman `/bomak` + menu drawer (gate `bomak.view`): switch Bomak/R1BI,
-  navigasi bulan, filter section/risiko/cari, Sync (timeout 10 mnt,
-  `bomak.add`), salin WA via clipboard (format persis web), tabel 13/10
-  kolom + badge P1-P5/HIGH RISK + thumb Drive, cakupan per section,
-  pengecualian 7 poin, paginasi 20. `permMenus` mobile jadi 12 aktual.
-  `analyze` bersih, 28 test lolos, APK terbuild.
 - **Catatan migrasi ganda V18**: `V18__projects.sql` (tab sebelah) vs
   `V18__timeline_menu.sql` (sesi ini) — urutan alfabet menaruh projects
   dulu; state akhir CHECK dari V19 mencakup semuanya. Jangan
@@ -275,3 +294,26 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   migrasi V18 + web Users/Layout/App + mobile permMenus; alias vessel
   dihapus). Hak vessel lama diwariskan ke timeline via UPDATE. V18 harus
   diterapkan manual di VPS (tanpa migration runner).
+- **Suggestion System mobile + web SS (2026-10-31, sudah merge ke main)**:
+  fitur `ss` baru (`lib/src/features/ss/*`: api, models, providers, page)
+  — KPI, target crew, trend (grafik), records, filter; route `/ss` +
+  menu drawer "Suggestion System"; test regresi `ss_test.dart`. API
+  `/v1/ss/*` digate `require_role("admin")` — praktis masih admin-only.
+  Web: kartu SS 3 kolom ≥ md (768px) + tinggi grafik dipangkas ~25%.
+  Gradle pindah JDK 21 (`android/gradle.properties`). Catatan: `ss`
+  belum masuk `permMenus` mobile (matriks izin Users, masih 14 menu;
+  backend `MENUS` sudah 29) — rapikan saat menyentuh Users.
+  `analyze` bersih, test lolos, APK terbuild.
+- **Fix pasangan DC Dragflow EX339 (2026-10-31, sudah merge ke main)**:
+  pair EX339 diubah WP1039 → WP1309 (mobile `activity_page.dart` + web
+  `Pages.tsx`). `flutter analyze` + build web lolos.
+- **Paritas web terbaru (per 2026-11-04, belum di mobile)**:
+  (1) form Activity web — Kategori dropdown (tanpa ketik manual) + opsi
+  "Replace Gland Packing", centang "DC Dragflow" di kanan Tanggal (auto
+  kategori Daily Check Dragflow + Shift + crew Pumping) — commit
+  `4934628`; (2) DBR Breakdown — tombol toggle "Pumping" di kanan
+  checkbox "Sembunyikan CONTINUE" (C/N diawali WP, semua code; param
+  `prefix=WP` sudah ada) — `ce41a49`; (3) tombol "Refresh HM" di web
+  Proker, Proker Booster, Proker Injector, Proker Thermostat CAT
+  (`Thermostat.tsx`) — `b04f818`. Normalisasi EGI Ewacs (V60/V61 +
+  `EGI_FIX`) murni server-side — tidak perlu aksi mobile.
