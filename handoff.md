@@ -340,8 +340,8 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   - Info-level `flutter analyze` lama dirapikan (dangling doc comment
     `safety_models.dart`, guard `context.mounted` → `mounted` di Users).
   - `analyze` bersih, 41 test lolos (5 test baru), APK debug terbuild.
-- **Sinkron izin menu/role mobile dengan backend (2026-11-04, branch
-  `mobile/perm-menu-sync`)**: `user_models.dart` — `userRoles` 4 → 9
+- **Sinkron izin menu/role mobile dengan backend (2026-11-04, sudah merge
+  ke main)**: `user_models.dart` — `userRoles` 4 → 9
   (`admin, inputer, mekanik, viewer, planner, group leader, section head,
   adm te, adm lce`) + `permMenus` 14 → 29 persis urutan backend `MENUS`
   (users.py:15; tambah `riwayat, ppm, measurement, yazu, yazudc, ewacs,
