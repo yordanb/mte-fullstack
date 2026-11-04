@@ -6,7 +6,7 @@ import {
   can, errMsg, todayLocal,
   fetchBoosterFilters, fetchBoosterStats, fetchBoosterUnits, fetchBoosterUnit,
   updateBoosterUnit, createBoosterEvent, updateBoosterEvent, deleteBoosterEvent,
-  importBoosterXlsx, fetchBoosterImportStatus,
+  importBoosterXlsx, fetchBoosterImportStatus, refreshBoosterHm,
   type BoosterDetail, type BoosterEvent, type BoosterFilters, type BoosterImportStatus,
   type BoosterKpi, type BoosterKind, type BoosterUnit, type BoosterUnitRow,
 } from '../api/client'
@@ -94,6 +94,7 @@ export default function ProkerBoosterPage() {
   const [saving, setSaving] = useState(false)
 
   const [importing, setImporting] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [prog, setProg] = useState<BoosterImportStatus | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const timerRef = useRef<number | null>(null)
@@ -181,6 +182,19 @@ export default function ProkerBoosterPage() {
     } catch (e) {
       setImporting(false)
       setMsg(`import gagal: ${errMsg(e)}`)
+    }
+  }
+
+  const doRefreshHm = async () => {
+    setRefreshing(true); setMsg('')
+    try {
+      const res = await refreshBoosterHm()
+      setMsg(`Refresh HM selesai: ${res.updated} unit diperbarui · ${res.unchanged} sudah terbaru · ${res.not_found} tidak ditemukan di sumber data`)
+      setReload((x) => x + 1)
+    } catch (e) {
+      setMsg(`Refresh HM gagal: ${errMsg(e)}`)
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -330,6 +344,11 @@ export default function ProkerBoosterPage() {
               className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
               title="Upload file booster (.xlsx) format '01. OVH DAN ML ENG'. Data diperbarui per C/N + jenis event + HM.">
               {importing ? 'Mengimpor…' : 'Import Excel'}
+            </button>
+            <button onClick={doRefreshHm} disabled={refreshing}
+              className="rounded-lg border px-3 py-1.5 text-theme-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/5"
+              title="Ambil HM terbaru per C/N dari halaman Hourmeter & Yazu Daily Check. Yazu DC (harian) diprioritaskan; unit yang tidak ada di sumber data dibiarkan.">
+              {refreshing ? 'Refresh…' : 'Refresh HM'}
             </button>
           </>
         )}

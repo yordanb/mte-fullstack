@@ -37,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.deps import get_current_user, require_menu
 from app.db.session import get_db, SessionLocal
+from app.services.hm_sync import refresh_hm_from_sources
 
 router = APIRouter(prefix="/v1/injector", tags=["injector"])
 log = logging.getLogger("injector")
@@ -595,6 +596,17 @@ async def update_unit(cn: str, body: dict, db: AsyncSession = Depends(get_db)):
     row = (await db.execute(text("SELECT * FROM injector_unit WHERE cn=:c"),
                             {"c": key})).mappings().first()
     return dict(row)
+
+
+@router.post("/refresh-hm", dependencies=[Depends(require_menu("prokerinjector", "add"))])
+async def refresh_hm(db: AsyncSession = Depends(get_db)):
+    """Refresh HM NOW injector dari halaman Hourmeter & Yazu Daily Check.
+
+    HM terbaru per C/N diambil dari `services/hm_sync`; Yazu DC (harian)
+    diprioritaskan, Hourmeter (bulanan) menjadi cadangan. Unit yang tidak ada
+    di kedua sumber dibiarkan dan dilaporkan `not_found`.
+    """
+    return await refresh_hm_from_sources(db, "injector_unit")
 
 
 @router.post("/units/{cn}/replacements",

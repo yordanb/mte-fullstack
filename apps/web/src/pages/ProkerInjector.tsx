@@ -6,7 +6,7 @@ import {
   fetchInjectorFilters, fetchInjectorStats, fetchInjectorUnits, fetchInjectorUnit,
   updateInjectorUnit, createInjectorReplacements, updateInjectorReplacement,
   deleteInjectorReplacement, deleteInjectorGroup,
-  importInjectorXlsx, fetchInjectorImportStatus,
+  importInjectorXlsx, fetchInjectorImportStatus, refreshInjectorHm,
   type InjectorDetail, type InjectorFilters, type InjectorImportStatus,
   type InjectorKpi, type InjectorPosition, type InjectorReplacement,
   type InjectorStatus, type InjectorUnit, type InjectorUnitRow,
@@ -79,6 +79,7 @@ export default function ProkerInjectorPage() {
   const [saving, setSaving] = useState(false)
 
   const [importing, setImporting] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [prog, setProg] = useState<InjectorImportStatus | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const timerRef = useRef<number | null>(null)
@@ -167,6 +168,19 @@ export default function ProkerInjectorPage() {
     } catch (e) {
       setImporting(false)
       setMsg(`import gagal: ${errMsg(e)}`)
+    }
+  }
+
+  const doRefreshHm = async () => {
+    setRefreshing(true); setMsg('')
+    try {
+      const res = await refreshInjectorHm()
+      setMsg(`Refresh HM selesai: ${res.updated} unit diperbarui · ${res.unchanged} sudah terbaru · ${res.not_found} tidak ditemukan di sumber data`)
+      setReload((x) => x + 1)
+    } catch (e) {
+      setMsg(`Refresh HM gagal: ${errMsg(e)}`)
+    } finally {
+      setRefreshing(false)
     }
   }
 
@@ -372,6 +386,11 @@ export default function ProkerInjectorPage() {
               className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
               title="Upload file injector primer (.xlsx) format '04. INJECTOR DAN TURBO'.">
               {importing ? 'Mengimpor…' : 'Import Excel'}
+            </button>
+            <button onClick={doRefreshHm} disabled={refreshing}
+              className="rounded-lg border px-3 py-1.5 text-theme-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/5"
+              title="Ambil HM terbaru per C/N dari halaman Hourmeter & Yazu Daily Check. Yazu DC (harian) diprioritaskan; unit yang tidak ada di sumber data dibiarkan.">
+              {refreshing ? 'Refresh…' : 'Refresh HM'}
             </button>
           </>
         )}

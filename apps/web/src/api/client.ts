@@ -1574,6 +1574,31 @@ export async function fetchProkerImportStatus(id: string): Promise<ProkerImportS
   return r.data
 }
 
+export type RefreshHmResult = {
+  updated: number
+  unchanged: number
+  not_found: number
+  details: { cn: string; before: number | null; hm_now: number | null; source: string; changed: boolean }[]
+}
+
+export async function refreshProkerHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/proker/refresh-hm')
+  return r.data
+}
+export async function refreshBoosterHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/booster/refresh-hm')
+  return r.data
+}
+export async function refreshInjectorHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/injector/refresh-hm')
+  return r.data
+}
+export async function refreshThermostatHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/thermostat/refresh-hm')
+  return r.data
+}
+
+
 // --- Proker Midlife Eng Booster ------------------------------------------
 export type BoosterKind = 'OVH' | 'MIDLIFE'
 

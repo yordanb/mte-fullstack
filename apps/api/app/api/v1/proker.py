@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.deps import get_current_user, require_menu
 from app.db.session import get_db, SessionLocal
+from app.services.hm_sync import refresh_hm_from_sources
 
 router = APIRouter(prefix="/v1/proker", tags=["proker"])
 log = logging.getLogger("proker")
@@ -455,6 +456,19 @@ _AGG = """
   FROM proker_execution
   GROUP BY cn
 """
+
+
+@router.post("/refresh-hm", dependencies=[Depends(require_menu("proker", "add"))])
+async def refresh_hm(db: AsyncSession = Depends(get_db)):
+    """Refresh HM NOW unit CAT dari halaman Hourmeter & Yazu Daily Check.
+
+    HM terbaru per C/N diambil dari `services/hm_sync`; Yazu DC (harian)
+    diprioritaskan, Hourmeter (bulanan) menjadi cadangan. Unit yang tidak ada
+    di kedua sumber dibiarkan dan dilaporkan `not_found`.
+    """
+    cns = (await db.execute(text(
+        "SELECT cn FROM proker_unit WHERE engine_merk = 'CAT'"))).scalars().all()
+    return await refresh_hm_from_sources(db, "proker_unit", cns)
 
 
 @router.get("/filters", dependencies=[Depends(require_menu("proker", "view"))])
