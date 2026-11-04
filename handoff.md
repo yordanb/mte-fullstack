@@ -307,7 +307,9 @@ profil (avatar + ganti password) + dark mode + notifikasi.
 - **Fix pasangan DC Dragflow EX339 (2026-10-31, sudah merge ke main)**:
   pair EX339 diubah WP1039 → WP1309 (mobile `activity_page.dart` + web
   `Pages.tsx`). `flutter analyze` + build web lolos.
-- **Paritas web terbaru (per 2026-11-04, belum di mobile)**:
+- **Paritas web terbaru (per 2026-11-04, (1) & (2) dikerjakan di branch
+  `mobile/paritas-nov2026` — lihat entri berikutnya; (3) menunggu modul
+  Proker di mobile)**:
   (1) form Activity web — Kategori dropdown (tanpa ketik manual) + opsi
   "Replace Gland Packing", centang "DC Dragflow" di kanan Tanggal (auto
   kategori Daily Check Dragflow + Shift + crew Pumping) — commit
@@ -317,3 +319,24 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   Proker, Proker Booster, Proker Injector, Proker Thermostat CAT
   (`Thermostat.tsx`) — `b04f818`. Normalisasi EGI Ewacs (V60/V61 +
   `EGI_FIX`) murni server-side — tidak perlu aksi mobile.
+- **Paritas web Nov 2026 (2026-11-04, branch `mobile/paritas-nov2026`)**:
+  - Activity form (web `4934628`): Kategori select-only — bawaan `ACT_CATS`
+    + kategori dari data `GET /activities/filters` + opsi "Replace Gland
+    Packing" + kategori lama saat ubah; crew juga select-only (crew lama
+    ikut bila di luar daftar); checkbox "DC Dragflow" di samping Tanggal →
+    auto kategori Daily Check Dragflow + crew Pumping + pilihan Shift
+    muncul (batal = kategori kembali & shift direset); saat DC: CN dropdown
+    6 pasangan EX-WP (nilai lama tampil "(data lama)"), kategori terkunci,
+    validasi wajib CN + HM + Shift. `activityCrews`/`activityCats`/
+    `dragflowPairs` pindah ke `activity_models.dart` (EX339-WP1309 kini
+    satu sumber untuk form + tab DC Dragflow).
+  - DBR Breakdown (web `ce41a49`): FilterChip "Pumping" — kirim
+    `prefix=WP`, semua code (dropdown Code dikosongkan + nonaktif).
+  - DBR + Dashboard (web `aaed7e8`): baris "Last update" upload DBR
+    (`GET /imports/latest?sheet=DBR` — pastikan API `imports.py` terbaru
+    sudah di-deploy di VPS, sebelum itu parameter `sheet` diabaikan),
+    dashboard jadi "Last update: dd/mm/yyyy hh:mm oleh user" + judul & menu
+    drawer "Dashboard Oil Lab" (web `aaed7e8`).
+  - Info-level `flutter analyze` lama dirapikan (dangling doc comment
+    `safety_models.dart`, guard `context.mounted` → `mounted` di Users).
+  - `analyze` bersih, 41 test lolos (5 test baru), APK debug terbuild.
