@@ -22,6 +22,7 @@ import SsAbPage from './pages/SsAb'
 import ProkerPage from './pages/Proker'
 import ProkerBoosterPage from './pages/ProkerBooster'
 import ProkerInjectorPage from './pages/ProkerInjector'
+import ProkerThermostatPage from './pages/Thermostat'
 import ManpowerPage from './pages/Manpower'
 import ManpowerGroupPage from './pages/ManpowerGroup'
 import { fetchMe, can } from './api/client'
@@ -91,6 +92,7 @@ export default function App() {
       {page === 'proker' && can('proker', 'view') && <ProkerPage />}
       {page === 'prokerbooster' && can('prokerbooster', 'view') && <ProkerBoosterPage />}
       {page === 'prokerinjector' && can('prokerinjector', 'view') && <ProkerInjectorPage />}
+      {page === 'prokerthermo' && can('prokerthermo', 'view') && <ProkerThermostatPage />}
       {page === 'manpower' && can('manpower', 'view') && <ManpowerPage />}
       {page === 'manpowermanage' && can('manpowermanage', 'view') && <ManpowerGroupPage />}
       {page === 'import' && <ImportPage />}

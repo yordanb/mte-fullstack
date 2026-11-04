@@ -23,6 +23,7 @@ from app.api.v1.ss import router as ss_router
 from app.api.v1.proker import router as proker_router
 from app.api.v1.booster import router as booster_router
 from app.api.v1.injector import router as injector_router
+from app.api.v1.thermostat import router as thermostat_router
 from app.api.v1.manpower import router as manpower_router
 from app.core.config import settings
 from app.core.security import hash_pw
@@ -127,6 +128,7 @@ app.include_router(ss_router)
 app.include_router(proker_router)
 app.include_router(booster_router)
 app.include_router(injector_router)
+app.include_router(thermostat_router)
 app.include_router(manpower_router)
 
 # ─── Scheduler: yazu sync 06:00 & 18:00 Asia/Makassar (GMT+8) ───

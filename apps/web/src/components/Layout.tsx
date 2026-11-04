@@ -37,6 +37,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'proker', label: 'Proker GMC Pompa Primer' },
     { key: 'prokerbooster', label: 'Proker Midlife Eng Booster' },
     { key: 'prokerinjector', label: 'Proker Midlife Injector Primer' },
+    { key: 'prokerthermo', label: 'Proker Thermostat CAT' },
   ] },
   { title: 'Agent', items: [
     { key: 'ss', label: 'Sugestion System' },
@@ -119,6 +120,10 @@ const ICONS: Record<string, ReactNode> = {
   ),
   prokerinjector: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6l1 5H8l1-5Z" /><path d="M8 8h8l-1 6H9L8 8Z" /><path d="M12 14v5" /><path d="M9.5 21h5" /><path d="M6 11H3M21 11h-3" /></svg>
+  ),
+  prokerthermo: (
+    // Termostat / termometer
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V7a2 2 0 0 1 4 0z" /><path d="M12 9v6" /></svg>
   ),
   manpower: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><circle cx="17" cy="9" r="2.4" /><path d="M16 14.2c3 .2 5.5 2.3 5.5 5.3" /></svg>

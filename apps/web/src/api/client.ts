@@ -1750,6 +1750,105 @@ export async function fetchBoosterImportStatus(id: string): Promise<BoosterImpor
   return r.data
 }
 
+// --- Proker Thermostat CAT -----------------------------------------------
+export type ThermostatUnit = {
+  cn: string
+  no: number | null
+  unit_model: string | null
+  product: string | null
+  unit_type: string | null
+  hm_now: number | null
+  interval_hm: number
+  last_hm: number | null
+  last_date: string | null
+  modif_hm: number | null
+  modif_date: string | null
+  modif_status: string | null
+  wr: string | null
+  eta_parts: string | null
+  eta_exec: string | null
+  rad_hm: number | null
+  rad_date: string | null
+  rad_upper: number | null
+  rad_lower: number | null
+  rad_remark: string | null
+  deviasi: number | null
+  lifetime: number | null
+  due: boolean | null
+}
+
+export type ThermostatKpi = {
+  units: number
+  done: number
+  not_yet: number
+  due: number
+  interval: number
+}
+
+export type ThermostatFilters = {
+  product: string[]
+  model: string[]
+  type: string[]
+  interval: number
+}
+
+export type ThermostatUnitPage = {
+  total: number
+  page: number
+  page_size: number
+  data: ThermostatUnit[]
+}
+
+export type ThermostatImportStatus = {
+  id: string
+  filename: string
+  status: string
+  total_rows: number
+  ok_rows: number
+  fail_rows: number
+  processed_rows: number
+  uploaded_by?: string | null
+  created_at?: string
+  errors?: { units?: number; done?: number; not_yet?: number; due?: number; files?: string[]; errors?: unknown[]; error?: string } | null
+}
+
+export async function fetchThermostatStats(): Promise<ThermostatKpi> {
+  const r = await api.get('/v1/thermostat/stats')
+  return r.data
+}
+export async function fetchThermostatFilters(): Promise<ThermostatFilters> {
+  const r = await api.get('/v1/thermostat/filters')
+  return r.data
+}
+export async function fetchThermostatUnits(params: {
+  search?: string; product?: string; model?: string; status?: string; due?: boolean
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<ThermostatUnitPage> {
+  const r = await api.get('/v1/thermostat/units', { params })
+  return r.data
+}
+export async function createThermostatUnit(body: Partial<ThermostatUnit>): Promise<ThermostatUnit> {
+  const r = await api.post('/v1/thermostat/units', body)
+  return r.data
+}
+export async function updateThermostatUnit(cn: string, body: Partial<ThermostatUnit>): Promise<ThermostatUnit> {
+  const r = await api.patch(`/v1/thermostat/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+export async function deleteThermostatUnit(cn: string): Promise<void> {
+  await api.delete(`/v1/thermostat/units/${encodeURIComponent(cn)}`)
+}
+export async function importThermostatXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/thermostat/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+export async function fetchThermostatImportStatus(id: string): Promise<ThermostatImportStatus> {
+  const r = await api.get(`/v1/thermostat/import/${id}`)
+  return r.data
+}
+
 // --- Proker Midlife Injector Primer --------------------------------------
 export type InjectorStatus = 'DONE' | 'PLAN'
 
