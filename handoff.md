@@ -372,3 +372,32 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   `require_role("admin")` — praktis admin-only seperti web. `analyze`
   bersih, 50 test lolos (8 test baru `ssab_test.dart`), APK debug
   terbuild.
+- **Modul Proker (2026-11-05, branch mobile/proker)**: paritas tampilan
+  4 halaman web (Proker.tsx, ProkerBooster.tsx, ProkerInjector.tsx,
+  Thermostat.tsx) — scope disepakati: **tampilan + Refresh HM saja**
+  (tanpa form edit/tambah/hapus dan tanpa import XLSX di mobile).
+  `lib/src/features/proker/*`: models/api/providers/widgets + 4 halaman
+  (`proker_primer_page.dart` = GMC Pompa Primer, `proker_booster_page.dart`
+  = Midlife Eng Booster, `proker_injector_page.dart` = Midlife Injector
+  Primer, `proker_thermostat_page.dart` = Thermostat CAT) + route
+  `/proker`, `/prokerbooster`, `/prokerinjector`, `/prokerthermo` + 4 menu
+  drawer (urutan meniru web Layout.tsx:37-40, gating `can(key,'view')`
+  seperti web). Tiap halaman: pengantar + KPI 2×2, filter (cari debounce
+  400 ms / product / model [+ engine di primer] [+ chip "Hanya jatuh
+  tempo" di booster/injector/thermostat]) + Reset, daftar unit kartu
+  dengan paginasi server page_size 50 (‹ ›), detail bottom sheet 92%:
+  primer = riwayat eksekusi + Δ HM kronologis + badge Midlife Eng;
+  booster = OVH/Midlife terakhir + riwayat + Δ HM urut HM naik + badge
+  remarks; injector = grid 12 posisi (PLAN/umur hijau-kuning-merah
+  ambang 80%/100% interval) + riwayat per nomor penggantian "P{seq}";
+  thermostat = detail dari baris terpilih (backend tanpa endpoint detail
+  per unit, sama seperti web) — HM/deviasi/lifetime/modif 74°C (kosong =
+  NOT YET) + radiator check (WR/ETA parts/ETA exec/suhu atas-bawah).
+  Tombol **Refresh HM** di tiap halaman, gate `can(key,'add')` (backend
+  `require_menu(...,"add")`, timeout 120 dtk), pesan snackbar persis web
+  ("Refresh HM selesai: {updated} unit diperbarui · {unchanged} sudah
+  terbaru · {not_found} tidak ditemukan di sumber data"); sukses ->
+  invalidasi stats/filters/units/detail. Status/label paritas web: proker
+  DONE=Selesai/PLAN=Rencana/LATE=Terlambat/MISSED=Terlewat; booster
+  OVH/Midlife; injector DONE=Terpasang/PLAN=Rencana. `analyze` bersih,
+  63 test lolos (13 test baru `proker_test.dart`), APK debug terbuild.
