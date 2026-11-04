@@ -354,7 +354,7 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   Hanya menyentuh halaman Users; dropdown Tambah/Ubah user otomatis
   ikut 9 role (default tetap inputer). `analyze` bersih, 42 test lolos
   (2 test lama diganti 3 test baru), APK debug terbuild.
-- **Modul SS AB di mobile (2026-11-04, branch `mobile/ssab`)**: paritas
+- **Modul SS AB di mobile (2026-11-04, sudah merge ke main)**: paritas
   web `SsAb.tsx` (commit `db0c0a4`) — halaman baru
   `lib/src/features/ssab/*` (domain/api/providers/page) + route `/ssab`
   + menu drawer "SS AB" (gating `can('ssab','view')` seperti web).
