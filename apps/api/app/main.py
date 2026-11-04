@@ -16,6 +16,7 @@ from app.api.v1.staging import router as staging_router
 from app.api.v1.mom import router as mom_router
 from app.api.v1.riwayat import router as riwayat_router
 from app.api.v1.yazu import router as yazu_router, do_sync
+from app.api.v1.yazu_dc import router as yazu_dc_router, do_sync as do_sync_dc
 from app.api.v1.ewacs import router as ewacs_router
 from app.api.v1.ss import router as ss_router
 from app.api.v1.proker import router as proker_router
@@ -85,6 +86,7 @@ async def seed_admin():
             VALUES (:u, :p, 'admin') ON CONFLICT (username) DO NOTHING
         """), {"u": settings.admin_username, "p": hash_pw(settings.admin_password)})
     # Start scheduler: yazu sync 06:00 & 18:00 Asia/Makassar (GMT+8)
+    # — P2H dan Daily Check di-sync di trigger yang sama.
     global _scheduler
     _scheduler = AsyncIOScheduler(timezone="Asia/Makassar")
     _scheduler.add_job(_yazu_scheduled_sync, CronTrigger(hour=6, minute=0), id="yazu_morning")
@@ -117,6 +119,7 @@ app.include_router(staging_router)
 app.include_router(mom_router)
 app.include_router(riwayat_router)
 app.include_router(yazu_router)
+app.include_router(yazu_dc_router)
 app.include_router(ewacs_router)
 app.include_router(ss_router)
 app.include_router(proker_router)
@@ -133,9 +136,14 @@ _scheduler: AsyncIOScheduler | None = None
 
 
 async def _yazu_scheduled_sync():
-    async with SessionLocal() as db:
-        try:
-            r = await do_sync(db)
-            _yazu_log.info("yazu scheduled sync OK: %s", r)
-        except Exception as e:
-            _yazu_log.exception("yazu scheduled sync error: %s", e)
+    """Sync terjadwal: sheet P2H (yazu) lalu sheet Daily Check (yazu_dc).
+
+    Keduanya berjalan independen — kegagalan satu sheet tidak menghentikan yang lain.
+    """
+    for sync_fn, label in ((do_sync, "yazu"), (do_sync_dc, "yazu_dc")):
+        async with SessionLocal() as db:
+            try:
+                r = await sync_fn(db)
+                _yazu_log.info("%s scheduled sync OK: %s", label, r)
+            except Exception as e:
+                _yazu_log.exception("%s scheduled sync error: %s", label, e)

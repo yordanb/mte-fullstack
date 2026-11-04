@@ -30,6 +30,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'ppm', label: 'PPM' },
     { key: 'measurement', label: 'Measurement' },
     { key: 'yazu', label: 'Yazu' },
+    { key: 'yazudc', label: 'Yazu Daily Check' },
     { key: 'ewacs', label: 'Ewacs Performance' },
     { key: 'tarsupport', label: 'TAR Support' },
     { key: 'proker', label: 'Proker Midlife Eng CAT' },

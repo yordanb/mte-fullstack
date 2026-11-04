@@ -918,6 +918,35 @@ export async function fetchYazuRaw(params: { year?: number; month?: number; id_u
   return r.data
 }
 
+// ─── Yazu Daily Check (sheet kedua — checklist harian unit) ───
+export type YazuDcStats = YazuStats
+export type YazuDcPivot = YazuPivot
+export type YazuDcRaw = {
+  id: number; waktu: string; id_unit: string; nama: string | null; nrp: string | null
+  lokasi: string | null; hm: number | null; layak_operasi: string | null
+  akurasi: number | null; link_lokasi: string | null
+  coment: string | null; apar: string | null
+  status_close: string | null; pic_close: string | null; nrp_close: string | null
+  tgl_close: string | null; action_comment: string | null
+}
+
+export async function syncYazuDc() {
+  const r = await api.post(`/v1/yazu-dc/sync`)
+  return r.data
+}
+export async function fetchYazuDcStats(): Promise<YazuDcStats> {
+  const r = await api.get(`/v1/yazu-dc/stats`)
+  return r.data
+}
+export async function fetchYazuDcPivot(year?: number, month?: number): Promise<YazuDcPivot> {
+  const r = await api.get(`/v1/yazu-dc/pivot`, { params: { year, month } })
+  return r.data
+}
+export async function fetchYazuDcRaw(params: { year?: number; month?: number; id_unit?: string; limit?: number; offset?: number }): Promise<YazuDcRaw[]> {
+  const r = await api.get(`/v1/yazu-dc/raw`, { params })
+  return r.data
+}
+
 // ─── Ewacs Performance ────────────────────────────
 export type EwacsKpi = {
   pa: number; scm_dur: number; usm_dur: number; scm_pct: number; usm_pct: number

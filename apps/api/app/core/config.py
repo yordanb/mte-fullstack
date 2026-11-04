@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     upload_dir: str = "/data/uploads"
     yazu_sheet_id: str = "1c9QKXeuf5bGHL7kRpR0v9cFoaMu3Fx3Kzxk_ZMsQDGE"
     yazu_sheet_gid: int = 846518658
+    # Yazu Daily Check — sheet kedua (checklist harian unit), format kolom sedikit
+    # beda dari P2H: tanpa kolom USER/jumlah lamp, checklist level & kebocoran,
+    # plus blok STATUS CLOSE / PIC CLOSE / NRP CLOSE / TGL CLOSE / ACTION COMMENT.
+    yazu_dc_sheet_id: str = "1TLUMzLruxkvpHOeB1A3K6Fy4EAGlr7s0Nv0DYN7yYGg"
+    yazu_dc_sheet_gid: int = 0
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -32,5 +37,9 @@ class Settings(BaseSettings):
     @property
     def yazu_csv_url(self) -> str:
         return f"https://docs.google.com/spreadsheets/d/{self.yazu_sheet_id}/gviz/tq?tqx=out:csv&gid={self.yazu_sheet_gid}"
+
+    @property
+    def yazu_dc_csv_url(self) -> str:
+        return f"https://docs.google.com/spreadsheets/d/{self.yazu_dc_sheet_id}/gviz/tq?tqx=out:csv&gid={self.yazu_dc_sheet_gid}"
 
 settings = Settings()

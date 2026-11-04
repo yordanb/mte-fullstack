@@ -13,6 +13,7 @@ import RiwayatPage from './pages/Riwayat'
 import PpmPage from './pages/Ppm'
 import MeasurementPage from './pages/Measurement'
 import YazuPage from './pages/Yazu'
+import YazuDailyCheckPage from './pages/YazuDailyCheck'
 import EwacsPage from './pages/Ewacs'
 import TarSupportPage from './pages/TarSupport'
 import SsPage from './pages/Ss'
@@ -80,6 +81,7 @@ export default function App() {
       {page === 'ppm' && can('ppm', 'view') && <PpmPage />}
       {page === 'measurement' && can('measurement', 'view') && <MeasurementPage />}
       {page === 'yazu' && can('yazu', 'view') && <YazuPage />}
+      {page === 'yazudc' && can('yazu', 'view') && <YazuDailyCheckPage />}
       {page === 'ewacs' && can('ewacs', 'view') && <EwacsPage />}
       {page === 'tarsupport' && can('tarsupport', 'view') && <TarSupportPage />}
       {page === 'ss' && can('ss', 'view') && <SsPage />}
