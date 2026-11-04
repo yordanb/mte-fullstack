@@ -40,7 +40,19 @@ CREATE TABLE IF NOT EXISTS yazu_dc (
 
 CREATE INDEX IF NOT EXISTS idx_yazu_dc_waktu     ON yazu_dc (waktu);
 CREATE INDEX IF NOT EXISTS idx_yazu_dc_unit      ON yazu_dc (id_unit);
-CREATE INDEX IF NOT EXISTS idx_yazu_dc_unit_day  ON yazu_dc (id_unit, (waktu::date));
+
+-- Helper tanggal-lokal WITA untuk index. PostgreSQL menolak `(waktu)::date`
+-- langsung di index expression pada TIMESTAMPTZ ("functions in index expression
+-- must be marked IMMUTABLE") karena cast-nya tergantung zoneinfo timezone;
+-- AT TIME ZONE dengan konstanta 'Asia/Makassar' (GMT+8, tanpa DST) hasilnya
+-- selalu sama, jadi dibungkus fungsi IMMUTABLE — berlaku juga untuk tabel yazu
+-- (V33) yang index `idx_yazu_unit_day`-nya gagal dibuat karena alasan serupa.
+CREATE OR REPLACE FUNCTION yazu_wita_date(t timestamptz)
+RETURNS date LANGUAGE sql IMMUTABLE
+AS $$ SELECT (t AT TIME ZONE 'Asia/Makassar')::date $$;
+
+CREATE INDEX IF NOT EXISTS idx_yazu_dc_unit_day  ON yazu_dc (id_unit, yazu_wita_date(waktu));
+CREATE INDEX IF NOT EXISTS idx_yazu_unit_day     ON yazu   (id_unit, yazu_wita_date(waktu));
 
 -- Log sync (bentuk sama dengan yazu_sync_log)
 CREATE TABLE IF NOT EXISTS yazu_dc_sync_log (
