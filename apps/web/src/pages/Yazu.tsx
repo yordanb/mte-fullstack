@@ -201,11 +201,14 @@ export default function YazuPage() {
             <thead className="sticky top-0 z-30">
               <tr className="border-b bg-gray-50 dark:bg-gray-800">
                 <th className="sticky left-0 top-0 z-40 min-w-[90px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">ID Unit</th>
-                {Array.from({ length: pivot.days_in_month }, (_, i) => i + 1).map(d => (
-                  <th key={d} className={`min-w-[42px] px-1.5 py-2 text-center font-semibold ${isCurrentMonth && d === todayDay ? 'bg-brand-100 text-brand-700' : 'bg-gray-50 dark:bg-gray-800'}`}>
-                    {d}
-                  </th>
-                ))}
+                {Array.from({ length: pivot.days_in_month }, (_, i) => i + 1).map(d => {
+                  const sun = new Date(year, month - 1, d).getDay() === 0
+                  return (
+                    <th key={d} className={`min-w-[42px] px-1.5 py-2 text-center font-semibold ${isCurrentMonth && d === todayDay ? 'bg-brand-100 text-brand-700' : sun ? 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-300' : 'bg-gray-50 dark:bg-gray-800'}`}>
+                      {d}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
@@ -217,10 +220,18 @@ export default function YazuPage() {
                     const isToday = isCurrentMonth && d === todayDay
                     const delta = showAnomaly ? deltas[uid]?.[d] : undefined
                     const colorCls = showAnomaly ? deltaColor(delta) : ''
+                    // Kolom hari Minggu: tint background halus sebagai pembeda hari.
+                    // Tidak menimpa highlight hari ini maupun warna anomali (delta<0
+                    // memakai bg merah pekat — dua bg berbeda akan saling menimpa).
+                    const sundayBg =
+                      !isToday && new Date(year, month - 1, d).getDay() === 0
+                        && !(colorCls && colorCls.includes('bg-'))
+                      ? ' bg-red-50/70 dark:bg-red-900/20'
+                      : ''
                     return (
                       <td
                         key={d}
-                        className={`min-w-[42px] px-1.5 py-1.5 text-center tabular-nums ${isToday ? 'bg-brand-50' : ''} ${hm == null ? 'text-gray-300' : colorCls || 'text-gray-700 dark:text-gray-300'}`}
+                        className={`min-w-[42px] px-1.5 py-1.5 text-center tabular-nums ${isToday ? 'bg-brand-50' : ''}${sundayBg} ${hm == null ? 'text-gray-300' : colorCls || 'text-gray-700 dark:text-gray-300'}`}
                         title={showAnomaly && delta != null
                           ? delta < 0
                             ? `ANOMALI: HM mundur ${delta.toFixed(1)} jam/hari`
@@ -243,7 +254,7 @@ export default function YazuPage() {
       )}
 
       <p className="mt-2 text-theme-xs text-gray-400">
-        Sumber: Google Sheets checklist inspeksi unit. Sel berisi HM terakhir pada tanggal tersebut. Kolom hari ini di-highlight.
+        Sumber: Google Sheets checklist inspeksi unit. Sel berisi HM terakhir pada tanggal tersebut. Kolom hari ini di-highlight, kolom hari Minggu ditandai warna merah muda sebagai pembeda hari.
         {showAnomaly && ' Mode anomali: warna = kenaikan HM rata-rata per hari. HM mundur (delta < 0) = background merah.'}
       </p>
     </div>
