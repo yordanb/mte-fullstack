@@ -1,5 +1,6 @@
 /// Model Users + Audit — kontrak users.py admin routes + client.ts:100-143.
-/// Role: admin/inputer/mekanik/viewer. Menu izin 14 (MENUS users.py:15).
+/// Role 9 + menu izin 29 disinkronkan dengan backend MENUS/ROLES users.py:15
+/// (juga cermin apps/web/src/pages/Users.tsx:4-5).
 class AppUser {
   final String username;
   final String role;
@@ -11,12 +12,43 @@ class AppUser {
       );
 }
 
-const userRoles = ['admin', 'inputer', 'mekanik', 'viewer'];
+/// 9 role backend (users.py ROLES; urutan sama dengan web Users.tsx).
+const userRoles = [
+  'admin', 'inputer', 'mekanik', 'viewer', 'planner',
+  'group leader', 'section head', 'adm te', 'adm lce',
+];
+
+/// Role yang tampil di matriks izin — admin dikecualikan karena izinnya
+/// selalu penuh/terkunci (web Users.tsx:97).
+const permMatrixRoles = [
+  'inputer', 'mekanik', 'viewer', 'planner',
+  'group leader', 'section head', 'adm te', 'adm lce',
+];
+
+/// 29 menu izin backend (users.py MENUS; urutan penting = urutan tampil web).
 const permMenus = [
   'dashboard', 'dbr', 'performance', 'activity', 'equipment',
   'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak',
-  'staging', 'mom', 'import',
+  'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement',
+  'yazu', 'yazudc', 'ewacs', 'tarsupport', 'ss', 'ssab',
+  'proker', 'prokerbooster', 'prokerinjector', 'prokerthermo',
+  'manpower', 'manpowermanage',
 ];
+
+/// Label ramah baris matriks izin (web Users.tsx:110); menu lain apa adanya.
+String menuLabel(String menu) => switch (menu) {
+      'yazu' => 'yazu — Yazu P2H',
+      'yazudc' => 'yazudc — Yazu Daily Check',
+      'ss' => 'ss — Sugestion System',
+      'ssab' => 'ssab — SS AB',
+      'manpower' => 'manpower — Manpower Inovasi',
+      'manpowermanage' => 'manpowermanage — Manajemen Manpower',
+      'proker' => 'proker — GMC Pompa Primer',
+      'prokerbooster' => 'prokerbooster — midlife eng booster',
+      'prokerinjector' => 'prokerinjector — midlife injector primer',
+      'prokerthermo' => 'prokerthermo — Thermostat CAT',
+      _ => menu,
+    };
 
 class PermRow {
   final String role;

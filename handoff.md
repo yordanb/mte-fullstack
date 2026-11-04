@@ -302,7 +302,8 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   Web: kartu SS 3 kolom ≥ md (768px) + tinggi grafik dipangkas ~25%.
   Gradle pindah JDK 21 (`android/gradle.properties`). Catatan: `ss`
   belum masuk `permMenus` mobile (matriks izin Users, masih 14 menu;
-  backend `MENUS` sudah 29) — rapikan saat menyentuh Users.
+  backend `MENUS` sudah 29) — **sudah dibereskan 2026-11-04, lihat entri
+  "Sinkron izin menu/role"**.
   `analyze` bersih, test lolos, APK terbuild.
 - **Fix pasangan DC Dragflow EX339 (2026-10-31, sudah merge ke main)**:
   pair EX339 diubah WP1039 → WP1309 (mobile `activity_page.dart` + web
@@ -339,3 +340,17 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   - Info-level `flutter analyze` lama dirapikan (dangling doc comment
     `safety_models.dart`, guard `context.mounted` → `mounted` di Users).
   - `analyze` bersih, 41 test lolos (5 test baru), APK debug terbuild.
+- **Sinkron izin menu/role mobile dengan backend (2026-11-04, branch
+  `mobile/perm-menu-sync`)**: `user_models.dart` — `userRoles` 4 → 9
+  (`admin, inputer, mekanik, viewer, planner, group leader, section head,
+  adm te, adm lce`) + `permMenus` 14 → 29 persis urutan backend `MENUS`
+  (users.py:15; tambah `riwayat, ppm, measurement, yazu, yazudc, ewacs,
+  tarsupport, ss, ssab, proker, prokerbooster, prokerinjector,
+  prokerthermo, manpower, manpowermanage` — catatan lama soal `ss` di
+  entri SS 2026-10-31 kini beres). Baru: `permMatrixRoles` (8 role
+  non-admin, mirror web Users.tsx:97) dan `menuLabel()` (label ramah baris
+  matriks, web Users.tsx:110). `users_page.dart`: matriks izin memakai 8
+  role itu + `menuLabel` (sebelumnya hanya inputer/mekanik/viewer).
+  Hanya menyentuh halaman Users; dropdown Tambah/Ubah user otomatis
+  ikut 9 role (default tetap inputer). `analyze` bersih, 42 test lolos
+  (2 test lama diganti 3 test baru), APK debug terbuild.
