@@ -11,7 +11,7 @@ import 'users_providers.dart';
 
 /// Manajemen User + izin per menu (khusus admin, route sudah diguard).
 /// Meniru UsersPage: tambah, ubah role/password, hapus (konfirmasi),
-/// matriks izin inputer/viewer (admin terkunci).
+/// matriks izin 8 role non-admin x 29 menu (admin terkunci penuh).
 class UsersPage extends ConsumerStatefulWidget {
   const UsersPage({super.key});
 
@@ -290,7 +290,7 @@ class _PermsSection extends ConsumerWidget {
       data: (perms) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final role in ['inputer', 'mekanik', 'viewer'])
+          for (final role in permMatrixRoles)
             _PermTable(role: role, perms: perms, onToggle: onToggle),
         ],
       ),
@@ -336,7 +336,7 @@ class _PermTable extends StatelessWidget {
                 for (final m in permMenus)
                   if (byMenu.containsKey('$role:$m'))
                     DataRow(cells: [
-                      DataCell(Text(m)),
+                      DataCell(Text(menuLabel(m))),
                       for (final k in ['can_view', 'can_add', 'can_edit', 'can_delete'])
                         DataCell(Checkbox(
                           value: switch (k) {

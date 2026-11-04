@@ -20,14 +20,34 @@ void main() {
     expect(r.errors.first.row, 2);
   });
 
-  test('perm matrix: 14 menu aktual backend (V21 staging + V24 mekanik + V25 mom)', () {
-    expect(permMenus.length, 14);
-    expect(permMenus, containsAll(['import', 'timeline', 'project', 'bomak', 'staging', 'mom']));
+  test('perm matrix: 29 menu backend (sinkron users.py MENUS, urutan sama)', () {
+    expect(permMenus.length, 29);
+    expect(permMenus.first, 'dashboard');
+    expect(permMenus.last, 'manpowermanage');
+    expect(
+        permMenus,
+        containsAll([
+          'import', 'timeline', 'project', 'bomak', 'staging', 'mom',
+          'riwayat', 'ppm', 'measurement', 'yazu', 'yazudc', 'ewacs',
+          'tarsupport', 'ss', 'ssab', 'proker', 'prokerbooster',
+          'prokerinjector', 'prokerthermo', 'manpower', 'manpowermanage',
+        ]));
+    expect(permMenus.toSet().length, permMenus.length); // tanpa duplikat
   });
 
-  test('role mekanik ada di userRoles (V24)', () {
-    expect(userRoles, contains('mekanik'));
-    expect(userRoles.length, 4);
+  test('userRoles: 9 role backend + matriks 8 tanpa admin', () {
+    expect(userRoles.length, 9);
+    expect(userRoles,
+        containsAll(['inputer', 'mekanik', 'viewer', 'adm lce', 'adm te']));
+    expect(permMatrixRoles.length, 8);
+    expect(permMatrixRoles, isNot(contains('admin')));
+  });
+
+  test('menuLabel: label ramah web, menu lain apa adanya', () {
+    expect(menuLabel('ss'), 'ss — Sugestion System');
+    expect(menuLabel('ssab'), 'ssab — SS AB');
+    expect(menuLabel('yazu'), 'yazu — Yazu P2H');
+    expect(menuLabel('dbr'), 'dbr');
   });
 
   test('perm toggle: uncheck view auto-uncheck write (web ca75ff0)', () {
