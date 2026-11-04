@@ -3,7 +3,7 @@
 // Anomaly detection: warna font berdasarkan kenaikan HM harian vs threshold.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
-  errMsg, fetchYazuDcPivot, fetchYazuDcStats, syncYazuDc,
+  can, errMsg, fetchYazuDcPivot, fetchYazuDcStats, syncYazuDc,
   type YazuDcPivot, type YazuDcStats,
 } from '../api/client'
 
@@ -121,7 +121,9 @@ export default function YazuDailyCheckPage() {
     } catch (e) { setMsg(`sync gagal: ${errMsg(e)}`) }
   }
 
-  const isAdmin = localStorage.getItem('mte_role') === 'admin'
+  // Tombol Sync Manual mengikuti matriks izin menu "yazudc" (centang "Tambah") —
+  // can() sudah memberi bypass penuh untuk role admin.
+  const canSync = can('yazudc', 'add')
   const today = new Date()
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1
   const todayDay = today.getDate()
@@ -142,7 +144,7 @@ export default function YazuDailyCheckPage() {
             {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
-        {isAdmin && (
+        {canSync && (
           <button className="shrink-0 rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600" onClick={doSync} disabled={loading}>
             Sync Manual
           </button>
@@ -253,7 +255,7 @@ export default function YazuDailyCheckPage() {
         </div>
       ) : (
         <div className="rounded-2xl border bg-white p-10 text-center text-theme-sm text-gray-500">
-          Belum ada data untuk {MONTHS[month - 1]} {year}. {isAdmin ? 'Klik "Sync Manual" untuk ambil data dari Google Sheets.' : 'Hubungi admin untuk sync data.'}
+          Belum ada data untuk {MONTHS[month - 1]} {year}. {canSync ? 'Klik "Sync Manual" untuk ambil data dari Google Sheets.' : 'Hubungi admin untuk sync data.'}
         </div>
       )}
 

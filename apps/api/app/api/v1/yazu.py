@@ -11,7 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.deps import get_current_user, require_role
+from app.core.deps import get_current_user, require_menu
 from app.db.session import get_db
 
 router = APIRouter(prefix="/v1/yazu", tags=["yazu"])
@@ -154,7 +154,7 @@ async def do_sync(db: AsyncSession) -> dict:
 
 # ─── Endpoints ────────────────────────────────────────────
 
-@router.post("/sync", dependencies=[Depends(require_role("admin"))])
+@router.post("/sync", dependencies=[Depends(require_menu("yazu", "add"))])
 async def sync_now(db: AsyncSession = Depends(get_db)):
     """Trigger manual sync dari Google Sheets → tabel yazu."""
     try:

@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user, require_role
+from app.core.deps import get_current_user, require_menu
 from app.db.session import get_db
 
 router = APIRouter(prefix="/v1/hourmeter", tags=["hourmeter"])
@@ -168,7 +168,7 @@ def parse_hourmeter_xlsx(data: bytes) -> dict:
 
 # ─── Endpoints ────────────────────────────────────────────
 
-@router.post("/upload", dependencies=[Depends(require_role("inputer", "admin"))])
+@router.post("/upload", dependencies=[Depends(require_menu("hourmeter", "add"))])
 async def upload_hourmeter(
     file: UploadFile = File(...),
     year: int | None = Form(None),
