@@ -354,3 +354,21 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   Hanya menyentuh halaman Users; dropdown Tambah/Ubah user otomatis
   ikut 9 role (default tetap inputer). `analyze` bersih, 42 test lolos
   (2 test lama diganti 3 test baru), APK debug terbuild.
+- **Modul SS AB di mobile (2026-11-04, branch `mobile/ssab`)**: paritas
+  web `SsAb.tsx` (commit `db0c0a4`) — halaman baru
+  `lib/src/features/ssab/*` (domain/api/providers/page) + route `/ssab`
+  + menu drawer "SS AB" (gating `can('ssab','view')` seperti web).
+  Isi: filter tahun (default tahun berjalan; opsi dari `years` API),
+  6 kartu KPI (total, grade A/B + %, reward, manfaat, pencetus) ,
+  kalender 12 bulan (jumlah A/B per bulan + reward, bulan berjalan
+  disorot, bulan depan "–"), tabel Per Dept + bar proporsi, tabel
+  Detail SS AB (client-side pagination 25/50/100/200, 500 baris
+  terbaru) + tombol Export CSV `GET /v1/ss/ab/export`, dan tabel
+  "Menunggu Penilaian oleh PM" (filter chips per manajemen, substring)
+  + Export CSV `GET /v1/ss/ab/export-waiting`. Export CSV memakai
+  `FilePicker.saveFile(bytes:)` (file_picker sudah ada — dialog SAF
+  Android, tanpa dependensi baru); nama file mengikuti web
+  (`ss_ab_{tahun}_{tgl}.csv`, `ss_waiting_pm_{tgl}.csv`). API gate
+  `require_role("admin")` — praktis admin-only seperti web. `analyze`
+  bersih, 50 test lolos (8 test baru `ssab_test.dart`), APK debug
+  terbuild.

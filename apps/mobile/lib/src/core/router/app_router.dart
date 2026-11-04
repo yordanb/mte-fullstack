@@ -14,6 +14,7 @@ import 'package:mte_data_center/src/features/fui/presentation/report_page.dart';
 import 'package:mte_data_center/src/features/fui/presentation/suggest_form_page.dart';
 import 'package:mte_data_center/src/features/fui/presentation/suggestion_page.dart';
 import 'package:mte_data_center/src/features/ss/presentation/ss_page.dart';
+import 'package:mte_data_center/src/features/ssab/presentation/ssab_page.dart';
 import 'package:mte_data_center/src/features/profile/presentation/notifications_page.dart';
 import 'package:mte_data_center/src/features/profile/presentation/profile_page.dart';
 import 'package:mte_data_center/src/features/equipment/presentation/equipment_detail_page.dart';
@@ -61,6 +62,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (c, s) => EquipmentFormPage(cn: s.pathParameters['cn']!)),
       GoRoute(path: '/fui', builder: (c, s) => const FuiPage()),
       GoRoute(path: '/ss', builder: (c, s) => const SsPage()),
+      GoRoute(path: '/ssab', builder: (c, s) => const SsabPage()),
       GoRoute(path: '/suggestion', builder: (c, s) => const SuggestionPage()),
       GoRoute(
         path: '/suggestion/new',
