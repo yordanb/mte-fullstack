@@ -11,7 +11,7 @@ Backend **FastAPI + PostgreSQL**, web **React + Vite + Tailwind**,
 mobile **Flutter Android** (`apps/mobile`, Riverpod + GoRouter),
 semua berjalan sebagai container Docker di VPS dan diupdate via `git pull`.
 
-> Terakhir diperbarui: 27 Okt 2026 — migrasi terakhir `V39`.
+> Terakhir diperbarui: 4 Nov 2026 — migrasi terakhir `V61`.
 
 ## Arsitektur & Port
 
@@ -145,6 +145,16 @@ Error selalu `{detail: "..."}` dan ditampilkan verbatim oleh web (helper `errMsg
 | `V37__ewacs_upsert.sql` | Dedupe + unique index natural key Ewacs (`tanggal, cn, shift, kode, start_bd`) |
 | `V38__yazu_timezone_fix.sql` | Koreksi data Yazu lama: `waktu` digeser −8 jam (naive WITA yang tersimpan sebagai UTC); idempoten dengan guard |
 | `V39__ss.sql` | `ss_report` (unique `no_ss`, index tanggal/dept/grade/kategori) + menu `ss` (grup Agent, **admin only**) |
+| `V40__proker.sql` / `V41__proker_ml_cat.sql` / `V42__proker_booster.sql` / `V43__proker_injector.sql` | Proker grup Technical Expert: pompa primer 2.000 h + filter engine CAT / ML Engine Booster / Midlife Injector Primer 16.000 h + menu `proker`, `prokerbooster`, `prokerinjector` |
+| `V44__ss_outstanding.sql` | SS: dukungan upload `ReportOutstandingSS` (SS belum dinilai) di samping SS closed |
+| `V45__manpower.sql` / `V47__manpower_profile.sql` / `V48..V52__manpower_*.sql` | Manpower Inovasi: snapshot bulanan `manpower_month` + pengelompokan section/crew/status (Tyre, MTE, LCE, General Crew) + menu `manpower` |
+| `V46__spl2_only.sql` | Kebijakan data: hanya DEPT SPL2 |
+| `V53__yazu_daily_check.sql` | Tabel `yazu_dc` — Yazu Daily Check (sheet kedua: checklist harian) |
+| `V54__hourmeter.sql` | Tabel `hourmeter` — pencatatan HM bulanan per unit (upload Excel manual) |
+| `V55__role_adm_lce.sql` / `V58__sync_adm_te_lce.sql` | Role `adm lce` (inherit inputer) + akses Sync manual untuk `adm te`/`adm lce` (yazu & yazudc) |
+| `V56__perm_yazudc.sql` / `V57__perm_split_ssab_manpowermanage.sql` | Pecah izin menu per halaman: `yazudc`, `ssab`, `manpowermanage` (tidak lagi berbagi dengan `yazu`/`ss`/`manpower`) |
+| `V59__proker_thermostat.sql` | Proker Thermostat CAT (12.000 h) + menu `prokerthermo` (grup Technical Expert) |
+| `V60__ewacs_egi_normalize.sql` / `V61__ewacs_egi_normalize2.sql` | Normalisasi EGI salah tulis di `ewacs_breakdown` (LS4-2000→LS42000, LS4-6000→LS46000, LEGRA 140→LEGRA140, RF-85MW→RF85MW, EGS630-6/EGS63060→EGS6306) |
 
 Fresh install: otomatis via `/docker-entrypoint-initdb.d` (urut abjad = urut versi).
 Database lama: jalankan manual file yang belum diterapkan (lihat riwayat di bawah).
@@ -160,7 +170,7 @@ apps/web/      React+Vite+Tailwind — pages: Dashboard/DBR/Performance/Activity
                Safety/Ribi/Equipment/Staging/Mom/Riwayat/FUI/Project/Ppm/Measurement/
                Yazu/Ewacs/TarSupport/Ss/Users/Audit/Login (ApexCharts lazy-load)
 apps/mobile/   Flutter (Riverpod + GoRouter, Clean Architecture per feature)
-infra/db/      Migrasi SQL V1..V39
+infra/db/      Migrasi SQL V1..V61
 scripts/       build_equipment_seed.py (generator V7), analyze_staging_pompa.py
 data-equipment/ 4 dump sumber equipment
 data sample excel/ Contoh file + DBR_format.xlsx (lock ~$* diabaikan)
@@ -226,13 +236,14 @@ cd /opt/projects/mte-fullstack
 unset DATABASE_URL   # wajib: agar compose baca DATABASE_URL dari .env, bukan shell
 git pull --rebase origin main
 # HANYA migrasi yang belum diterapkan, mis:
-# docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V39__ss.sql
+# docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V61__ewacs_egi_normalize2.sql
 docker compose up -d --build api web
 ```
 
-Riwayat migrasi VPS: V3+V4 → V5 → V6+V7 → V8 → V9+V10+V11 → V12+V13 →
-V14+V15+V16 → V17 → V18 → V19 → V20 → V21+V22 → V23+V24 → V25+V26 →
+Riwayat migrasi VPS (terakhir dicatat): V3+V4 → V5 → V6+V7 → V8 → V9+V10+V11 →
+V12+V13 → V14+V15+V16 → V17 → V18 → V19 → V20 → V21+V22 → V23+V24 → V25+V26 →
 V27..V31 → V32 → V33 → V34 → V35 → V36 → V37 → V38 → V39.
+Migrasi V40..V61 ditambahkan bersama fiturnya — jalankan hanya yang belum diterapkan.
 Rerun aman (semua `IF NOT EXISTS`/upsert).
 
 Catatan: menambah menu baru berarti memperbarui `role_permissions_menu_check`
