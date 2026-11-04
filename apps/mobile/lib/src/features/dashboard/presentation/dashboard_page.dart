@@ -20,7 +20,7 @@ class DashboardPage extends ConsumerWidget {
     final lastUpAsync = ref.watch(lastImportProvider);
 
     return AppScaffold(
-      title: 'Dashboard Oli',
+      title: 'Dashboard Oil Lab',
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(dashboardRowsProvider);
@@ -38,8 +38,8 @@ class DashboardPage extends ConsumerWidget {
               data: (last) => last == null
                   ? const SizedBox.shrink()
                   : Text(
-                      'Last update: ${last.filename} • ${fmtDT(last.createdAt)} • '
-                      '${last.status} • ok ${last.okRows}/${last.totalRows}'
+                      // Web aaed7e8: hanya waktu + pengunggah.
+                      'Last update: ${fmtDT(last.createdAt)}'
                       '${(last.uploadedBy?.isNotEmpty ?? false) ? ' oleh ${last.uploadedBy}' : ''}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),

@@ -7,7 +7,7 @@ import '../theme/app_theme.dart';
 
 /// Menu meniru web Layout.tsx:4-16. `adminOnly` khusus admin.
 const List<Map<String, dynamic>> _menu = [
-  {'key': 'dashboard', 'label': 'Dashboard', 'path': '/'},
+  {'key': 'dashboard', 'label': 'Dashboard Oil Lab', 'path': '/'},
   {'key': 'dbr', 'label': 'DBR Breakdown', 'path': '/dbr'},
   {'key': 'performance', 'label': 'Performance', 'path': '/performance'},
   {'key': 'activity', 'label': 'Activity', 'path': '/activity'},

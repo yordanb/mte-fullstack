@@ -1,6 +1,48 @@
-/// Model Activity — kontrak apps/api/app/api/v1/activities.py + client.ts:324-329.
-/// Catatan: list harian memakai kunci `photos` (int) + `cover_id`,
-/// rekap memakai `photos_count`, detail memakai `photos` (array).
+// Model Activity — kontrak apps/api/app/api/v1/activities.py + client.ts:324-329.
+// Catatan: list harian memakai kunci `photos` (int) + `cover_id`,
+// rekap memakai `photos_count`, detail memakai `photos` (array).
+
+/// Crew baku web (Pages.tsx ACT_CREWS).
+const activityCrews = ['Pumping', 'Lighting', 'Mobile', 'Grader', 'PCH'];
+
+/// Kategori baku web (ACT_CATS + "Replace Gland Packing", web 4934628).
+const activityCats = [
+  'Proker', 'FUI', 'USM', 'SCM',
+  'Daily Check Dragflow', 'Washing PLTS', 'Daily Check Waterfill',
+  'Replace Gland Packing',
+];
+
+/// Kategori penanda Daily Check Dragflow (auto crew Pumping + opsi Shift).
+const dcDragflowCategory = 'Daily Check Dragflow';
+
+/// Pasangan Excavator–Water Pump Daily Check Dragflow (web DRAGFLOW_PAIRS;
+/// EX339 = WP1309). Dipakai dropdown CN form + tab DC Dragflow.
+const dragflowPairs = [
+  ('EX264', 'WP792'),
+  ('EX326', 'WP1080'),
+  ('EX312', 'WP1081'),
+  ('EX265', 'WP791'),
+  ('EX339', 'WP1309'),
+  ('EX329', 'WP1063'),
+];
+
+/// Opsi crew form: daftar baku; crew lama saat ubah di luar daftar ikut
+/// disertakan (web ActForm crewOpts).
+List<String> crewChoices(String? current) {
+  final cur = current?.trim() ?? '';
+  if (cur.isEmpty || activityCrews.contains(cur)) return List.of(activityCrews);
+  return [...activityCrews, cur];
+}
+
+/// Opsi kategori form: bawaan + kategori dari data (`GET /activities/filters`)
+/// + kategori lama saat ubah — tanpa ketik manual (web ActForm catChoices).
+List<String> catChoices({List<String> fromData = const [], String? current}) {
+  final out = <String>{...activityCats, ...fromData.where((e) => e.trim().isNotEmpty)};
+  final cur = current?.trim() ?? '';
+  if (cur.isNotEmpty && !out.contains(cur)) out.add(cur);
+  return out.toList();
+}
+
 class ActivityPhoto {
   final String id;
   final String? origName;

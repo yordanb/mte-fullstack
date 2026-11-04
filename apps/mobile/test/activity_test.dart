@@ -81,4 +81,26 @@ void main() {
     expect(cells.first.iso, '2026-09-28'); // Senin sebelum 1 Okt
     expect(cells.where((c) => c.inMonth).length, 31);
   });
+
+  // Paritas web 4934628: dropdown Kategori + "Replace Gland Packing".
+  test('catChoices: bawaan + data + kategori lama, tanpa duplikat', () {
+    final c = catChoices(fromData: ['Proker', 'Cek Baru'], current: 'Kategori Lama');
+    expect(c.first, 'Proker');
+    expect(c, contains('Replace Gland Packing'));
+    expect(c, contains('Cek Baru'));
+    expect(c, contains('Kategori Lama'));
+    expect(c.where((e) => e == 'Proker').length, 1);
+    expect(catChoices(), activityCats);
+  });
+
+  test('crewChoices: crew lama di luar daftar ikut disertakan', () {
+    expect(crewChoices('Pumping'), activityCrews);
+    expect(crewChoices(null), activityCrews);
+    expect(crewChoices('Tim Baru'), [...activityCrews, 'Tim Baru']);
+  });
+
+  test('dragflowPairs: 6 pasangan EX-WP, EX339 -> WP1309 (fix 31 Okt)', () {
+    expect(dragflowPairs.length, 6);
+    expect(dragflowPairs.where((p) => p.$1 == 'EX339').single.$2, 'WP1309');
+  });
 }

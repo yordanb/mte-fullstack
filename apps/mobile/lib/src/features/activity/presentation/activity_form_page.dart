@@ -13,16 +13,13 @@ import '../data/activity_api.dart';
 import '../domain/activity_models.dart';
 import 'activity_providers.dart';
 
-/// Crew/kategori baku web (Pages.tsx:562-563). Bebas ketik manual.
-/// Ditambah 3 kategori baru (1a28f2f): Daily Check Dragflow, Washing PLTS, Daily Check Waterfill.
-const _crews = ['Pumping', 'Lighting', 'Mobile', 'Grader', 'PCH'];
-const _cats = [
-  'Proker', 'FUI', 'USM', 'SCM',
-  'Daily Check Dragflow', 'Washing PLTS', 'Daily Check Waterfill',
-];
-
 /// Form tambah/ubah aktivitas + foto multi (progress bar + cegah
 /// double-submit). Tambah-foto saat ubah khusus admin, meniru ActForm web.
+///
+/// Paritas web 4934628: Kategori dropdown tanpa ketik manual (bawaan +
+/// kategori dari data + opsi "Replace Gland Packing"), checkbox "DC Dragflow"
+/// di samping Tanggal (auto kategori Daily Check Dragflow + crew Pumping,
+/// opsi Shift muncul, batal = kategori kembali & shift direset).
 class ActivityFormPage extends ConsumerWidget {
   /// null = tambah (date awal dari query), selain itu ubah.
   final String? id;
@@ -64,11 +61,12 @@ class _FormBody extends ConsumerStatefulWidget {
 class _FormBodyState extends ConsumerState<_FormBody> {
   late String _date;
   late final TextEditingController _title;
-  late final TextEditingController _crew;
-  late final TextEditingController _cat;
+  late String _crew;
+  late String _cat;
   late final TextEditingController _cn;
   late final TextEditingController _hm;
   late final TextEditingController _desc;
+  String _prevCat = '';
   int? _shift;
   final List<XFile> _picked = [];
   bool _busy = false;
@@ -76,6 +74,7 @@ class _FormBodyState extends ConsumerState<_FormBody> {
   String? _msg;
 
   bool get _isEdit => widget.initial != null;
+  bool get _isDc => _cat == dcDragflowCategory;
 
   @override
   void initState() {
@@ -83,8 +82,8 @@ class _FormBodyState extends ConsumerState<_FormBody> {
     final a = widget.initial;
     _date = a?.date ?? widget.initialDate ?? toApiDate(DateTime.now());
     _title = TextEditingController(text: a?.title ?? '');
-    _crew = TextEditingController(text: a?.crew ?? '');
-    _cat = TextEditingController(text: a?.category ?? '');
+    _crew = (a?.crew ?? '').trim();
+    _cat = (a?.category ?? '').trim();
     _cn = TextEditingController(text: a?.cn ?? '');
     _hm = TextEditingController(text: a?.hm != null ? '${a!.hm}' : '');
     _desc = TextEditingController(text: a?.description ?? '');
@@ -94,12 +93,26 @@ class _FormBodyState extends ConsumerState<_FormBody> {
   @override
   void dispose() {
     _title.dispose();
-    _crew.dispose();
-    _cat.dispose();
     _cn.dispose();
     _hm.dispose();
     _desc.dispose();
     super.dispose();
+  }
+
+  /// Check "DC Dragflow" (web ActForm): kategori & crew diisi otomatis; opsi
+  /// Shift muncul karena kategori DC. Saat dibatalkan: kategori kembali ke
+  /// pilihan sebelumnya & shift direset.
+  void _toggleDc(bool on) {
+    setState(() {
+      if (on) {
+        if (!_isDc) _prevCat = _cat;
+        _cat = dcDragflowCategory;
+        _crew = 'Pumping';
+      } else {
+        _cat = _prevCat;
+        _shift = null;
+      }
+    });
   }
 
   Future<void> _pick() async {
@@ -124,9 +137,24 @@ class _FormBodyState extends ConsumerState<_FormBody> {
       setState(() => _msg = 'Judul wajib diisi.');
       return;
     }
-    if (_crew.text.trim().isEmpty) {
+    if (_crew.trim().isEmpty) {
       setState(() => _msg = 'Crew wajib diisi.');
       return;
+    }
+    // Validasi web ActForm untuk Daily Check Dragflow.
+    if (_isDc) {
+      if (_cn.text.trim().isEmpty) {
+        setState(() => _msg = 'Unit / CN wajib dipilih untuk Daily Check Dragflow.');
+        return;
+      }
+      if (_hm.text.trim().isEmpty) {
+        setState(() => _msg = 'Hourmeter wajib diisi untuk Daily Check Dragflow.');
+        return;
+      }
+      if (_shift == null) {
+        setState(() => _msg = 'Shift wajib dipilih untuk Daily Check Dragflow.');
+        return;
+      }
     }
     setState(() {
       _busy = true;
@@ -145,8 +173,8 @@ class _FormBodyState extends ConsumerState<_FormBody> {
         await api.patch(widget.initial!.id, {
           'date': _date,
           'title': _title.text.trim(),
-          'category': _cat.text.trim().isEmpty ? null : _cat.text.trim(),
-          'crew': _crew.text.trim(),
+          'category': _cat.isEmpty ? null : _cat,
+          'crew': _crew.trim(),
           'cn': _cn.text.trim().isEmpty ? null : _cn.text.trim().toUpperCase(),
           'hm': _hm.text.trim().isEmpty ? null : _hm.text.trim(),
           'shift': _shift != null ? '$_shift' : null,
@@ -161,8 +189,8 @@ class _FormBodyState extends ConsumerState<_FormBody> {
         await api.create(
           date: _date,
           title: _title.text.trim(),
-          crew: _crew.text.trim(),
-          category: _cat.text.trim().isEmpty ? null : _cat.text.trim(),
+          crew: _crew.trim(),
+          category: _cat.isEmpty ? null : _cat,
           cn: _cn.text.trim().isEmpty ? null : _cn.text.trim(),
           hm: _hm.text.trim().isEmpty ? null : _hm.text.trim(),
           shift: _shift,
@@ -183,22 +211,68 @@ class _FormBodyState extends ConsumerState<_FormBody> {
     }
   }
 
+  /// Unit / CN khusus DC Dragflow: hanya pasangan EX-WP web; nilai lama
+  /// (di luar daftar) tetap tampil sebagai "(data lama)".
+  Widget _dcCnField() {
+    final cur = _cn.text.trim().toUpperCase();
+    final known = dragflowPairs.any((p) => p.$2 == cur);
+    return DropdownButtonFormField<String>(
+      value: cur.isEmpty ? null : cur,
+      decoration: const InputDecoration(
+        labelText: 'Unit / CN',
+        border: OutlineInputBorder(),
+      ),
+      hint: const Text('— pilih unit —'),
+      items: [
+        for (final p in dragflowPairs)
+          DropdownMenuItem(value: p.$2, child: Text('${p.$1} - ${p.$2}')),
+        if (cur.isNotEmpty && !known)
+          DropdownMenuItem(value: cur, child: Text('$cur (data lama)')),
+      ],
+      onChanged: _busy ? null : (v) => setState(() => _cn.text = v ?? ''),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isAdmin = ref.watch(authProvider).isAdmin;
     final showAddPhotos = !_isEdit || isAdmin;
+    final filtersAsync = ref.watch(activityFiltersProvider);
+    final dataCats = switch (filtersAsync) {
+      AsyncData(:final value) => value.categories,
+      _ => const <String>[],
+    };
+    final crews = crewChoices(_crew);
+    final cats = catChoices(fromData: dataCats, current: _cat);
 
     return AppScaffold(
       title: _isEdit ? 'Ubah aktivitas' : 'Tambah aktivitas',
       body: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Tanggal'),
-            subtitle: Text(fmtDate(_date)),
-            trailing: const Icon(Icons.calendar_today),
-            onTap: _busy ? null : _pickDate,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Tanggal'),
+                  subtitle: Text(fmtDate(_date)),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: _busy ? null : _pickDate,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: 'Tandai aktivitas Daily Check Dragflow: Kategori otomatis '
+                    'terisi, Crew jadi Pumping, dan pilihan Shift muncul.',
+                child: FilterChip(
+                  label: const Text('DC Dragflow'),
+                  selected: _isDc,
+                  onSelected: _busy ? null : _toggleDc,
+                ),
+              ),
+            ],
           ),
           TextField(
             controller: _title,
@@ -209,53 +283,124 @@ class _FormBodyState extends ConsumerState<_FormBody> {
             ),
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownMenu<String>(
-                  label: const Text('Crew (wajib)'),
-                  controller: _crew,
-                  requestFocusOnTap: true,
-                  dropdownMenuEntries: [
-                    for (final c in _crews) DropdownMenuEntry(value: c, label: c),
-                  ],
+          if (_isDc) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _crew.isEmpty ? null : _crew,
+                    decoration: const InputDecoration(
+                      labelText: 'Crew (wajib)',
+                      border: OutlineInputBorder(),
+                    ),
+                    hint: const Text('— pilih crew —'),
+                    items: [
+                      for (final c in crews) DropdownMenuItem(value: c, child: Text(c)),
+                    ],
+                    onChanged: _busy ? null : (v) => setState(() => _crew = v ?? ''),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: DropdownMenu<String>(
-                  label: const Text('Kategori'),
-                  controller: _cat,
-                  requestFocusOnTap: true,
-                  dropdownMenuEntries: [
-                    for (final c in _cats) DropdownMenuEntry(value: c, label: c),
-                  ],
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: dcDragflowCategory,
+                    decoration: const InputDecoration(
+                      labelText: 'Kategori',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                          value: dcDragflowCategory, child: Text(dcDragflowCategory)),
+                    ],
+                    onChanged: null, // terkunci selama DC Dragflow
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Text('Shift'),
+                const SizedBox(width: 12),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 1, label: Text('Shift 1')),
+                    ButtonSegment(value: 2, label: Text('Shift 2')),
+                  ],
+                  selected: _shift != null ? {_shift!} : <int>{},
+                  onSelectionChanged:
+                      _busy ? null : (s) => setState(() => _shift = s.first),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ] else
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _crew.isEmpty ? null : _crew,
+                    decoration: const InputDecoration(
+                      labelText: 'Crew (wajib)',
+                      border: OutlineInputBorder(),
+                    ),
+                    hint: const Text('— pilih crew —'),
+                    items: [
+                      for (final c in crews) DropdownMenuItem(value: c, child: Text(c)),
+                    ],
+                    onChanged: _busy ? null : (v) => setState(() => _crew = v ?? ''),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _cat.isEmpty ? null : _cat,
+                    decoration: const InputDecoration(
+                      labelText: 'Kategori',
+                      border: OutlineInputBorder(),
+                    ),
+                    hint: const Text('— pilih kategori —'),
+                    items: [
+                      for (final c in cats) DropdownMenuItem(value: c, child: Text(c)),
+                    ],
+                    onChanged: _busy
+                        ? null
+                        : (v) {
+                            if (v == null) return;
+                            if (v == dcDragflowCategory) {
+                              _toggleDc(true);
+                            } else {
+                              setState(() => _cat = v);
+                            }
+                          },
+                  ),
+                ),
+              ],
+            ),
           const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _cn,
-                  textCapitalization: TextCapitalization.characters,
-                  onChanged: (v) {
-                    final u = v.toUpperCase();
-                    if (u != v) {
-                      _cn.value = TextEditingValue(
-                        text: u,
-                        selection: TextSelection.collapsed(offset: u.length),
-                      );
-                    }
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Unit / CN',
-                    hintText: 'cth WP855',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
+                child: _isDc
+                    ? _dcCnField()
+                    : TextField(
+                        controller: _cn,
+                        textCapitalization: TextCapitalization.characters,
+                        onChanged: (v) {
+                          final u = v.toUpperCase();
+                          if (u != v) {
+                            _cn.value = TextEditingValue(
+                              text: u,
+                              selection: TextSelection.collapsed(offset: u.length),
+                            );
+                          }
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Unit / CN',
+                          hintText: 'cth WP855',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -272,29 +417,6 @@ class _FormBodyState extends ConsumerState<_FormBody> {
             ],
           ),
           const SizedBox(height: 12),
-          // Shift toggle hanya untuk Daily Check Dragflow (sama seperti web e458e0b).
-          if (_cat.text == 'Daily Check Dragflow') ...[
-            Row(
-              children: [
-                const Text('Shift'),
-                const SizedBox(width: 12),
-                SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(value: 1, label: Text('Shift 1')),
-                    ButtonSegment(value: 2, label: Text('Shift 2')),
-                  ],
-                  selected: _shift != null ? {_shift!} : {},
-                  onSelectionChanged: (s) => setState(() => _shift = s.first),
-                ),
-                if (_shift != null)
-                  TextButton(
-                    onPressed: () => setState(() => _shift = null),
-                    child: const Text('Hapus'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-          ],
           TextField(
             controller: _desc,
             maxLines: 4,
