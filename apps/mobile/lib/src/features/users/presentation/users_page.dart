@@ -126,7 +126,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                   ref.invalidate(usersListProvider);
                   if (context.mounted) Navigator.pop(c);
                 } catch (e) {
-                  if (context.mounted) {
+                  if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text(apiMessage(e))));
                   }
