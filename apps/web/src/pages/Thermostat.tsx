@@ -1,61 +1,78 @@
 // Proker Thermostat CAT — program kerja replace thermostat engine Caterpillar
 // (interval 12.000 jam, modifikasi 74°C, radiator check termal).
+// Tampilan mengikuti Proker Midlife Eng Booster: master unit di kiri;
+// pilih C/N -> detail (HM, deviasi, lifetime, modif 74°C, rencana, radiator) di kanan.
 // Sumber data: upload Excel "proker thermostat engine caterpillar.xlsx"
 // (sheet "05. MIDLIFE COOLING SISTEM", 1 baris per unit) + edit manual.
-// DEVIASI = HM NOW - (LAST HM + 12.000); LIFETIME = HM NOW - MODIF HM (dihitung backend).
+// DEVIASI = HM NOW - (LAST HM + interval); LIFETIME = HM NOW - MODIF HM (dihitung backend).
 import { useEffect, useRef, useState } from 'react'
+import { DatePicker } from '../components/DatePicker'
 import {
-  can, createThermostatUnit, deleteThermostatUnit, errMsg, fetchThermostatFilters,
-  fetchThermostatImportStatus, fetchThermostatStats, fetchThermostatUnits,
-  importThermostatXlsx, updateThermostatUnit,
+  can, errMsg, fetchThermostatFilters, fetchThermostatImportStatus, fetchThermostatStats,
+  fetchThermostatUnits, importThermostatXlsx, updateThermostatUnit,
   type ThermostatFilters, type ThermostatImportStatus, type ThermostatKpi,
   type ThermostatUnit,
 } from '../api/client'
 
-const BULAN_P = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des']
-const fmtD = (v?: string | null) => {
-  if (!v) return ''
-  const d = new Date(v)
-  if (isNaN(d.getTime())) return String(v)
-  return `${d.getDate()} ${BULAN_P[d.getMonth()]} ${d.getFullYear() % 100}`
-}
-const fmtN = (v: unknown) => (v == null ? '' : Number(v).toLocaleString('id-ID'))
-
-// Field form modal: [key, label, type]
-const FIELDS: [keyof ThermostatUnit & string, string, 'text' | 'number' | 'date'][] = [
-  ['no', 'No', 'number'],
-  ['unit_model', 'Unit Model', 'text'],
-  ['product', 'Product', 'text'],
-  ['unit_type', 'Unit Type', 'text'],
-  ['hm_now', 'HM Now', 'number'],
-  ['interval_hm', 'Interval (jam)', 'number'],
-  ['last_hm', 'Last Thermostat HM', 'number'],
-  ['last_date', 'Last Thermostat Tgl', 'date'],
-  ['modif_hm', 'Modif 74°C HM', 'number'],
-  ['modif_date', 'Modif 74°C Tgl', 'date'],
-  ['modif_status', 'Modif Status (DONE/NOT YET)', 'text'],
-  ['wr', 'WR', 'text'],
-  ['eta_parts', 'ETA Parts', 'date'],
-  ['eta_exec', 'ETA Exec', 'date'],
-  ['rad_hm', 'Radiator Check HM', 'number'],
-  ['rad_date', 'Radiator Check Tgl', 'date'],
-  ['rad_upper', 'Radiator Upper (°C)', 'number'],
-  ['rad_lower', 'Radiator Lower (°C)', 'number'],
-  ['rad_remark', 'Radiator Remark', 'text'],
-]
-const STATUS_BADGE: Record<string, string> = {
-  DONE: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-  'NOT YET': 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+const fmtDate = (v?: string | null) => {
+  if (!v) return '-'
+  const p = String(v).slice(0, 10).split('-')
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : String(v)
 }
 
-type FormMode = { mode: 'add' | 'edit'; row: ThermostatUnit } | null
+const fmtNum = (v?: number | null) =>
+  v == null ? '-' : new Intl.NumberFormat('id-ID').format(Math.round(Number(v)))
+
+const fmtHm = (v?: number | null) =>
+  v == null ? '-' : new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(Number(v))
+
+const fmtSigned = (v?: number | null) => {
+  if (v == null) return '-'
+  const n = Number(v)
+  return `${n > 0 ? '+' : ''}${fmtHm(n)}`
+}
+
+const STATUS = {
+  DONE: {
+    cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+    dot: 'bg-green-500',
+  },
+  'NOT YET': {
+    cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+    dot: 'bg-amber-500',
+  },
+} as const
+
+const inp = 'rounded-lg border px-2 py-1.5 text-theme-sm bg-white dark:bg-gray-900'
+
+type FormUnit = {
+  cn: string
+  no: string
+  unit_model: string
+  product: string
+  unit_type: string
+  hm_now: string
+  interval_hm: string
+  last_hm: string
+  last_date: string
+  modif_hm: string
+  modif_date: string
+  modif_status: string
+  wr: string
+  eta_parts: string
+  eta_exec: string
+  rad_hm: string
+  rad_date: string
+  rad_upper: string
+  rad_lower: string
+  rad_remark: string
+}
 
 export default function ProkerThermostatPage() {
   const [q, setQ] = useState('')
   const [search, setSearch] = useState('')
   const [product, setProduct] = useState('')
   const [model, setModel] = useState('')
-  const [status, setStatus] = useState('')
   const [dueOnly, setDueOnly] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(50)
@@ -64,13 +81,15 @@ export default function ProkerThermostatPage() {
   const [total, setTotal] = useState(0)
   const [filters, setFilters] = useState<ThermostatFilters | null>(null)
   const [kpi, setKpi] = useState<ThermostatKpi | null>(null)
+
+  const [cn, setCn] = useState('')
+  const detail = units.find((u) => u.cn === cn) ?? null
+
   const [msg, setMsg] = useState('')
-  const [msgErr, setMsgErr] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loadingUnits, setLoadingUnits] = useState(false)
   const [reload, setReload] = useState(0)
 
-  const [form, setForm] = useState<FormMode>(null)
-  const [fdraft, setFdraft] = useState<Partial<ThermostatUnit>>({})
+  const [unitForm, setUnitForm] = useState<FormUnit | null>(null)
   const [saving, setSaving] = useState(false)
 
   const [importing, setImporting] = useState(false)
@@ -78,304 +97,548 @@ export default function ProkerThermostatPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const timerRef = useRef<number | null>(null)
 
-  const canAdd = can('prokerthermo', 'add')
-  const canEdit = can('prokerthermo', 'edit')
-  const canDel = can('prokerthermo', 'delete')
+  useEffect(() => {
+    const t = window.setTimeout(() => setSearch(q.trim()), 400)
+    return () => window.clearTimeout(t)
+  }, [q])
+
+  useEffect(() => { setPage(1) }, [search, product, model, dueOnly])
 
   useEffect(() => {
-    fetchThermostatFilters().then(setFilters).catch(() => null)
-    fetchThermostatStats().then(setKpi).catch(() => null)
-  }, [])
-
-  useEffect(() => { setPage(1) }, [search, product, model, status, dueOnly])
+    Promise.all([fetchThermostatFilters(), fetchThermostatStats()])
+      .then(([f, k]) => { setFilters(f); setKpi(k) })
+      .catch((e) => setMsg(`gagal memuat ringkasan: ${errMsg(e)}`))
+  }, [reload])
 
   useEffect(() => {
-    let dead = false
-    setLoading(true)
-    const params: Record<string, unknown> = { page, page_size: pageSize }
-    if (search) params.search = search
-    if (product) params.product = product
-    if (model) params.model = model
-    if (status) params.status = status
-    if (dueOnly) params.due = true
-    fetchThermostatUnits(params)
-      .then((r) => { if (!dead) { setUnits(r.data); setTotal(r.total) } })
-      .catch((e) => { if (!dead) { setMsg(`gagal memuat: ${errMsg(e)}`); setMsgErr(true) } })
-      .finally(() => { if (!dead) setLoading(false) })
-    return () => { dead = true }
-  }, [page, search, product, model, status, dueOnly, reload])
+    let alive = true
+    setLoadingUnits(true)
+    fetchThermostatUnits({
+      search: search || undefined, product: product || undefined,
+      model: model || undefined, due: dueOnly ? true : undefined,
+      page, page_size: pageSize,
+    })
+      .then((r) => {
+        if (!alive) return
+        setUnits(r.data); setTotal(r.total)
+        setCn((cur) => (cur && r.data.some((u) => u.cn === cur) ? cur : (r.data[0]?.cn ?? '')))
+      })
+      .catch((e) => { if (alive) setMsg(`gagal memuat unit: ${errMsg(e)}`) })
+      .finally(() => { if (alive) setLoadingUnits(false) })
+    return () => { alive = false }
+  }, [search, product, model, dueOnly, page, pageSize, reload])
 
-  // Polling progress import
   useEffect(() => () => { if (timerRef.current) window.clearInterval(timerRef.current) }, [])
-  const startPoll = (id: string) => {
+
+  const poll = (id: string) => {
     if (timerRef.current) window.clearInterval(timerRef.current)
     timerRef.current = window.setInterval(async () => {
       try {
         const s = await fetchThermostatImportStatus(id)
         setProg(s)
-        if (s.status === 'COMMITTED') {
-          window.clearInterval(timerRef.current!)
-          const e = s.errors || {}
-          setMsg(`Import selesai: ${e.units ?? s.ok_rows} unit (${e.done ?? 0} DONE, ${e.due ?? 0} jatuh tempo)` +
-            (s.fail_rows ? `, ${s.fail_rows} catatan error` : ''), )
-          setMsgErr(false)
+        if (s.status === 'COMMITTED' || s.status === 'FAILED') {
+          if (timerRef.current) window.clearInterval(timerRef.current)
+          timerRef.current = null
           setImporting(false)
-          setProg(null)
-          setReload((x) => x + 1)
-          fetchThermostatStats().then(setKpi).catch(() => null)
-        } else if (s.status === 'FAILED') {
-          window.clearInterval(timerRef.current!)
-          setMsg(`import gagal: ${(s.errors as { error?: string })?.error || 'lihat error di log import'}`)
-          setMsgErr(true)
-          setImporting(false)
-          setProg(null)
+          if (s.status === 'FAILED') {
+            setMsg(`import gagal: ${s.errors?.error ?? 'tidak diketahui'}`)
+          } else {
+            setMsg(
+              `import selesai: ${fmtNum(s.errors?.units)} unit · ${fmtNum(s.errors?.done)} DONE`
+              + ` · ${fmtNum(s.errors?.due)} jatuh tempo`,
+            )
+            setReload((x) => x + 1)
+          }
         }
-      } catch { /* diamkan, coba lagi di tick berikutnya */ }
+      } catch (e) {
+        if (timerRef.current) window.clearInterval(timerRef.current)
+        timerRef.current = null
+        setImporting(false)
+        setMsg(`gagal cek status import: ${errMsg(e)}`)
+      }
     }, 1500)
   }
-  const doImport = async (files: FileList) => {
+
+  const handleFiles = async (files: File[]) => {
     if (!files.length) return
-    setImporting(true); setProg(null)
-    setMsg(`mengupload ${files.length} file & membaca...`); setMsgErr(false)
+    setImporting(true); setProg(null); setMsg('')
     try {
-      const r = await importThermostatXlsx(Array.from(files))
-      startPoll(r.import_id)
+      const r = await importThermostatXlsx(files)
+      setMsg(`mengimpor ${r.files} file…`)
+      poll(r.import_id)
     } catch (e) {
-      setMsg(`upload gagal: ${errMsg(e)}`); setMsgErr(true); setImporting(false)
+      setImporting(false)
+      setMsg(`import gagal: ${errMsg(e)}`)
     }
-    if (fileRef.current) fileRef.current.value = ''
   }
 
-  const openAdd = () => {
-    setFdraft({ interval_hm: 12000, modif_status: 'NOT YET' })
-    setForm({ mode: 'add', row: null as unknown as ThermostatUnit })
+  const openUnit = () => {
+    if (!detail) return
+    const s = (v: number | string | null | undefined) => (v == null ? '' : String(v))
+    setUnitForm({
+      cn: detail.cn,
+      no: s(detail.no),
+      unit_model: detail.unit_model ?? '',
+      product: detail.product ?? '',
+      unit_type: detail.unit_type ?? '',
+      hm_now: s(detail.hm_now),
+      interval_hm: s(detail.interval_hm),
+      last_hm: s(detail.last_hm),
+      last_date: (detail.last_date ?? '').slice(0, 10),
+      modif_hm: s(detail.modif_hm),
+      modif_date: (detail.modif_date ?? '').slice(0, 10),
+      modif_status: detail.modif_status ?? '',
+      wr: detail.wr ?? '',
+      eta_parts: (detail.eta_parts ?? '').slice(0, 10),
+      eta_exec: (detail.eta_exec ?? '').slice(0, 10),
+      rad_hm: s(detail.rad_hm),
+      rad_date: (detail.rad_date ?? '').slice(0, 10),
+      rad_upper: s(detail.rad_upper),
+      rad_lower: s(detail.rad_lower),
+      rad_remark: detail.rad_remark ?? '',
+    })
   }
-  const openEdit = (u: ThermostatUnit) => {
-    setFdraft({ ...u })
-    setForm({ mode: 'edit', row: u })
-  }
-  const saveForm = async () => {
-    if (!form) return
-    if (!String(fdraft.cn || '').trim()) { setMsg('C/N wajib diisi'); setMsgErr(true); return }
+
+  const saveUnit = async () => {
+    if (!unitForm) return
     setSaving(true)
+    const num = (v: string) => (v.trim() === '' ? null : Number(v))
+    const dmy = (v: string) => (v.trim() === '' ? null : v)
+    const interval = Number(unitForm.interval_hm)
     try {
-      if (form.mode === 'add') await createThermostatUnit(fdraft)
-      else await updateThermostatUnit(form.row.cn, fdraft)
-      setMsg(form.mode === 'add' ? `unit ${String(fdraft.cn).toUpperCase()} ditambahkan` : `unit ${form.row.cn} diperbarui`)
-      setMsgErr(false)
-      setForm(null)
+      await updateThermostatUnit(unitForm.cn, {
+        no: num(unitForm.no),
+        unit_model: unitForm.unit_model.trim() || null,
+        product: unitForm.product.trim() || null,
+        unit_type: unitForm.unit_type.trim() || null,
+        hm_now: num(unitForm.hm_now),
+        interval_hm: Number.isFinite(interval) && interval > 0 ? interval : undefined,
+        last_hm: num(unitForm.last_hm),
+        last_date: dmy(unitForm.last_date),
+        modif_hm: num(unitForm.modif_hm),
+        modif_date: dmy(unitForm.modif_date),
+        modif_status: unitForm.modif_status.trim().toUpperCase() || null,
+        wr: unitForm.wr.trim() || null,
+        eta_parts: dmy(unitForm.eta_parts),
+        eta_exec: dmy(unitForm.eta_exec),
+        rad_hm: num(unitForm.rad_hm),
+        rad_date: dmy(unitForm.rad_date),
+        rad_upper: num(unitForm.rad_upper),
+        rad_lower: num(unitForm.rad_lower),
+        rad_remark: unitForm.rad_remark.trim() || null,
+      })
+      setUnitForm(null)
+      setMsg('data unit diperbarui')
       setReload((x) => x + 1)
-      fetchThermostatStats().then(setKpi).catch(() => null)
-    } catch (e) { setMsg(`gagal simpan: ${errMsg(e)}`); setMsgErr(true) }
-    setSaving(false)
-  }
-  const doDelete = async (u: ThermostatUnit) => {
-    if (!window.confirm(`Hapus unit ${u.cn} dari Proker Thermostat CAT?`)) return
-    try {
-      await deleteThermostatUnit(u.cn)
-      setMsg(`unit ${u.cn} dihapus`); setMsgErr(false)
-      setReload((x) => x + 1)
-    } catch (e) { setMsg(`gagal hapus: ${errMsg(e)}`); setMsgErr(true) }
+    } catch (e) {
+      setMsg(`gagal menyimpan unit: ${errMsg(e)}`)
+    } finally { setSaving(false) }
   }
 
-  const pages = Math.max(1, Math.ceil(total / pageSize))
-  const sel = 'rounded-lg border px-2 py-1.5 text-theme-sm'
+  const resetFilter = () => { setQ(''); setSearch(''); setProduct(''); setModel(''); setDueOnly(false) }
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const dueCls = (v?: number | null) =>
+    v == null ? 'text-gray-400' : Number(v) >= 0 ? 'text-red-600' : 'text-green-600'
+  const progPct = prog && prog.total_rows > 0
+    ? Math.min(100, Math.round((prog.processed_rows / prog.total_rows) * 100))
+    : prog?.status === 'COMMITTED' ? 100 : 0
+  const intervalLabel = fmtNum(kpi?.interval ?? filters?.interval ?? 12000)
+  const st = detail ? ((detail.modif_status || 'NOT YET').toUpperCase() as keyof typeof STATUS) : 'NOT YET'
+  const badge = STATUS[st] ?? STATUS['NOT YET']
 
   return (
     <div className="w-full px-2">
-      {/* KPI */}
-      {kpi && (
-        <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-            <p className="text-theme-xs text-gray-500">Unit terdaftar</p>
-            <p className="text-theme-xl font-semibold">{kpi.units.toLocaleString('id-ID')}</p>
-            <p className="text-theme-xs text-gray-400">interval {kpi.interval.toLocaleString('id-ID')} jam</p>
-          </div>
-          <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-            <p className="text-theme-xs text-gray-500">Modif 74°C DONE</p>
-            <p className="text-theme-xl font-semibold text-emerald-600">{kpi.done.toLocaleString('id-ID')}</p>
-          </div>
-          <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-            <p className="text-theme-xs text-gray-500">NOT YET</p>
-            <p className="text-theme-xl font-semibold text-amber-600">{kpi.not_yet.toLocaleString('id-ID')}</p>
-          </div>
-          <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-            <p className="text-theme-xs text-gray-500">Jatuh tempo (deviasi ≥ 0)</p>
-            <p className="text-theme-xl font-semibold text-red-600">{kpi.due.toLocaleString('id-ID')}</p>
-          </div>
+      {/* Filter */}
+      <div className="mb-3 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-theme-xs text-gray-500">Cari unit</label>
+          <input className={`${inp} w-52`} value={q} onChange={(e) => setQ(e.target.value)}
+            placeholder="C/N / model / product / WR" />
         </div>
-      )}
-      <p className="mb-2 text-theme-xs text-gray-500">
-        Program kerja <span className="font-semibold text-gray-600 dark:text-gray-300">Replace Thermostat Engine Caterpillar (12.000 jam)</span> —
-        sumber upload Excel (sheet "05. MIDLIFE COOLING SISTEM"); DEVIASI &amp; LIFETIME dihitung otomatis.
-      </p>
-
-      {/* Toolbar */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input className={sel} value={q} placeholder="Cari C/N / model / WR…"
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') setSearch(q) }} />
-        <button className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600"
-          onClick={() => setSearch(q)}>Cari</button>
-        <select className={sel} value={product} onChange={(e) => setProduct(e.target.value)}>
-          <option value="">Product: semua</option>
-          {(filters?.product || []).map((v) => <option key={v} value={v}>{v}</option>)}
-        </select>
-        <select className={sel} value={model} onChange={(e) => setModel(e.target.value)}>
-          <option value="">Model: semua</option>
-          {(filters?.model || []).map((v) => <option key={v} value={v}>{v}</option>)}
-        </select>
-        <select className={sel} value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="">Modif: semua</option>
-          <option value="DONE">DONE</option>
-          <option value="NOT YET">NOT YET</option>
-        </select>
-        <label className="flex cursor-pointer items-center gap-1.5 text-theme-sm text-gray-600">
+        <div>
+          <label className="block text-theme-xs text-gray-500">Product</label>
+          <select className={inp} value={product} onChange={(e) => setProduct(e.target.value)}>
+            <option value="">Semua</option>
+            {(filters?.product ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-theme-xs text-gray-500">Unit model</label>
+          <select className={inp} value={model} onChange={(e) => setModel(e.target.value)}>
+            <option value="">Semua</option>
+            {(filters?.model ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </div>
+        <label className="flex items-center gap-2 pb-1 text-theme-sm text-gray-600 dark:text-gray-300">
           <input type="checkbox" checked={dueOnly} onChange={(e) => setDueOnly(e.target.checked)} />
-          Jatuh tempo
+          Hanya jatuh tempo
         </label>
-        <span className="flex-1" />
-        {canAdd && (
-          <button className="rounded-lg border px-3 py-1.5 text-theme-sm font-medium hover:bg-gray-50"
-            onClick={openAdd}>+ Tambah Unit</button>
-        )}
-        {canAdd && (
+        <button onClick={resetFilter}
+          className="rounded-lg border px-3 py-1.5 text-theme-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
+          Reset
+        </button>
+        {can('prokerthermo', 'add') && (
           <>
-            <button className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-              onClick={() => fileRef.current?.click()} disabled={importing}>
-              {importing ? 'Mengimport…' : '⬆ Upload Excel'}
+            <input ref={fileRef} type="file" accept=".xlsx,.xlsm" multiple className="hidden"
+              onChange={(e) => {
+                const fs = Array.from(e.target.files ?? [])
+                handleFiles(fs)
+                e.target.value = ''
+              }} />
+            <button onClick={() => fileRef.current?.click()} disabled={importing}
+              className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+              title="Upload file thermostat (.xlsx) format '05. MIDLIFE COOLING SISTEM'. Data diperbarui per C/N.">
+              {importing ? 'Mengimpor…' : 'Import Excel'}
             </button>
-            <input ref={fileRef} type="file" accept=".xlsx,.xlsm,.xls" multiple className="hidden"
-              onChange={(e) => { const f = e.target.files; if (f && f.length) doImport(f) }} />
           </>
         )}
+        {loadingUnits && <span className="text-theme-xs text-gray-500">Memuat…</span>}
       </div>
 
       {msg && (
-        <div className={`mb-3 rounded-lg border px-4 py-2 text-theme-sm ${msgErr ? 'border-red-200 bg-red-50 text-red-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
-          {msg}
-        </div>
-      )}
-      {importing && prog && (
-        <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-theme-sm text-blue-700">
-          Import berjalan: {prog.processed_rows}/{prog.total_rows || '…'} baris ({prog.status})
+        <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-theme-sm text-blue-700">
+          <span>{msg}</span>
+          <button className="text-theme-xs text-blue-500" onClick={() => setMsg('')}>tutup</button>
         </div>
       )}
 
-      {/* Tabel master (flat, 1 baris per unit) */}
-      <div className="min-w-0 w-full overflow-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-        <table className="border-collapse text-theme-xs" style={{ width: 'max-content', minWidth: '100%' }}>
-          <thead className="sticky top-0 z-10">
-            <tr className="border-b bg-[#d6e4c9] dark:bg-gray-800">
-              {['No', 'Unit Model', 'Product', 'Unit Type', 'C/N', 'HM Now', 'Deviasi', 'Lifetime',
-                'Last Thermostat', 'Modif 74°C', 'Rencana (WR / ETA Part / ETA Exec)',
-                'Radiator Check (HM • Tgl • Up/Low)', ''].map((h) => (
-                <th key={h} className="whitespace-nowrap px-2 py-2 text-center font-semibold">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading && units.length === 0 ? (
-              <tr><td colSpan={13} className="px-4 py-10 text-center text-gray-500">Memuat…</td></tr>
-            ) : units.length === 0 ? (
-              <tr><td colSpan={13} className="px-4 py-10 text-center text-gray-500">
-                Belum ada unit. {canAdd ? 'Upload file Excel atau klik "+ Tambah Unit".' : 'Hubungi admin untuk upload data.'}
-              </td></tr>
-            ) : units.map((u) => {
-              const st = (u.modif_status || 'NOT YET').toUpperCase()
-              const rad = [u.rad_hm != null ? fmtN(u.rad_hm) : '', fmtD(u.rad_date),
-                u.rad_upper != null ? `↑${u.rad_upper}` : '', u.rad_lower != null ? `↓${u.rad_lower}` : '']
-                .filter(Boolean).join(' • ')
-              return (
-                <tr key={u.cn} className="border-t hover:bg-brand-50/40 dark:hover:bg-gray-800/40">
-                  <td className="px-2 py-1.5 text-center text-gray-400">{u.no ?? ''}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap">{u.unit_model || '·'}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap">{u.product || '·'}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap">{u.unit_type || '·'}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-gray-700 dark:text-gray-200">{u.cn}</td>
-                  <td className="px-2 py-1.5 text-center tabular-nums">{u.hm_now != null ? fmtN(u.hm_now) : '·'}</td>
-                  <td className={`px-2 py-1.5 text-center font-semibold tabular-nums ${u.deviasi == null ? 'text-gray-300' : u.deviasi >= 0 ? 'text-red-600' : 'text-emerald-700 dark:text-emerald-400'}`}>
-                    {u.deviasi != null ? fmtN(u.deviasi) : '·'}
-                  </td>
-                  <td className="px-2 py-1.5 text-center tabular-nums text-gray-600 dark:text-gray-400">
-                    {u.lifetime != null ? fmtN(u.lifetime) : '·'}
-                  </td>
-                  <td className="px-2 py-1.5 text-center whitespace-nowrap tabular-nums">
-                    {u.last_hm != null || u.last_date ? `${u.last_hm != null ? fmtN(u.last_hm) : '·'}${u.last_date ? ` • ${fmtD(u.last_date)}` : ''}` : '·'}
-                  </td>
-                  <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                    <span className={`mr-1 inline-block rounded px-1.5 py-0.5 font-semibold ${STATUS_BADGE[st] || ''}`}>{st}</span>
-                    {u.modif_date ? <span className="text-gray-500">{fmtD(u.modif_date)}</span> : null}
-                  </td>
-                  <td className="px-2 py-1.5 text-center whitespace-nowrap text-gray-600 dark:text-gray-400">
-                    {[u.wr, u.eta_parts ? `part ${fmtD(u.eta_parts)}` : '', u.eta_exec ? `exec ${fmtD(u.eta_exec)}` : ''].filter(Boolean).join(' • ') || '·'}
-                  </td>
-                  <td className="px-2 py-1.5 text-center whitespace-nowrap text-gray-600 dark:text-gray-400">{rad || '·'}</td>
-                  <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                    {canEdit && (
-                      <button className="mr-1 rounded-lg border px-2 py-1 hover:bg-gray-50 dark:hover:bg-gray-800"
-                        onClick={() => openEdit(u)} title="Edit unit">✎</button>
-                    )}
-                    {canDel && (
-                      <button className="rounded-lg border border-red-200 px-2 py-1 text-red-600 hover:bg-red-50"
-                        onClick={() => doDelete(u)} title="Hapus unit">🗑</button>
-                    )}
-                  </td>
+      {prog && (
+        <div className="mb-3 rounded-2xl border bg-white p-4 dark:bg-gray-900">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-theme-sm">
+            <span className="font-medium">
+              Import: {prog.status} · {fmtNum(prog.processed_rows)} / {fmtNum(prog.total_rows)} unit
+            </span>
+            <span className="text-theme-xs text-gray-500">
+              {prog.errors && prog.status === 'COMMITTED'
+                ? `${fmtNum(prog.errors.units)} unit · ${fmtNum(prog.errors.done)} DONE · ${fmtNum(prog.errors.due)} jatuh tempo`
+                : prog.errors?.error ?? ''}
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+            <div className={`h-full rounded-full transition-all ${prog.status === 'FAILED' ? 'bg-red-500' : 'bg-brand-500'}`}
+              style={{ width: `${progPct}%` }} />
+          </div>
+          <p className="mt-1 text-theme-xs text-gray-400">{prog.filename}</p>
+        </div>
+      )}
+
+      {/* KPI */}
+      {kpi && (
+        <>
+          <p className="mb-2 text-theme-xs text-gray-500">
+            Program kerja <span className="font-semibold text-gray-600 dark:text-gray-300">Replace Thermostat Engine Caterpillar</span> —
+            interval {intervalLabel} jam, modifikasi 74°C dan radiator check by therma.
+          </p>
+          <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
+              <p className="text-theme-xs text-gray-500">Unit thermostat</p>
+              <p className="text-theme-2xl font-bold text-brand-600">{fmtNum(kpi.units)}</p>
+              <p className="text-theme-xs text-gray-400">interval {intervalLabel} jam</p>
+            </div>
+            <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
+              <p className="text-theme-xs text-gray-500">Modif 74°C</p>
+              <p className="text-theme-2xl font-bold text-green-600">{fmtNum(kpi.done)}</p>
+              <p className="text-theme-xs text-gray-400">{fmtNum(kpi.not_yet)} NOT YET</p>
+            </div>
+            <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
+              <p className="text-theme-xs text-gray-500">Jatuh tempo</p>
+              <p className={`text-theme-2xl font-bold ${kpi.due > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {fmtNum(kpi.due)}
+              </p>
+              <p className="text-theme-xs text-gray-400">deviasi ≥ 0 jam</p>
+            </div>
+            <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
+              <p className="text-theme-xs text-gray-500">Ganti thermostat terakhir</p>
+              <p className="text-theme-2xl font-bold text-gray-700 dark:text-gray-200">{fmtDate(kpi.last_date)}</p>
+              <p className="text-theme-xs text-gray-400">dari data terakhir</p>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
+        {/* Daftar unit */}
+        <div className="rounded-2xl border border-gray-200 bg-white lg:col-span-2 dark:border-gray-700 dark:bg-gray-900">
+          <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2">
+            <span className="text-theme-sm font-semibold">Daftar Unit Thermostat</span>
+            <span className="text-theme-xs text-gray-500">{fmtNum(total)} unit · hal {page}/{totalPages}</span>
+            <div className="ml-auto flex items-center gap-1">
+              <button className="rounded-lg border px-2 py-1 text-theme-xs disabled:opacity-40"
+                onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>‹</button>
+              <button className="rounded-lg border px-2 py-1 text-theme-xs disabled:opacity-40"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>›</button>
+            </div>
+          </div>
+          <div className="w-full overflow-auto" style={{ maxHeight: 620 }}>
+            <table className="w-full border-collapse text-theme-xs">
+              <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
+                <tr className="border-b">
+                  <th className="px-2 py-2 text-left font-semibold">C/N</th>
+                  <th className="px-2 py-2 text-left font-semibold">Model / Product</th>
+                  <th className="px-2 py-2 text-right font-semibold">HM now</th>
+                  <th className="px-2 py-2 text-right font-semibold">Deviasi</th>
+                  <th className="px-2 py-2 text-center font-semibold">Modif 74°C</th>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2 text-theme-sm">
-        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page <= 1}
-          onClick={() => setPage(page - 1)}>‹ Prev</button>
-        <span>Halaman {page} dari {pages} • {total.toLocaleString('id-ID')} unit</span>
-        <button className="rounded-lg border px-3 py-1 disabled:opacity-40" disabled={page >= pages}
-          onClick={() => setPage(page + 1)}>Next ›</button>
+              </thead>
+              <tbody>
+                {units.map((u, i) => {
+                  const s = ((u.modif_status || 'NOT YET').toUpperCase() as keyof typeof STATUS)
+                  const b = STATUS[s] ?? STATUS['NOT YET']
+                  return (
+                    <tr key={u.cn} onClick={() => setCn(u.cn)}
+                      className={`cursor-pointer border-b border-gray-100 last:border-0 dark:border-gray-800 ${
+                        u.cn === cn ? 'bg-brand-50 dark:bg-brand-500/10'
+                          : i % 2 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''
+                      } hover:bg-brand-50/60 dark:hover:bg-brand-500/10`}>
+                      <td className="px-2 py-1.5 font-mono font-semibold whitespace-nowrap">{u.cn}</td>
+                      <td className="max-w-[130px] px-2 py-1.5" title={`${u.unit_type ?? ''}`}>
+                        <span className="block truncate">{u.unit_model ?? '-'}</span>
+                        <span className="block truncate text-theme-xs text-gray-400">
+                          {u.product ?? ''}{u.product && u.unit_type ? ' · ' : ''}{u.unit_type ?? ''}
+                        </span>
+                      </td>
+                      <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{fmtHm(u.hm_now)}</td>
+                      <td className={`px-2 py-1.5 text-right font-semibold tabular-nums whitespace-nowrap ${dueCls(u.deviasi)}`}>
+                        {fmtSigned(u.deviasi)}
+                      </td>
+                      <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                        <span className={`rounded-full px-2 py-0.5 font-semibold ${b.cls}`}>{s}</span>
+                        <span className="mt-0.5 block text-theme-xs text-gray-400">{fmtDate(u.modif_date)}</span>
+                      </td>
+                    </tr>
+                  )
+                })}
+                {units.length === 0 && (
+                  <tr><td colSpan={5} className="px-4 py-10 text-center text-theme-sm text-gray-400">
+                    Belum ada unit. Import file thermostat (.xlsx) lewat tombol di atas.
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Detail unit */}
+        <div className="rounded-2xl border border-gray-200 bg-white lg:col-span-3 dark:border-gray-700 dark:bg-gray-900">
+          {!detail ? (
+            <p className="px-4 py-16 text-center text-theme-sm text-gray-400">
+              Pilih salah satu C/N di kiri untuk melihat detail thermostat-nya.
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-start gap-2 border-b px-4 py-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-theme-xl font-bold text-brand-600">{detail.cn}</p>
+                  <p className="text-theme-sm text-gray-600 dark:text-gray-300">
+                    {detail.unit_model ?? '-'} · {detail.product ?? '-'}
+                    <span className="text-gray-400"> · {detail.unit_type ?? '-'}</span>
+                  </p>
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                  {can('prokerthermo', 'edit') && (
+                    <button onClick={openUnit}
+                      className="rounded-lg border px-2.5 py-1 text-theme-xs text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
+                      Edit unit
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 px-4 py-3 sm:grid-cols-4">
+                <div className="rounded-xl bg-gray-50 p-2.5 dark:bg-gray-800/60">
+                  <p className="text-theme-xs text-gray-500">HM sekarang</p>
+                  <p className="text-theme-lg font-bold tabular-nums">{fmtHm(detail.hm_now)}</p>
+                  <p className="text-theme-xs text-gray-400">HM NOW di file</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-2.5 dark:bg-gray-800/60">
+                  <p className="text-theme-xs text-gray-500">Target ganti</p>
+                  <p className="text-theme-lg font-bold tabular-nums">
+                    {detail.hm_now == null ? '-' : fmtHm((detail.last_hm ?? 0) + Number(detail.interval_hm || 0))}
+                  </p>
+                  <p className="text-theme-xs text-gray-400">last + {fmtNum(detail.interval_hm)} jam</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-2.5 dark:bg-gray-800/60">
+                  <p className="text-theme-xs text-gray-500">Deviasi</p>
+                  <p className={`text-theme-lg font-bold tabular-nums ${dueCls(detail.deviasi)}`}>
+                    {fmtSigned(detail.deviasi)}
+                  </p>
+                  <p className="text-theme-xs text-gray-400">
+                    {detail.due ? 'sudah jatuh tempo' : 'masih aman'}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-2.5 dark:bg-gray-800/60">
+                  <p className="text-theme-xs text-gray-500">Lifetime thermostat</p>
+                  <p className="text-theme-lg font-bold tabular-nums">{fmtHm(detail.lifetime)}</p>
+                  <p className="text-theme-xs text-gray-400">
+                    {detail.modif_hm == null ? 'belum modif 74°C' : 'sejak modif 74°C'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 px-4 pb-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-gray-100 px-3 py-2 text-theme-xs dark:border-gray-800">
+                  <span className="mr-1 inline-block size-2 rounded-full bg-blue-500" />
+                  <span className="font-semibold">Last thermostat</span>
+                  <span className="float-right tabular-nums">{fmtHm(detail.last_hm)}</span>
+                  <span className="block text-gray-400">{fmtDate(detail.last_date)}</span>
+                </div>
+                <div className="rounded-xl border border-gray-100 px-3 py-2 text-theme-xs dark:border-gray-800">
+                  <span className={`mr-1 inline-block size-2 rounded-full ${badge.dot}`} />
+                  <span className="font-semibold">Modif 74°C</span>
+                  <span className="float-right tabular-nums">{detail.modif_hm == null ? '-' : fmtHm(detail.modif_hm)}</span>
+                  <span className="mt-0.5 block">
+                    <span className={`rounded-full px-2 py-0.5 font-semibold ${badge.cls}`}>{st}</span>
+                    <span className="ml-1 text-gray-400">{fmtDate(detail.modif_date)}</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Rencana & radiator check */}
+              <div className="w-full overflow-auto px-4 pb-4" style={{ maxHeight: 300 }}>
+                <table className="w-full border-collapse text-theme-xs">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr className="border-b">
+                      <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Rencana modif 74°C</th>
+                      <th className="px-2 py-2 text-right font-semibold whitespace-nowrap">Radiator check by therma</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                      <td className="px-2 py-1.5">WR</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{detail.wr || '-'}</td>
+                    </tr>
+                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                      <td className="px-2 py-1.5">ETA parts</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{fmtDate(detail.eta_parts)}</td>
+                    </tr>
+                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                      <td className="px-2 py-1.5">ETA exec</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{fmtDate(detail.eta_exec)}</td>
+                    </tr>
+                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                      <td className="px-2 py-1.5">Radiator HM • tanggal</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">
+                        {detail.rad_hm == null && !detail.rad_date ? '-' : `${fmtHm(detail.rad_hm)} • ${fmtDate(detail.rad_date)}`}
+                      </td>
+                    </tr>
+                    <tr className="border-b border-gray-100 dark:border-gray-800">
+                      <td className="px-2 py-1.5">Suhu upper / lower</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">
+                        {detail.rad_upper == null && detail.rad_lower == null
+                          ? '-' : `↑ ${fmtHm(detail.rad_upper)}°C • ↓ ${fmtHm(detail.rad_lower)}°C`}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="px-2 py-1.5">Radiator remark</td>
+                      <td className="px-2 py-1.5 text-right">{detail.rad_remark || '-'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Modal tambah/edit unit */}
-      {form && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setForm(null)}>
+      {/* Modal unit */}
+      {unitForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setUnitForm(null)}>
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-5 dark:bg-gray-900"
             onClick={(e) => e.stopPropagation()}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-semibold">
-                {form.mode === 'add' ? 'Tambah Unit Thermostat' : `Edit Unit ${form.row.cn}`}
-              </h3>
-              <button className="text-gray-400 hover:text-gray-600" onClick={() => setForm(null)}>✕</button>
-            </div>
-            <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <label className="block">
-                <span className="mb-1 block text-theme-xs text-gray-500">C/N *</span>
-                <input className="w-full rounded-lg border px-2 py-1.5 text-theme-sm uppercase"
-                  value={String(fdraft.cn ?? (form.mode === 'edit' ? form.row.cn : ''))}
-                  disabled={form.mode === 'edit'}
-                  onChange={(e) => setFdraft({ ...fdraft, cn: e.target.value.toUpperCase() })} />
-              </label>
-              {FIELDS.filter(([k]) => !(form.mode === 'add' && k === 'no')).map(([k, label, type]) => (
-                <label key={k} className="block">
-                  <span className="mb-1 block text-theme-xs text-gray-500">{label}</span>
-                  <input
-                    className="w-full rounded-lg border px-2 py-1.5 text-theme-sm"
-                    type={type}
-                    value={String((fdraft as Record<string, unknown>)[k] ?? '')}
-                    onChange={(e) => {
-                      const raw = e.target.value
-                      setFdraft({ ...fdraft, [k]: type === 'number' ? (raw === '' ? null : raw) : raw })
-                    }} />
-                </label>
-              ))}
-            </div>
-            <p className="mb-4 text-theme-xs text-gray-400">
-              Kosongkan kolom yang tidak ada datanya. DEVIASI &amp; LIFETIME dihitung otomatis dari HM Now, Last
-              Thermostat, dan Modif 74°C — tidak perlu diisi.
+            <h3 className="font-semibold">Edit unit {unitForm.cn}</h3>
+            <p className="mt-1 text-theme-xs text-gray-400">
+              C/N tidak bisa diubah. Deviasi &amp; lifetime dihitung otomatis dari HM now, last thermostat, dan modif 74°C.
             </p>
-            <div className="flex justify-end gap-2">
-              <button className="rounded-lg border px-4 py-2 text-theme-sm" onClick={() => setForm(null)}>Batal</button>
-              <button className="rounded-lg bg-brand-500 px-4 py-2 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-                onClick={saveForm} disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan'}</button>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <label className="text-theme-sm">NO
+                <input className={`${inp} mt-1 w-full`} type="number" value={unitForm.no}
+                  onChange={(e) => setUnitForm({ ...unitForm, no: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">HM now
+                <input className={`${inp} mt-1 w-full`} type="number" step="any" value={unitForm.hm_now}
+                  onChange={(e) => setUnitForm({ ...unitForm, hm_now: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">Unit model
+                <input className={`${inp} mt-1 w-full`} value={unitForm.unit_model}
+                  onChange={(e) => setUnitForm({ ...unitForm, unit_model: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">Product
+                <input className={`${inp} mt-1 w-full`} value={unitForm.product}
+                  onChange={(e) => setUnitForm({ ...unitForm, product: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">Unit type
+                <input className={`${inp} mt-1 w-full`} value={unitForm.unit_type}
+                  onChange={(e) => setUnitForm({ ...unitForm, unit_type: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">Interval (jam)
+                <input className={`${inp} mt-1 w-full`} type="number" step="any" value={unitForm.interval_hm}
+                  onChange={(e) => setUnitForm({ ...unitForm, interval_hm: e.target.value })}
+                  placeholder="12000" />
+              </label>
+
+              <label className="text-theme-sm">Last thermostat — HM
+                <input className={`${inp} mt-1 w-full`} type="number" step="any" value={unitForm.last_hm}
+                  onChange={(e) => setUnitForm({ ...unitForm, last_hm: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">Last thermostat — tanggal
+                <div className="mt-1"><DatePicker value={unitForm.last_date}
+                  onChange={(v) => setUnitForm({ ...unitForm, last_date: v })} /></div>
+              </label>
+              <label className="text-theme-sm">Modif 74°C — HM
+                <input className={`${inp} mt-1 w-full`} type="number" step="any" value={unitForm.modif_hm}
+                  onChange={(e) => setUnitForm({ ...unitForm, modif_hm: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">Modif 74°C — tanggal
+                <div className="mt-1"><DatePicker value={unitForm.modif_date}
+                  onChange={(v) => setUnitForm({ ...unitForm, modif_date: v })} /></div>
+              </label>
+              <label className="text-theme-sm col-span-2">Modif 74°C — status
+                <select className={`${inp} mt-1 w-full`} value={unitForm.modif_status}
+                  onChange={(e) => setUnitForm({ ...unitForm, modif_status: e.target.value })}>
+                  <option value="">(belum ada catatan)</option>
+                  <option value="DONE">DONE</option>
+                  <option value="NOT YET">NOT YET</option>
+                </select>
+              </label>
+
+              <label className="text-theme-sm">WR
+                <input className={`${inp} mt-1 w-full`} value={unitForm.wr}
+                  onChange={(e) => setUnitForm({ ...unitForm, wr: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">ETA parts
+                <div className="mt-1"><DatePicker value={unitForm.eta_parts}
+                  onChange={(v) => setUnitForm({ ...unitForm, eta_parts: v })} /></div>
+              </label>
+              <label className="text-theme-sm">ETA exec
+                <div className="mt-1"><DatePicker value={unitForm.eta_exec}
+                  onChange={(v) => setUnitForm({ ...unitForm, eta_exec: v })} /></div>
+              </label>
+              <label className="text-theme-sm">Radiator check — HM
+                <input className={`${inp} mt-1 w-full`} type="number" step="any" value={unitForm.rad_hm}
+                  onChange={(e) => setUnitForm({ ...unitForm, rad_hm: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">Radiator check — tanggal
+                <div className="mt-1"><DatePicker value={unitForm.rad_date}
+                  onChange={(v) => setUnitForm({ ...unitForm, rad_date: v })} /></div>
+              </label>
+              <label className="text-theme-sm">Radiator upper (°C)
+                <input className={`${inp} mt-1 w-full`} type="number" step="any" value={unitForm.rad_upper}
+                  onChange={(e) => setUnitForm({ ...unitForm, rad_upper: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">Radiator lower (°C)
+                <input className={`${inp} mt-1 w-full`} type="number" step="any" value={unitForm.rad_lower}
+                  onChange={(e) => setUnitForm({ ...unitForm, rad_lower: e.target.value })} />
+              </label>
+              <label className="col-span-2 text-theme-sm">Radiator remark
+                <textarea className={`${inp} mt-1 h-20 w-full`} value={unitForm.rad_remark}
+                  onChange={(e) => setUnitForm({ ...unitForm, rad_remark: e.target.value })}
+                  placeholder="catatan hasil radiator check by therma" />
+              </label>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="rounded-lg border px-4 py-2 text-theme-sm" onClick={() => setUnitForm(null)}>Batal</button>
+              <button className="rounded-lg bg-brand-500 px-4 py-2 text-theme-sm text-white disabled:opacity-50"
+                onClick={saveUnit} disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan'}</button>
             </div>
           </div>
         </div>

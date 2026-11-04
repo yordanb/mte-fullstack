@@ -419,12 +419,14 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
                COUNT(*) FILTER (WHERE modif_status = 'DONE') AS done,
                COUNT(*) FILTER (WHERE modif_status IS NOT NULL AND modif_status <> 'DONE') AS not_yet,
                COUNT(*) FILTER (WHERE hm_now IS NOT NULL
-                                AND hm_now - (COALESCE(last_hm, 0) + interval_hm) >= 0) AS due
+                                AND hm_now - (COALESCE(last_hm, 0) + interval_hm) >= 0) AS due,
+               MAX(last_date) AS last_date
         FROM thermo_unit
     """))).mappings().first()
     return {
         "units": agg["units"], "done": agg["done"], "not_yet": agg["not_yet"],
         "due": agg["due"], "interval": DEFAULT_INTERVAL,
+        "last_date": agg["last_date"],
     }
 
 

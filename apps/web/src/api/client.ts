@@ -1783,6 +1783,7 @@ export type ThermostatKpi = {
   not_yet: number
   due: number
   interval: number
+  last_date: string | null
 }
 
 export type ThermostatFilters = {
