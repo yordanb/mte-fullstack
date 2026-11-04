@@ -372,7 +372,7 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   `require_role("admin")` — praktis admin-only seperti web. `analyze`
   bersih, 50 test lolos (8 test baru `ssab_test.dart`), APK debug
   terbuild.
-- **Modul Proker (2026-11-05, branch mobile/proker)**: paritas tampilan
+- **Modul Proker (2026-11-05, sudah merge ke main)**: paritas tampilan
   4 halaman web (Proker.tsx, ProkerBooster.tsx, ProkerInjector.tsx,
   Thermostat.tsx) — scope disepakati: **tampilan + Refresh HM saja**
   (tanpa form edit/tambah/hapus dan tanpa import XLSX di mobile).
