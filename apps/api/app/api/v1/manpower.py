@@ -256,6 +256,272 @@ def _perf_where(periode: dt.date, dept: str | None, divisi: str | None) -> tuple
 _PERF = "p.status IS DISTINCT FROM :gc"
 
 
+# --------------------------------------------------------------------------- import
+
+
+def _parse(content: bytes, fname: str, override: dt.date | None
+           ) -> tuple[dt.date, list[dict], list[dict], int, int]:
+    """Baca satu workbook -> (periode, rows, errors, duplicates, skipped).
+
+    Hanya baris dengan DEPT di `DEPT_ALLOW` yang dikembalikan; sisanya dihitung
+    sebagai `skipped` dan tidak masuk database.
+    """
+    periode = override or period_from_filename(fname)
+    if not periode:
+        raise ValueError(
+            "periode tidak terdeteksi dari nama file; pilih bulan manual "
+            "(format YYYY-MM)"
+        )
+    wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+    try:
+        sheet = SHEET if SHEET in wb.sheetnames else wb.sheetnames[0]
+        ws = wb[sheet]
+        it = ws.iter_rows(values_only=True)
+        header = [str(h).strip().upper() if h is not None else "" for h in next(it)]
+        idx: dict[str, int] = {}
+        for i, h in enumerate(header):
+            if h and h not in idx:
+                idx[h] = i
+        missing = [h for h in HEADERS if h not in idx]
+        if missing:
+            raise ValueError(f"kolom wajib hilang: {', '.join(missing)}")
+
+        rows: dict[str, dict] = {}
+        errors: list[dict] = []
+        duplicates = 0
+        skipped = 0
+        for rno, r in enumerate(it, start=2):
+            if r is None:
+                continue
+            if all(v is None or (isinstance(v, str) and not v.strip()) for v in r):
+                continue
+
+            def g(name: str):
+                i = idx[name]
+                return r[i] if i < len(r) else None
+
+            dept = (_txt(g("DEPT")) or "").strip().upper()
+            if DEPT_ALLOW and dept not in DEPT_ALLOW:
+                skipped += 1
+                continue
+
+            nrp = (_txt(g("NRP")) or "").upper()
+            if not nrp:
+                errors.append({"file": fname, "row": rno, "error": "NRP kosong"})
+                continue
+            row = {
+                "periode": periode,
+                "nrp": nrp,
+                "nama": _txt(g("NAME")),
+                "jabatan": _txt(g("JABATAN")),
+                "dept": dept or None,
+                "divisi": (_txt(g("DIV")) or "").upper() or None,
+                "distrik": (_txt(g("DISTRIK")) or "").upper() or None,
+            }
+            for src, col in NUM_FIELDS:
+                row[col] = _int(g(src))
+            if nrp in rows:
+                duplicates += 1
+            rows[nrp] = row
+        return periode, list(rows.values()), errors, duplicates, skipped
+    finally:
+        wb.close()
+
+
+_UPSERT = text(f"""
+INSERT INTO manpower_month ({', '.join(COLS)}, import_id)
+VALUES ({', '.join(':' + c for c in COLS)}, :import_id)
+ON CONFLICT (periode, nrp) DO UPDATE SET
+  {', '.join(f'{c} = EXCLUDED.{c}' for c in COLS if c not in ('periode', 'nrp'))},
+  import_id = EXCLUDED.import_id,
+  updated_at = now()
+""")
+
+
+async def _existing(db: AsyncSession, periods: list[dt.date]) -> set[tuple[dt.date, str]]:
+    if not periods:
+        return set()
+    rows = (await db.execute(text(
+        "SELECT periode, nrp FROM manpower_month WHERE periode = ANY(:ps)"),
+        {"ps": periods})).mappings().all()
+    return {(r["periode"], r["nrp"]) for r in rows}
+
+
+async def _ensure_profiles(db: AsyncSession, rows: list[dict], by: str | None) -> int:
+    """Buat profil (beserta tebakan dari JABATAN) untuk NRP yang belum punya.
+
+    Profil yang sudah ada tidak diubah, sehingga koreksi manual aman.
+    """
+    if not rows:
+        return 0
+    nrps = sorted({r["nrp"] for r in rows if r.get("nrp")})
+    if not nrps:
+        return 0
+    have = set((await db.execute(
+        text("SELECT nrp FROM manpower_profile WHERE nrp = ANY(:n)"), {"n": nrps})).scalars())
+    payload = []
+    for r in rows:
+        nrp = r.get("nrp")
+        if not nrp or nrp in have:
+            continue
+        section, crew, status = classify(r.get("jabatan"))
+        payload.append({"nrp": nrp, "section": section, "crew": crew, "status": status,
+                        "auto": bool(section or crew or status), "by": by})
+        have.add(nrp)
+    if payload:
+        await db.execute(text(
+            "INSERT INTO manpower_profile (nrp, section, crew, status, auto, updated_by) "
+            "VALUES (:nrp, :section, :crew, :status, :auto, :by) "
+            "ON CONFLICT (nrp) DO NOTHING"), payload)
+    return len(payload)
+
+
+async def _run(import_id: str, files: list[tuple[str, bytes]], override: dt.date | None,
+               username: str | None = None):
+    async with SessionLocal() as db:
+        try:
+            merged: dict[tuple[dt.date, str], dict] = {}
+            periods: set[dt.date] = set()
+            errors: list[dict] = []
+            duplicates = 0
+            skipped_dept = 0
+            total = 0
+
+            for fname, content in files:
+                try:
+                    periode, rows, errs, dup, skipped = _parse(content, fname, override)
+                except Exception as e:  # noqa: BLE001
+                    errors.append({"file": fname, "error": str(e)})
+                    continue
+                periods.add(periode)
+                duplicates += dup
+                skipped_dept += skipped
+                errors.extend(errs[:50])
+                total += len(rows) + len(errs) + skipped
+                for row in rows:
+                    merged[(periode, row["nrp"])] = row
+                await db.execute(text(
+                    "UPDATE imports SET total_rows=:t, processed_rows=0 WHERE id=:i"),
+                    {"t": total, "i": import_id})
+                await db.commit()
+
+            if not merged:
+                detail = "; ".join(str(e.get("error") or e.get("file")) for e in errors[:5])
+                raise ValueError(
+                    "tidak ada baris yang bisa diimpor" + (f": {detail}" if detail else ""))
+
+            old_keys = await _existing(db, sorted(periods))
+            new_keys = set(merged)
+            inserted = len(new_keys - old_keys)
+            updated = len(new_keys & old_keys)
+            deleted = len(old_keys - new_keys)
+
+            values = list(merged.values())
+            done = 0
+            for i in range(0, len(values), BATCH):
+                batch = values[i:i + BATCH]
+                await db.execute(_UPSERT, [{**b, "import_id": import_id} for b in batch])
+                done += len(batch)
+                await db.execute(text(
+                    "UPDATE imports SET processed_rows=:p, ok_rows=:o WHERE id=:i"),
+                    {"p": done, "o": done, "i": import_id})
+                await db.commit()
+
+            # Snapshot harus sama persis dengan file terbaru: buang baris lama
+            # pada periode yang di-upload tapi tidak ada lagi di file ini.
+            await db.execute(text(
+                "DELETE FROM manpower_month "
+                "WHERE periode = ANY(:ps) AND import_id IS DISTINCT FROM :i"),
+                {"ps": sorted(periods), "i": import_id})
+            await db.commit()
+
+            # NRP baru langsung diberi kelompok awal hasil tebakan jabatan.
+            profiles_created = await _ensure_profiles(
+                db, values, by=f"import: {username}" if username else "import")
+            await db.commit()
+
+            summary = {
+                "inserted": inserted,
+                "updated": updated,
+                "deleted": deleted,
+                "duplicates": duplicates,
+                "skipped_dept": skipped_dept,
+                "profiles_created": profiles_created,
+                "dept_filter": sorted(DEPT_ALLOW),
+                "periods": [p.strftime("%Y-%m") for p in sorted(periods)],
+                "files": [f for f, _ in files],
+                "total_rows": total,
+                "errors": errors[:50],
+            }
+            await db.execute(text(
+                "UPDATE imports SET status='COMMITTED', total_rows=:t, ok_rows=:o, "
+                "fail_rows=:f, processed_rows=:p, errors=CAST(:e AS jsonb) WHERE id=:i"),
+                {"t": total, "o": len(values), "f": len(errors), "p": total,
+                 "e": json.dumps(summary, default=str), "i": import_id})
+            await db.commit()
+            log.info("manpower import %s: %s periode, %s inserted, %s updated, %s deleted, "
+                     "%s dilewati (DEPT %s)",
+                     import_id, len(periods), inserted, updated, deleted, skipped_dept,
+                     sorted(DEPT_ALLOW))
+        except Exception as e:  # noqa: BLE001
+            await db.rollback()
+            await db.execute(text(
+                "UPDATE imports SET status='FAILED', errors=CAST(:e AS jsonb) WHERE id=:i"),
+                {"e": json.dumps({"error": str(e)}, default=str), "i": import_id})
+            await db.commit()
+            log.exception("manpower import gagal: %s", e)
+
+
+@router.post("/import", dependencies=[Depends(require_menu("manpower", "add"))],
+             status_code=202)
+async def import_xlsx(
+    bg: BackgroundTasks,
+    files: list[UploadFile] = File(...),
+    periode: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Upload 1..n file RptInnovatorMonthly (.xlsx). Periode dibaca dari nama file."""
+    if not files:
+        raise HTTPException(400, "Tidak ada file")
+    override = parse_period(periode) if periode else None
+    payload: list[tuple[str, bytes]] = []
+    limit = settings.max_upload_mb * 1024 * 1024
+    for f in files:
+        content = await f.read()
+        if len(content) > limit:
+            raise HTTPException(413, f"{f.filename}: file terlalu besar")
+        if not content:
+            raise HTTPException(400, f"{f.filename}: file kosong")
+        payload.append((f.filename or "upload.xlsx", content))
+    if not override and not any(period_from_filename(n) for n, _ in payload):
+        raise HTTPException(
+            400, "Periode tidak terdeteksi dari nama file. Pilih bulan manual.")
+    label = ", ".join(name for name, _ in payload)
+    res = await db.execute(text(
+        "INSERT INTO imports(filename,sheet,status,total_rows,uploaded_by) "
+        "VALUES (:fn,'MANPOWER','PROCESSING',0,:u) RETURNING id"),
+        {"fn": label[:300], "u": user["username"]})
+    import_id = str(res.scalar_one())
+    await db.commit()
+    bg.add_task(_run, import_id, payload, override, user["username"])
+    return {"import_id": import_id, "status": "PROCESSING", "files": len(payload)}
+
+
+@router.get("/import/{import_id}", dependencies=[Depends(require_menu("manpower", "view"))])
+async def import_status(import_id: str, db: AsyncSession = Depends(get_db)):
+    row = (await db.execute(text(
+        "SELECT id, filename, status, total_rows, ok_rows, fail_rows, processed_rows, "
+        "uploaded_by, created_at, errors FROM imports WHERE id=:i AND sheet='MANPOWER'"),
+        {"i": import_id})).mappings().first()
+    if not row:
+        raise HTTPException(404, "import_id tidak ditemukan")
+    return dict(row)
+
+
+# --------------------------------------------------------------------------- agregat
+
+
 @router.get("/periods", dependencies=[Depends(require_menu("manpower", "view"))])
 async def get_periods(db: AsyncSession = Depends(get_db)):
     rows = (await db.execute(text(f"""
