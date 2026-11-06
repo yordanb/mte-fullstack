@@ -82,7 +82,6 @@ class _DbrPageState extends ConsumerState<DbrPage> {
     final f = ref.watch(dbrFilterProvider);
     final recAsync = ref.watch(dbrRecordsProvider);
     final codesAsync = ref.watch(dbrCodesProvider);
-    final lastUpAsync = ref.watch(dbrLastImportProvider);
     final codeList = switch (codesAsync) {
       AsyncData(:final value) => value,
       _ => const <String>[],
@@ -154,20 +153,20 @@ class _DbrPageState extends ConsumerState<DbrPage> {
               ],
             ),
           ),
-          // Last update upload DBR terakhir (web aaed7e8).
-          lastUpAsync.when(
-            data: (last) => last == null
+          // Last update DBR (web 1a408cd/V62): MAX(dbr_records.updated_at)
+          // dari respons records, bukan lagi /imports/latest.
+          recAsync.maybeWhen(
+            data: (res) => res.updatedAt == null
                 ? const SizedBox.shrink()
                 : Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                     child: Text(
-                      'Last update: ${fmtDT(last.createdAt)}'
-                      '${(last.uploadedBy?.isNotEmpty ?? false) ? ' oleh ${last.uploadedBy}' : ''}',
+                      'Last update: ${fmtDT(res.updatedAt)}'
+                      '${(res.updatedBy?.isNotEmpty ?? false) ? ' oleh ${res.updatedBy}' : ''}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            orElse: () => const SizedBox.shrink(),
           ),
           Expanded(
             child: recAsync.when(
@@ -186,7 +185,6 @@ class _DbrPageState extends ConsumerState<DbrPage> {
                       child: RefreshIndicator(
                         onRefresh: () async {
                           ref.invalidate(dbrRecordsProvider);
-                          ref.invalidate(dbrLastImportProvider);
                           await ref.read(dbrRecordsProvider.future);
                         },
                         child: DbrTable(rows: shown),

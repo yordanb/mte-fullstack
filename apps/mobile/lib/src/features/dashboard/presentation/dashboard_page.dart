@@ -17,14 +17,12 @@ class DashboardPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(dashboardFilterProvider);
     final rowsAsync = ref.watch(dashboardRowsProvider);
-    final lastUpAsync = ref.watch(lastImportProvider);
 
     return AppScaffold(
       title: 'Dashboard Oil Lab',
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(dashboardRowsProvider);
-          ref.invalidate(lastImportProvider);
           await ref.read(dashboardRowsProvider.future);
         },
         child: ListView(
@@ -34,17 +32,16 @@ class DashboardPage extends ConsumerWidget {
             const SizedBox(height: 8),
             _CriticalRadios(filter: filter, ref: ref),
             const SizedBox(height: 8),
-            lastUpAsync.when(
-              data: (last) => last == null
+            // Last update (web 3992270): metadata dari latest-per-unit.
+            rowsAsync.maybeWhen(
+              data: (res) => res.updatedAt == null
                   ? const SizedBox.shrink()
                   : Text(
-                      // Web aaed7e8: hanya waktu + pengunggah.
-                      'Last update: ${fmtDT(last.createdAt)}'
-                      '${(last.uploadedBy?.isNotEmpty ?? false) ? ' oleh ${last.uploadedBy}' : ''}',
+                      'Last update: ${fmtDT(res.updatedAt)}'
+                      '${(res.updatedBy?.isNotEmpty ?? false) ? ' oleh ${res.updatedBy}' : ''}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              orElse: () => const SizedBox.shrink(),
             ),
             const SizedBox(height: 8),
             rowsAsync.when(

@@ -30,6 +30,7 @@ import 'package:mte_data_center/src/features/proker/presentation/proker_booster_
 import 'package:mte_data_center/src/features/proker/presentation/proker_injector_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_primer_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_thermostat_page.dart';
+import 'package:mte_data_center/src/features/timeline/presentation/timeline_page.dart';
 
 /// GoRouter Milestone 1: /login, / (dashboard), + route stub milestone
 /// berikutnya. Redirect ke /login bila tanpa token; /users & /audit
@@ -56,6 +57,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (c, s) => const DashboardPage()),
       GoRoute(path: '/dbr', builder: (c, s) => const DbrPage()),
       GoRoute(path: '/performance', builder: (c, s) => const PerformancePage()),
+      GoRoute(path: '/timeline', builder: (c, s) => const TimelinePage()),
       GoRoute(path: '/equipment', builder: (c, s) => const EquipmentPage()),
       GoRoute(path: '/equipment/new', builder: (c, s) => const EquipmentFormPage()),
       GoRoute(

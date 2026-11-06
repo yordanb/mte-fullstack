@@ -117,14 +117,24 @@ class DashboardApi {
   final Dio _dio;
   DashboardApi(this._dio);
 
-  Future<List<LabRow>> latestPerUnit({int limit = 200, String? prefix, String? condition}) async {
+  /// GET /v1/results/latest-per-unit — data + metadata "Last update"
+  /// (web 3992270: oil_lab_result.updated_at + uploader import terbaru).
+  Future<({List<LabRow> data, String? updatedAt, String? updatedBy})>
+      latestPerUnit({int limit = 200, String? prefix, String? condition}) async {
     final r = await _dio.get('/v1/results/latest-per-unit', queryParameters: {
       'limit': limit,
       if (prefix != null && prefix.isNotEmpty) 'prefix': prefix,
       if (condition != null && condition.isNotEmpty) 'condition': condition,
     });
-    final list = ((r.data as Map)['data'] as List? ?? []);
-    return list.map((e) => LabRow.fromJson((e as Map).cast<String, dynamic>())).toList();
+    final m = r.data as Map;
+    final list = (m['data'] as List? ?? []);
+    return (
+      data: list
+          .map((e) => LabRow.fromJson((e as Map).cast<String, dynamic>()))
+          .toList(),
+      updatedAt: m['updated_at']?.toString(),
+      updatedBy: m['updated_by']?.toString(),
+    );
   }
 
   Future<List<LabRow>> search(String vessel, [String? unit]) async {

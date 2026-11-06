@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mte_data_center/src/core/auth/auth_notifier.dart';
 import 'package:mte_data_center/src/core/network/dio_client.dart' show apiMessage;
 import 'package:mte_data_center/src/core/utils/date_fmt.dart';
-import 'package:mte_data_center/src/features/dashboard/data/dashboard_api.dart'
-    show ImportStatus, dashboardApiProvider;
 
 import '../data/dbr_api.dart';
 import '../domain/dbr_models.dart';
@@ -116,14 +114,5 @@ final dbrCodesProvider = FutureProvider<List<String>>((ref) async {
     return await ref.watch(dbrApiProvider).codes();
   } catch (_) {
     return <String>[];
-  }
-});
-
-/// Last update upload DBR (web aaed7e8): GET /v1/imports/latest?sheet=DBR.
-final dbrLastImportProvider = FutureProvider<ImportStatus?>((ref) async {
-  try {
-    return await ref.watch(dashboardApiProvider).latestImport(sheet: 'DBR');
-  } catch (_) {
-    return null;
   }
 });

@@ -10,6 +10,7 @@ const List<Map<String, dynamic>> _menu = [
   {'key': 'dashboard', 'label': 'Dashboard Oil Lab', 'path': '/'},
   {'key': 'dbr', 'label': 'DBR Breakdown', 'path': '/dbr'},
   {'key': 'performance', 'label': 'Performance', 'path': '/performance'},
+  {'key': 'timeline', 'label': 'Timeline Mingguan', 'path': '/timeline'},
   {'key': 'activity', 'label': 'Activity', 'path': '/activity'},
   {'key': 'bomak', 'label': 'Bomak R1BI', 'path': '/bomak'},
   {'key': 'mom', 'label': 'Meeting', 'path': '/mom'},

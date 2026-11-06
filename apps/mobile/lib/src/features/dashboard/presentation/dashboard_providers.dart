@@ -49,7 +49,15 @@ final dashboardFilterProvider =
 class DashboardRows {
   final List<LabRow> rows;
   final String? error;
-  const DashboardRows({this.rows = const [], this.error});
+  /// Label "Last update" (web 3992270): dari data latest-per-unit.
+  final String? updatedAt;
+  final String? updatedBy;
+  const DashboardRows({
+    this.rows = const [],
+    this.error,
+    this.updatedAt,
+    this.updatedBy,
+  });
 }
 
 /// Rows mengikuti filter aktif. 401 final -> paksa logout (ke /login).
@@ -61,10 +69,14 @@ final dashboardRowsProvider = FutureProvider<DashboardRows>((ref) async {
       return DashboardRows(rows: await api.search(f.vessel, f.unit.isEmpty ? null : f.unit));
     }
     if (f.critPrefix.isNotEmpty) {
+      final r = await api.latestPerUnit(
+          limit: 200, prefix: f.critPrefix, condition: 'CRITICAL');
       return DashboardRows(
-          rows: await api.latestPerUnit(limit: 200, prefix: f.critPrefix, condition: 'CRITICAL'));
+          rows: r.data, updatedAt: r.updatedAt, updatedBy: r.updatedBy);
     }
-    return DashboardRows(rows: await api.latestPerUnit(limit: 200));
+    final r = await api.latestPerUnit(limit: 200);
+    return DashboardRows(
+        rows: r.data, updatedAt: r.updatedAt, updatedBy: r.updatedBy);
   } on DioException catch (e) {
     if (e.response?.statusCode == 401) {
       await ref.read(authProvider.notifier).forceLogout();
@@ -72,13 +84,5 @@ final dashboardRowsProvider = FutureProvider<DashboardRows>((ref) async {
     return DashboardRows(error: apiMessage(e));
   } catch (e) {
     return DashboardRows(error: apiMessage(e));
-  }
-});
-
-final lastImportProvider = FutureProvider<ImportStatus?>((ref) async {
-  try {
-    return await ref.watch(dashboardApiProvider).latestImport();
-  } catch (_) {
-    return null;
   }
 });

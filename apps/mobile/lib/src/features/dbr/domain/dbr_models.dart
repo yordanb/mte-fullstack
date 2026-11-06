@@ -58,5 +58,14 @@ class DbrPageResult {
   final int total;
   final int page;
   final List<DbrRow> rows;
-  const DbrPageResult({required this.total, required this.page, this.rows = const []});
+  /// Sumber label "Last update" (web 1a408cd/V62): MAX(dbr_records.updated_at).
+  final String? updatedAt;
+  final String? updatedBy;
+  const DbrPageResult({
+    required this.total,
+    required this.page,
+    this.rows = const [],
+    this.updatedAt,
+    this.updatedBy,
+  });
 }

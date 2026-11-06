@@ -36,6 +36,8 @@ class DbrApi {
       total: (m['total'] as num?)?.toInt() ?? 0,
       page: (m['page'] as num?)?.toInt() ?? page,
       rows: list.map((e) => DbrRow.fromJson((e as Map).cast<String, dynamic>())).toList(),
+      updatedAt: m['updated_at']?.toString(),
+      updatedBy: m['updated_by']?.toString(),
     );
   }
 
