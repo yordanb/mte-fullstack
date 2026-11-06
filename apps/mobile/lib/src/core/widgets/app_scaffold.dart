@@ -27,6 +27,7 @@ const List<Map<String, dynamic>> _menu = [
   {'key': 'yazu', 'label': 'Yazu P2H', 'path': '/yazu'},
   {'key': 'yazudc', 'label': 'Yazu Daily Check', 'path': '/yazudc'},
   {'key': 'ewacs', 'label': 'Ewacs Performance', 'path': '/ewacs'},
+  {'key': 'riwayat', 'label': 'Riwayat', 'path': '/riwayat'},
   {'key': 'measurement', 'label': 'Measurement', 'path': '/measurement'},
   {'key': 'tarsupport', 'label': 'TAR Support', 'path': '/tarsupport'},
   {'key': 'sugfui', 'label': 'Suggestion FUI', 'path': '/suggestion'},

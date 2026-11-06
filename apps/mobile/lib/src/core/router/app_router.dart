@@ -33,6 +33,8 @@ import 'package:mte_data_center/src/features/proker/presentation/proker_booster_
 import 'package:mte_data_center/src/features/proker/presentation/proker_injector_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_primer_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_thermostat_page.dart';
+import 'package:mte_data_center/src/features/riwayat/presentation/riwayat_detail_page.dart';
+import 'package:mte_data_center/src/features/riwayat/presentation/riwayat_page.dart';
 import 'package:mte_data_center/src/features/timeline/presentation/timeline_page.dart';
 import 'package:mte_data_center/src/features/yazu/presentation/yazu_page.dart';
 
@@ -66,7 +68,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/hourmeter', builder: (c, s) => const HourmeterPage()),
       GoRoute(path: '/yazu', builder: (c, s) => const YazuPage()),
       GoRoute(path: '/yazudc', builder: (c, s) => const YazuDailyCheckPage()),
-      GoRoute(path: '/ewacs', builder: (c, s) => const EwacsPage()),      GoRoute(path: '/measurement', builder: (c, s) => const MeasurementPage()),
+      GoRoute(path: '/ewacs', builder: (c, s) => const EwacsPage()),
+      GoRoute(path: '/riwayat', builder: (c, s) => const RiwayatPage()),
+      GoRoute(
+          path: '/riwayat/:id',
+          builder: (c, s) => RiwayatDetailPage(id: s.pathParameters['id']!)),      GoRoute(path: '/measurement', builder: (c, s) => const MeasurementPage()),
       GoRoute(path: '/tarsupport', builder: (c, s) => const TarSupportPage()),
       GoRoute(path: '/equipment', builder: (c, s) => const EquipmentPage()),
       GoRoute(path: '/equipment/new', builder: (c, s) => const EquipmentFormPage()),
