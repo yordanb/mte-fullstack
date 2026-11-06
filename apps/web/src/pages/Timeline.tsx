@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  fetchActivitiesByDate, fetchActivity, activityPhotoUrl, todayLocal,
+  fetchActivitiesByDate, fetchActivity, activityPhotoUrl, isVideoType, todayLocal,
   type Activity,
 } from '../api/client'
 import { DatePicker } from '../components/DatePicker'
@@ -64,7 +64,7 @@ export default function TimelinePage() {
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
-  const [photos, setPhotos] = useState<{ id: string; orig_name?: string | null }[]>([])
+  const [photos, setPhotos] = useState<{ id: string; orig_name?: string | null; content_type?: string | null }[]>([])
 
   const load = async (f = applied) => {
     const dates = rangeDates(f.df, f.dt)
@@ -273,8 +273,17 @@ export default function TimelinePage() {
                       <div className="mt-2 grid grid-cols-3 gap-1">
                         {photos.map((p) => (
                           <a key={p.id} href={activityPhotoUrl(a.id, p.id)} target="_blank" rel="noreferrer">
-                            <img src={activityPhotoUrl(a.id, p.id)} alt={p.orig_name ?? ''}
-                              loading="lazy" className="h-16 w-full rounded-lg object-cover" />
+                            {isVideoType(p.content_type) ? (
+                              <video
+                                src={activityPhotoUrl(a.id, p.id)}
+                                className="h-16 w-full rounded-lg bg-black object-cover"
+                                preload="metadata"
+                                muted
+                              />
+                            ) : (
+                              <img src={activityPhotoUrl(a.id, p.id)} alt={p.orig_name ?? ''}
+                                loading="lazy" className="h-16 w-full rounded-lg object-cover" />
+                            )}
                           </a>
                         ))}
                         {photos.length === 0 && (

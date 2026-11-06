@@ -1,5 +1,5 @@
 ﻿import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, canWrite, todayLocal, errMsg, isAdmin, importSsXlsx, fetchSsImportStatus, importManpowerXlsx, fetchManpowerImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, isVideoType, can, canWrite, todayLocal, errMsg, isAdmin, importSsXlsx, fetchSsImportStatus, importManpowerXlsx, fetchManpowerImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
 import { DatePicker } from '../components/DatePicker'
 import { VesselTable } from '../components/Widgets'
 
@@ -1143,19 +1143,36 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
           <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {(row.photos ?? []).map((p, idx) => (
               <div key={p.id} className="group relative">
-                <img
-                  src={activityPhotoUrl(row.id, p.id)}
-                  alt={p.orig_name ?? ''}
-                  className="h-32 w-full cursor-zoom-in rounded-lg object-cover transition-opacity hover:opacity-90"
-                  loading="lazy"
-                  onClick={() => setPhotoIdx(idx)}
-                />
+                {isVideoType(p.content_type) ? (
+                  <div className="relative">
+                    <video
+                      src={activityPhotoUrl(row.id, p.id)}
+                      className="h-32 w-full cursor-zoom-in rounded-lg bg-black object-cover transition-opacity hover:opacity-90"
+                      preload="metadata"
+                      muted
+                      onClick={() => setPhotoIdx(idx)}
+                    />
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                      </span>
+                    </span>
+                  </div>
+                ) : (
+                  <img
+                    src={activityPhotoUrl(row.id, p.id)}
+                    alt={p.orig_name ?? ''}
+                    className="h-32 w-full cursor-zoom-in rounded-lg object-cover transition-opacity hover:opacity-90"
+                    loading="lazy"
+                    onClick={() => setPhotoIdx(idx)}
+                  />
+                )}
                 <div className="absolute top-1 right-1 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <a
                     href={activityPhotoUrl(row.id, p.id)}
                     download={p.orig_name ?? ''}
                     onClick={(e) => e.stopPropagation()}
-                    title="Download foto"
+                    title="Download"
                     className="flex h-6 w-6 items-center justify-center rounded-lg bg-black/60 text-white hover:bg-black/80"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1165,7 +1182,7 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
                   {can('activity', 'delete') && (
                     <button
                       onClick={() => delPhoto(p.id)}
-                      title="Hapus foto"
+                      title="Hapus"
                       className="flex h-6 w-6 items-center justify-center rounded-lg bg-black/60 text-white hover:bg-red-600"
                     >×</button>
                   )}
@@ -1186,7 +1203,7 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
               <a
                 href={activityPhotoUrl(row.id, photos[photoIdx].id)}
                 download={photos[photoIdx].orig_name ?? ''}
-                title="Download foto"
+                title="Download"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/25"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -1196,11 +1213,11 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
               </a>
               {can('activity', 'delete') && (
                 <button
-                  title="Hapus foto"
+                  title="Hapus"
                   className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white hover:bg-red-600"
                   onClick={async (e) => {
                     e.stopPropagation()
-                    if (!confirm('Hapus foto ini?')) return
+                    if (!confirm('Hapus item ini?')) return
                     try { await deleteActivityPhoto(row.id, photos[photoIdx].id); setPhotoIdx(null); onPhotoDeleted() }
                     catch (err) { setMsg(`gagal: ${errMsg(err)}`) }
                   }}
@@ -1243,12 +1260,24 @@ function ActDetail({ row, onClose, onEdit, onDeleted, onPhotoDeleted }: {
               </button>
             )}
 
-            <img
-              src={activityPhotoUrl(row.id, photos[photoIdx].id)}
-              alt={photos[photoIdx].orig_name ?? ''}
-              className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
+            {isVideoType(photos[photoIdx].content_type) ? (
+              <video
+                key={photos[photoIdx].id}
+                src={activityPhotoUrl(row.id, photos[photoIdx].id)}
+                className="max-h-[85vh] max-w-[90vw] rounded-lg bg-black object-contain"
+                controls
+                autoPlay
+                playsInline
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <img
+                src={activityPhotoUrl(row.id, photos[photoIdx].id)}
+                alt={photos[photoIdx].orig_name ?? ''}
+                className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
           </div>
         )}
         {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}
@@ -1413,9 +1442,9 @@ function ActForm({ date, initial, catOptions, onClose, onSaved }: {
           </div>
           <label className="text-theme-sm">Keterangan<textarea className={inp} rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} /></label>
           {!initial ? (
-            <label className="text-theme-sm">Foto (boleh banyak)<input type="file" id="act-files" accept="image/*" multiple className={inp} /></label>
+            <label className="text-theme-sm">Foto/Video (boleh banyak)<input type="file" id="act-files" accept="image/*,video/*" multiple className={inp} /></label>
           ) : localStorage.getItem('mte_role') === 'admin' ? (
-            <label className="text-theme-sm">Tambah foto (admin, boleh banyak)<input type="file" id="act-files-edit" accept="image/*" multiple className={inp} /></label>
+            <label className="text-theme-sm">Tambah foto/video (admin, boleh banyak)<input type="file" id="act-files-edit" accept="image/*,video/*" multiple className={inp} /></label>
           ) : null}
         </div>
         {msg && <p className="mt-2 text-theme-sm text-red-600">{msg}</p>}

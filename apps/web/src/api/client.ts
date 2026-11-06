@@ -510,8 +510,13 @@ export async function patchEquipment(cn: string, body: Partial<Equipment>) {
 export type Activity = {
   id: string; date: string; title: string; description?: string | null
   category?: string | null; crew?: string | null; cn?: string | null; hm?: number | null; shift?: number | null; created_by?: string | null
-  created_at?: string; photos?: { id: string; orig_name?: string | null }[]
+  created_at?: string; photos?: { id: string; orig_name?: string | null; content_type?: string | null }[]
   photos_count?: number; cover_id?: string | null
+}
+
+/** True bila content_type menandakan video (mis. "video/mp4"). */
+export function isVideoType(ct?: string | null): boolean {
+  return (ct ?? '').toLowerCase().startsWith('video/')
 }
 
 export async function fetchActivityMonth(year: number, month: number, crew?: string, category?: string) {
