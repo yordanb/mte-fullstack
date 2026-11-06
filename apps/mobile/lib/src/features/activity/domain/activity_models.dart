@@ -46,12 +46,17 @@ List<String> catChoices({List<String> fromData = const [], String? current}) {
 class ActivityPhoto {
   final String id;
   final String? origName;
+  final String? contentType;
 
-  const ActivityPhoto({required this.id, this.origName});
+  const ActivityPhoto({required this.id, this.origName, this.contentType});
+
+  /// True bila content_type menandakan video (mis. "video/mp4").
+  bool get isVideo => (contentType ?? '').toLowerCase().startsWith('video/');
 
   factory ActivityPhoto.fromJson(Map<String, dynamic> j) => ActivityPhoto(
         id: '${j['id']}',
         origName: j['orig_name']?.toString(),
+        contentType: j['content_type']?.toString(),
       );
 }
 

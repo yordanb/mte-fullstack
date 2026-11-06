@@ -56,13 +56,7 @@ class ActivityApi {
 
   Future<MultipartFile> _mp(String path) async {
     final name = path.split(RegExp(r'[/\\]')).last;
-    final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
-    final mime = switch (ext) {
-      'png' => 'image/png',
-      'webp' => 'image/webp',
-      'gif' => 'image/gif',
-      _ => 'image/jpeg',
-    };
+    final mime = ActivityApi.mimeForPath(path);
     final slash = mime.indexOf('/');
     return MultipartFile.fromFile(
       path,
@@ -70,6 +64,28 @@ class ActivityApi {
       contentType: DioMediaType(mime.substring(0, slash), mime.substring(slash + 1)),
     );
   }
+
+  /// Tebak MIME dari ekstensi (gambar & video). Dipakai upload multipart.
+  static String mimeForPath(String path) {
+    final name = path.split(RegExp(r'[/\\]')).last;
+    final ext = name.contains('.') ? name.split('.').last.toLowerCase() : '';
+    return switch (ext) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      'mp4' => 'video/mp4',
+      'm4v' => 'video/mp4',
+      'mov' => 'video/quicktime',
+      'webm' => 'video/webm',
+      'avi' => 'video/x-msvideo',
+      'mkv' => 'video/x-matroska',
+      '3gp' => 'video/3gpp',
+      _ => 'image/jpeg',
+    };
+  }
+
+  /// True bila path berujung ekstensi video (pratinjau form).
+  static bool isVideoPath(String path) => mimeForPath(path).startsWith('video/');
 
   /// POST /v1/activities (multipart 201) -> id. crew wajib, cn uppercase.
   Future<String> create({

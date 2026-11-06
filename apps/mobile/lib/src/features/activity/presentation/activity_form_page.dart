@@ -119,7 +119,6 @@ class _FormBodyState extends ConsumerState<_FormBody> {
     final files = await ImagePicker().pickMultiImage();
     if (files.isNotEmpty) setState(() => _picked.addAll(files));
   }
-
   Future<void> _pickDate() async {
     final cur = DateTime.tryParse(_date) ?? DateTime.now();
     final d = await showDatePicker(
@@ -431,8 +430,8 @@ class _FormBodyState extends ConsumerState<_FormBody> {
               onPressed: _busy ? null : _pick,
               icon: const Icon(Icons.photo_library),
               label: Text(_isEdit
-                  ? 'Tambah foto (admin, boleh banyak)'
-                  : 'Foto (boleh banyak)${_picked.isEmpty ? '' : ' (${_picked.length})'}'),
+                  ? 'Tambah foto/video (admin, boleh banyak)'
+                  : 'Foto/Video (boleh banyak)${_picked.isEmpty ? '' : ' (${_picked.length})'}'),
             ),
             if (_picked.isNotEmpty)
               SizedBox(
@@ -445,12 +444,21 @@ class _FormBodyState extends ConsumerState<_FormBody> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          File(_picked[i].path),
-                          width: 84,
-                          height: 84,
-                          fit: BoxFit.cover,
-                        ),
+                        child: ActivityApi.isVideoPath(_picked[i].path)
+                            ? Container(
+                                width: 84,
+                                height: 84,
+                                color: Colors.black87,
+                                child: const Center(
+                                  child: Icon(Icons.movie, color: Colors.white54),
+                                ),
+                              )
+                            : Image.file(
+                                File(_picked[i].path),
+                                width: 84,
+                                height: 84,
+                                fit: BoxFit.cover,
+                              ),
                       ),
                       Positioned(
                         top: 0,

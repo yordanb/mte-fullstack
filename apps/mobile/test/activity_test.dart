@@ -49,6 +49,29 @@ void main() {
     expect(u, endsWith('/v1/activities/aid/photos/pid?token=tok123'));
   });
 
+  // Video: detail photo membawa content_type + isVideo (web 4c4c711).
+  test('ActivityPhoto: content_type video terdeteksi', () {
+    final v = ActivityPhoto.fromJson(
+        {'id': 'p1', 'orig_name': 'a.mp4', 'content_type': 'video/mp4'});
+    expect(v.contentType, 'video/mp4');
+    expect(v.isVideo, isTrue);
+    final img = ActivityPhoto.fromJson(
+        {'id': 'p2', 'orig_name': 'a.jpg', 'content_type': 'image/jpeg'});
+    expect(img.isVideo, isFalse);
+    expect(ActivityPhoto.fromJson({'id': 'p3'}).isVideo, isFalse);
+  });
+
+  test('mimeForPath/isVideoPath: gambar & video', () {
+    expect(ActivityApi.mimeForPath(r'C:\tmp\a.MP4'), 'video/mp4');
+    expect(ActivityApi.mimeForPath('a.mov'), 'video/quicktime');
+    expect(ActivityApi.mimeForPath('a.webm'), 'video/webm');
+    expect(ActivityApi.mimeForPath('a.png'), 'image/png');
+    expect(ActivityApi.mimeForPath('a.jpg'), 'image/jpeg');
+    expect(ActivityApi.mimeForPath('a.bin'), 'image/jpeg'); // fallback
+    expect(ActivityApi.isVideoPath('clip.mp4'), isTrue);
+    expect(ActivityApi.isVideoPath('foto.jpg'), isFalse);
+  });
+
   test('shift field terparse dari JSON (V23)', () {
     final a = Activity.fromJson({
       'id': 's1',

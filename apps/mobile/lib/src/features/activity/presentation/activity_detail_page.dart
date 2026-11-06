@@ -9,6 +9,7 @@ import 'package:mte_data_center/src/core/widgets/error_view.dart';
 
 import '../data/activity_api.dart';
 import 'activity_providers.dart';
+import 'activity_video.dart';
 
 /// Detail aktivitas + grid foto (tap = pratinjau). Hapus aktivitas/foto
 /// gated `activity.delete`, Ubah gated `activity.edit` (meniru ActDetail web).
@@ -116,28 +117,49 @@ class ActivityDetailPage extends ConsumerWidget {
                         InkWell(
                           onTap: url == null
                               ? null
-                              : () => showDialog(
-                                    context: context,
-                                    builder: (d) => Dialog(
-                                      child: Image.network(
-                                        url,
-                                        errorBuilder: (_, __, ___) =>
-                                            const Text('Gagal memuat foto'),
+                              : () => p.isVideo
+                                  ? showVideoDialog(
+                                      context,
+                                      url: url,
+                                      title: p.origName,
+                                      onDelete: auth.can('activity', 'delete')
+                                          ? () async {
+                                              Navigator.of(context).pop();
+                                              await _deletePhoto(context, ref, p.id,
+                                                  () {
+                                                ref.invalidate(
+                                                    activityDetailProvider(id));
+                                                invalidateActivityLists(ref);
+                                              });
+                                            }
+                                          : null,
+                                    )
+                                  : showDialog(
+                                      context: context,
+                                      builder: (d) => Dialog(
+                                        child: Image.network(
+                                          url,
+                                          errorBuilder: (_, __, ___) =>
+                                              const Text('Gagal memuat foto'),
+                                        ),
                                       ),
                                     ),
-                                  ),
                           child: url == null
                               ? const Icon(Icons.image)
-                              : Image.network(
-                                  url,
-                                  fit: BoxFit.cover,
-                                  loadingBuilder: (cx, child, prog) => prog == null
-                                      ? child
-                                      : const Center(
-                                          child: CircularProgressIndicator()),
-                                  errorBuilder: (_, __, ___) =>
-                                      const Icon(Icons.broken_image),
-                                ),
+                              : p.isVideo
+                                  ? VideoThumb(url: url, onTap: null)
+                                  : Image.network(
+                                      url,
+                                      fit: BoxFit.cover,
+                                      loadingBuilder: (cx, child, prog) =>
+                                          prog == null
+                                              ? child
+                                              : const Center(
+                                                  child:
+                                                      CircularProgressIndicator()),
+                                      errorBuilder: (_, __, ___) =>
+                                          const Icon(Icons.broken_image),
+                                    ),
                         ),
                         if (auth.can('activity', 'delete'))
                           Positioned(
@@ -148,7 +170,7 @@ class ActivityDetailPage extends ConsumerWidget {
                                 backgroundColor: Colors.black54,
                                 foregroundColor: Colors.white,
                               ),
-                              tooltip: 'Hapus foto',
+                              tooltip: 'Hapus',
                               icon: const Icon(Icons.close),
                               onPressed: () => _deletePhoto(context, ref, p.id, () {
                                 ref.invalidate(activityDetailProvider(id));
