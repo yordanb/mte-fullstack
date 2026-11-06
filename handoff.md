@@ -401,3 +401,43 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   DONE=Selesai/PLAN=Rencana/LATE=Terlambat/MISSED=Terlewat; booster
   OVH/Midlife; injector DONE=Terpasang/PLAN=Rencana. `analyze` bersih,
   63 test lolos (13 test baru `proker_test.dart`), APK debug terbuild.
+- **Sinkron fitur web terbaru (2026-11-06, branch `mobile/sync-web-latest`)**:
+  menyelaraskan seluruh perubahan web terbaru ke aplikasi mobile.
+  - **Grup A — Timeline Mingguan + sumber "Last update"** (commit `b426d3f`):
+    halaman `/timeline` (rentang maks 31 hari, default 7 hari, filter
+    crew/kategori, ringkasan, grafik mini per hari, foto cover + expand,
+    tombol Cetak/PDF diabaikan sesuai web); "Last update" dashboard kini
+    dari `updated_at`/`updated_by` `/v1/results/latest-per-unit` dan DBR
+    dari `/v1/dbr/records` (bukan lagi `/v1/imports/latest`).
+  - **Grup B — Hourmeter, Yazu P2H, Yazu Daily Check, Ewacs, placeholder**
+    (commit `09d2d81`): `hourmeter` (upload XLSX + rekap bulanan),
+    `yazu`/`yazudc` (satu `YazuPageBase` dipakai bersama, beda prefix +
+    gate menu), `ewacs` (grafik Apex web diganti visual CustomPaint),
+    halaman placeholder web (PPM/Measurement/TAR Support) ditiru sebagai
+    halaman placeholder khusus. 16 file, 7 test baru.
+  - **Modul Riwayat (issue tracking)**: paritas web `Riwayat.tsx` — daftar
+    issue (tab status/kategori/kartu) + detail (timeline progress, parts,
+    foto evidence) + form buat/edit + upload/hapus evidence; route
+    `/riwayat` + `/riwayat/:id`; 14 test (`riwayat_test.dart`).
+  - **Modul Project Management**: paritas web `Project.tsx` — daftar
+    (filter cari/status, kartu progress, paging 20) + detail bottom sheet
+    (timeline tahapan, kartu tahap, update progress + foto eviden) + form
+    project/tahap/update (multipart + progress upload) + hapus bertingkat;
+    route `/project`; 9 test (`project_test.dart`).
+  - **Modul Manpower Inovasi + Manpower (pengelompokan)**: paritas web
+    `Manpower.tsx` + `ManpowerGroup.tsx` — KPI grid, tren batang (ganti
+    ApexCharts), rincian per dept/section/crew, tabel data, isi otomatis
+    dari jabatan, edit inline per NRP, aksi massal; route `/manpower` +
+    `/manpowermanage`; 10 test (`manpower_test.dart`).
+  - **Modul Staging Pump (versi sederhana)**: paritas web `Staging.tsx`
+    tanpa drag-drop dnd-kit — navigasi periode, tampilan kartu (untaian
+    pump Primer → Booster berwarna) + tabel, tambah grup (format cepat +
+    validasi CN ke master equipment PUMPING), ubah/hapus grup, tambah/hapus
+    pump, **pindah pump via dialog** (pilih grup tujuan + posisi), copy
+    konfigurasi dari bulan lain, panel riwayat perubahan; route `/staging`
+    + menu drawer, gate `staging.view/edit` (role inputer/admin untuk
+    mutasi). 18 test (`staging_test.dart`) — menutup bug off-by-one
+    `stagingShiftPeriod` yang ditemukan saat uji.
+  - Dengan ini **seluruh menu web sudah ada di mobile** (gap menu kosong).
+    `flutter analyze lib` bersih, **131 test lolos**, APK debug terbuild.
+
