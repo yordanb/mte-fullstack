@@ -13,3 +13,7 @@ scripts/analyze_staging_pompa.py
 data sample excel/data ss/
 data sample excel/data program kerja/
 apps/mobile/android/build/
+# Data lokal (jangan di-push): sampel Excel, dump equipment, data manpower
+data sample excel/
+data-equipment/
+data-manpower/
