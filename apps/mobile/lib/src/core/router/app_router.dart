@@ -8,6 +8,7 @@ import 'package:mte_data_center/src/features/activity/presentation/activity_page
 import 'package:mte_data_center/src/features/auth/presentation/login_page.dart';
 import 'package:mte_data_center/src/features/dashboard/presentation/dashboard_page.dart';
 import 'package:mte_data_center/src/features/dbr/presentation/dbr_page.dart';
+import 'package:mte_data_center/src/features/ewacs/presentation/ewacs_page.dart';
 import 'package:mte_data_center/src/features/fui/presentation/fui_page.dart';
 import 'package:mte_data_center/src/features/fui/presentation/history_page.dart';
 import 'package:mte_data_center/src/features/fui/presentation/report_page.dart';
@@ -15,6 +16,8 @@ import 'package:mte_data_center/src/features/fui/presentation/suggest_form_page.
 import 'package:mte_data_center/src/features/fui/presentation/suggestion_page.dart';
 import 'package:mte_data_center/src/features/ss/presentation/ss_page.dart';
 import 'package:mte_data_center/src/features/ssab/presentation/ssab_page.dart';
+import 'package:mte_data_center/src/features/hourmeter/presentation/hourmeter_page.dart';
+import 'package:mte_data_center/src/features/placeholders/presentation/web_placeholder_pages.dart';
 import 'package:mte_data_center/src/features/profile/presentation/notifications_page.dart';
 import 'package:mte_data_center/src/features/profile/presentation/profile_page.dart';
 import 'package:mte_data_center/src/features/equipment/presentation/equipment_detail_page.dart';
@@ -31,6 +34,7 @@ import 'package:mte_data_center/src/features/proker/presentation/proker_injector
 import 'package:mte_data_center/src/features/proker/presentation/proker_primer_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_thermostat_page.dart';
 import 'package:mte_data_center/src/features/timeline/presentation/timeline_page.dart';
+import 'package:mte_data_center/src/features/yazu/presentation/yazu_page.dart';
 
 /// GoRouter Milestone 1: /login, / (dashboard), + route stub milestone
 /// berikutnya. Redirect ke /login bila tanpa token; /users & /audit
@@ -58,6 +62,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/dbr', builder: (c, s) => const DbrPage()),
       GoRoute(path: '/performance', builder: (c, s) => const PerformancePage()),
       GoRoute(path: '/timeline', builder: (c, s) => const TimelinePage()),
+      GoRoute(path: '/ppm', builder: (c, s) => const PpmPage()),
+      GoRoute(path: '/hourmeter', builder: (c, s) => const HourmeterPage()),
+      GoRoute(path: '/yazu', builder: (c, s) => const YazuPage()),
+      GoRoute(path: '/yazudc', builder: (c, s) => const YazuDailyCheckPage()),
+      GoRoute(path: '/ewacs', builder: (c, s) => const EwacsPage()),      GoRoute(path: '/measurement', builder: (c, s) => const MeasurementPage()),
+      GoRoute(path: '/tarsupport', builder: (c, s) => const TarSupportPage()),
       GoRoute(path: '/equipment', builder: (c, s) => const EquipmentPage()),
       GoRoute(path: '/equipment/new', builder: (c, s) => const EquipmentFormPage()),
       GoRoute(
