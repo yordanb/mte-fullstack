@@ -12,7 +12,7 @@ export function Dashboard() {
   const [err, setErr] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const [lastUp, setLastUp] = useState<ImportStatus | null>(null)
+  const [lastUp, setLastUp] = useState<{ updated_at?: string | null; updated_by?: string | null } | null>(null)
   const fmtDT = (v?: string) => {
     if (!v) return ''
     const d = new Date(v)
@@ -22,20 +22,24 @@ export function Dashboard() {
   }
   const got = (r: LabRow[]) => { setRows(r); setPage(1) }
   const loadLatest = async () => {
-    try { setErr(''); setMode('latest'); setCritPrefix(''); got(await fetchLatestPerUnit(200)) }
+    try { setErr(''); setMode('latest'); setCritPrefix('')
+      const res = await fetchLatestPerUnit(200)
+      got(res.data); setLastUp({ updated_at: res.updated_at, updated_by: res.updated_by })
+    }
     catch (e) { setErr(`Gagal muat default (perlu pull+rebuild api di VPS?): ${errMsg(e)}`) }
   }
   const loadCrit = async (p: '' | 'TL' | 'GS' | 'WP') => {
     try {
       setErr(''); setMode('latest'); setCritPrefix(p)
-      got(p ? await fetchLatestPerUnit(200, p, 'CRITICAL') : await fetchLatestPerUnit(200))
+      const res = await fetchLatestPerUnit(200, p || undefined, p ? 'CRITICAL' : undefined)
+      got(res.data); setLastUp({ updated_at: res.updated_at, updated_by: res.updated_by })
     } catch (e) { setErr(`Gagal filter: ${errMsg(e)}`) }
   }
   const load = async () => {
     try { setErr(''); setMode('search'); setCritPrefix(''); got(await fetchResults(vessel, unit || undefined)) }
     catch (e) { setErr(`Gagal cari: ${errMsg(e)}`) }
   }
-  useEffect(() => { loadLatest(); fetchLatestImport().then(setLastUp).catch(() => null) }, [])
+  useEffect(() => { loadLatest() }, [])
   const crit = rows.filter((r) => r.condition !== 'NORMAL').length
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize))
   const cur = Math.min(page, totalPages)
@@ -66,8 +70,8 @@ export function Dashboard() {
       {err && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-theme-sm text-red-700">{err}</p>}
       {lastUp && (
         <p className="text-theme-sm text-gray-500">
-          Last update: {fmtDT(lastUp.created_at)}
-          {lastUp.uploaded_by ? ` oleh ${lastUp.uploaded_by}` : ''}
+          Last update: {fmtDT(lastUp.updated_at ?? undefined)}
+          {lastUp.updated_by ? ` oleh ${lastUp.updated_by}` : ''}
         </p>
       )}
       <VesselTable rows={slice} />

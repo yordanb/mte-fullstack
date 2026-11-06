@@ -326,9 +326,13 @@ export async function fetchResults(vesselid: string, unit_id?: string): Promise<
   return r.data.data
 }
 
-export async function fetchLatestPerUnit(limit = 50, prefix?: string, condition?: string): Promise<LabRow[]> {
+export type OilLatestMeta = { updated_at?: string | null; updated_by?: string | null }
+
+export async function fetchLatestPerUnit(
+  limit = 50, prefix?: string, condition?: string,
+): Promise<{ data: LabRow[]; updated_at?: string | null; updated_by?: string | null }> {
   const r = await api.get('/v1/results/latest-per-unit', { params: { limit, prefix, condition } })
-  return r.data.data
+  return { data: r.data.data, updated_at: r.data.updated_at, updated_by: r.data.updated_by }
 }
 
 export async function fetchFleetAlerts(prefix: string) {

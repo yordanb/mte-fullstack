@@ -76,7 +76,20 @@ async def latest_per_unit(
           ORDER BY vesselid, unit_id, sample_date DESC, lab_no DESC
         ) t {outer} ORDER BY sample_date DESC LIMIT :lim
     """)
-    return {"data": list((await db.execute(q, params)).mappings().all())}
+    data = list((await db.execute(q, params)).mappings().all())
+
+    # Sumber label "Last update" Dashboard Oil Lab: dari tabel data itu sendiri
+    # (oil_lab_result.updated_at), bukan waktu upload di tabel `imports`.
+    meta = (await db.execute(text(
+        "SELECT MAX(updated_at) AS updated_at, "
+        "(SELECT uploaded_by FROM imports i WHERE i.id = "
+        " (SELECT import_id FROM oil_lab_result WHERE import_id IS NOT NULL "
+        "  ORDER BY updated_at DESC NULLS LAST LIMIT 1)) AS uploaded_by "
+        "FROM oil_lab_result"))).mappings().first()
+    updated = meta["updated_at"].isoformat() if meta and meta["updated_at"] else None
+    return {"data": data,
+            "updated_at": updated,
+            "updated_by": (meta or {}).get("uploaded_by")}
 
 @router.get("/units", dependencies=[Depends(require_role("viewer", "inputer", "admin"))])
 async def distinct_units(
