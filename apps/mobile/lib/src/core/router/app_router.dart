@@ -25,6 +25,7 @@ import 'package:mte_data_center/src/features/profile/presentation/profile_page.d
 import 'package:mte_data_center/src/features/project/presentation/project_page.dart';
 import 'package:mte_data_center/src/features/equipment/presentation/equipment_detail_page.dart';
 import 'package:mte_data_center/src/features/safety/presentation/safety_page.dart';
+import 'package:mte_data_center/src/features/staging/presentation/staging_page.dart';
 import 'package:mte_data_center/src/features/update_data/presentation/update_data_page.dart';
 import 'package:mte_data_center/src/features/users/presentation/audit_page.dart';
 import 'package:mte_data_center/src/features/users/presentation/users_page.dart';
@@ -78,6 +79,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/manpowermanage',
           builder: (c, s) => const ManpowerGroupPage()),
+      GoRoute(path: '/staging', builder: (c, s) => const StagingPage()),
       GoRoute(
           path: '/riwayat/:id',
           builder: (c, s) => RiwayatDetailPage(id: s.pathParameters['id']!)),

@@ -31,6 +31,7 @@ const List<Map<String, dynamic>> _menu = [
   {'key': 'project', 'label': 'Project Management', 'path': '/project'},
   {'key': 'manpowermanage', 'label': 'Manpower', 'path': '/manpowermanage'},
   {'key': 'manpower', 'label': 'Manpower Inovasi', 'path': '/manpower'},
+  {'key': 'staging', 'label': 'Staging Pump', 'path': '/staging'},
   {'key': 'measurement', 'label': 'Measurement', 'path': '/measurement'},
   {'key': 'tarsupport', 'label': 'TAR Support', 'path': '/tarsupport'},
   {'key': 'sugfui', 'label': 'Suggestion FUI', 'path': '/suggestion'},
