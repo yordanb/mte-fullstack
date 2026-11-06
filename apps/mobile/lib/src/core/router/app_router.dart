@@ -20,6 +20,7 @@ import 'package:mte_data_center/src/features/hourmeter/presentation/hourmeter_pa
 import 'package:mte_data_center/src/features/placeholders/presentation/web_placeholder_pages.dart';
 import 'package:mte_data_center/src/features/profile/presentation/notifications_page.dart';
 import 'package:mte_data_center/src/features/profile/presentation/profile_page.dart';
+import 'package:mte_data_center/src/features/project/presentation/project_page.dart';
 import 'package:mte_data_center/src/features/equipment/presentation/equipment_detail_page.dart';
 import 'package:mte_data_center/src/features/safety/presentation/safety_page.dart';
 import 'package:mte_data_center/src/features/update_data/presentation/update_data_page.dart';
@@ -70,9 +71,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/yazudc', builder: (c, s) => const YazuDailyCheckPage()),
       GoRoute(path: '/ewacs', builder: (c, s) => const EwacsPage()),
       GoRoute(path: '/riwayat', builder: (c, s) => const RiwayatPage()),
+      GoRoute(path: '/project', builder: (c, s) => const ProjectPageList()),
       GoRoute(
           path: '/riwayat/:id',
-          builder: (c, s) => RiwayatDetailPage(id: s.pathParameters['id']!)),      GoRoute(path: '/measurement', builder: (c, s) => const MeasurementPage()),
+          builder: (c, s) => RiwayatDetailPage(id: s.pathParameters['id']!)),
+      GoRoute(path: '/measurement', builder: (c, s) => const MeasurementPage()),
       GoRoute(path: '/tarsupport', builder: (c, s) => const TarSupportPage()),
       GoRoute(path: '/equipment', builder: (c, s) => const EquipmentPage()),
       GoRoute(path: '/equipment/new', builder: (c, s) => const EquipmentFormPage()),
