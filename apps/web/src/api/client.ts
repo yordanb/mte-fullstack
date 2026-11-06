@@ -374,7 +374,10 @@ export type DbrRow = {
 
 export async function fetchDbr(params: Record<string, string | number | boolean | undefined>) {
   const r = await api.get('/v1/dbr/records', { params })
-  return r.data as { total: number; page: number; page_size: number; data: DbrRow[] }
+  return r.data as {
+    total: number; page: number; page_size: number; data: DbrRow[]
+    updated_at?: string | null; updated_by?: string | null
+  }
 }
 
 export async function fetchDbrCodes(): Promise<string[]> {

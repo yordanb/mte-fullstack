@@ -155,7 +155,20 @@ async def records(
     rows = (await db.execute(text(
         f"SELECT * FROM dbr_records {where} ORDER BY date DESC, cn LIMIT :lim OFFSET :off"),
         p)).mappings().all()
-    return {"total": total, "page": page, "page_size": page_size, "data": [dict(r) for r in rows]}
+
+    # Sumber label "Last update" halaman DBR Breakdown: dari tabel data itu
+    # sendiri (dbr_records.updated_at), bukan waktu upload di tabel `imports`.
+    meta = (await db.execute(text(
+        "SELECT MAX(updated_at) AS updated_at, "
+        "(SELECT uploaded_by FROM imports i WHERE i.id = "
+        " (SELECT import_id FROM dbr_records WHERE import_id IS NOT NULL "
+        "  ORDER BY updated_at DESC NULLS LAST LIMIT 1)) AS uploaded_by "
+        "FROM dbr_records"))).mappings().first()
+    updated = meta["updated_at"].isoformat() if meta and meta["updated_at"] else None
+    return {"total": total, "page": page, "page_size": page_size,
+            "data": [dict(r) for r in rows],
+            "updated_at": updated,
+            "updated_by": (meta or {}).get("uploaded_by")}
 
 @router.get("/stats")
 async def stats(

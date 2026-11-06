@@ -1,5 +1,5 @@
 ﻿import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchLatestImport, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, canWrite, todayLocal, errMsg, isAdmin, importSsXlsx, fetchSsImportStatus, importManpowerXlsx, fetchManpowerImportStatus, type ImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, can, canWrite, todayLocal, errMsg, isAdmin, importSsXlsx, fetchSsImportStatus, importManpowerXlsx, fetchManpowerImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
 import { DatePicker } from '../components/DatePicker'
 import { VesselTable } from '../components/Widgets'
 
@@ -488,7 +488,7 @@ export function DbrPage() {
   const [msg, setMsg] = useState('')
   const [hideContinue, setHideContinue] = useState(false)
   const [pumping, setPumping] = useState(false)
-  const [lastUp, setLastUp] = useState<ImportStatus | null>(null)
+  const [lastUp, setLastUp] = useState<{ updated_at?: string | null; updated_by?: string | null } | null>(null)
   const shown = hideContinue ? rows.filter((r) => (r.action ?? '').toUpperCase() !== 'CONTINUE') : rows
   const fmtD = (v?: string | null) => {
     if (!v) return ''
@@ -512,6 +512,7 @@ export function DbrPage() {
         prefix: pump ? 'WP' : undefined,
         code: pump ? undefined : (codeV || undefined), page: p, page_size: 20 })
       setRows(r.data); setTotal(r.total); setPage(r.page)
+      setLastUp({ updated_at: r.updated_at, updated_by: r.updated_by })
     } catch (e) { setMsg(`gagal: ${errMsg(e)}`) }
   }
   // Filter cepat "Pumping": C/N diawali WP, semua code (dropdown Code diabaikan).
@@ -521,7 +522,7 @@ export function DbrPage() {
     if (nv) setCode('')
     load(1, nv, '')
   }
-  useEffect(() => { load(1); fetchDbrCodes().then(setCodes).catch(() => null); fetchLatestImport('DBR').then(setLastUp).catch(() => null) }, [])
+  useEffect(() => { load(1); fetchDbrCodes().then(setCodes).catch(() => null) }, [])
   const pages = Math.max(1, Math.ceil(total / 20))
   return (
     <div className="flex flex-col gap-4">
@@ -554,8 +555,8 @@ export function DbrPage() {
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
       {lastUp && (
         <p className="text-theme-sm text-gray-500">
-          Last update: {fmtDT(lastUp.created_at)}
-          {lastUp.uploaded_by ? ` oleh ${lastUp.uploaded_by}` : ''}
+          Last update: {fmtDT(lastUp.updated_at ?? undefined)}
+          {lastUp.updated_by ? ` oleh ${lastUp.updated_by}` : ''}
         </p>
       )}
       <div className="overflow-x-auto rounded-2xl border bg-white">
