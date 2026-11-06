@@ -1,17 +1,22 @@
 # MTE Data Center — Fullstack Monitoring Plant
 
 Aplikasi monitoring terpusat untuk plant: **report analisa oli**, **DBR breakdown**,
-**performance breakdown**, **master equipment**, **FUI follow-up**, **activity + foto**,
-**staging pump**, **Minute of Meeting**, **riwayat issue**, **project management**,
+**performance breakdown**, **timeline activity mingguan**, **master equipment**,
+**FUI follow-up**, **activity + foto/video**, **staging pump**, **Minute of Meeting**,
+**riwayat issue**, **project management**, **manpower inovasi + pengelompokan**,
 **safety (Bomak 6 PAS + R1BI)**, grup **Technical Expert**
-(PPM, Measurement, Yazu, Ewacs Performance, TAR Support), dan grup **Agent**
-(Sugestion System — data SS closed KIDE).
+(Hourmeter, PPM, Measurement, Yazu P2H, Yazu Daily Check, Ewacs Performance,
+TAR Support, Proker GMC/Booster/Injector/Thermostat), dan grup **Agent**
+(Sugestion System + SS AB — data SS closed KIDE).
 
 Backend **FastAPI + PostgreSQL**, web **React + Vite + Tailwind**,
 mobile **Flutter Android** (`apps/mobile`, Riverpod + GoRouter),
 semua berjalan sebagai container Docker di VPS dan diupdate via `git pull`.
+Web adalah acuan fitur; **aplikasi mobile menyusul seluruh menu web** (lihat
+tabel parity di `handoff.md` §7).
 
-> Terakhir diperbarui: 4 Nov 2026 — migrasi terakhir `V61`.
+> Terakhir diperbarui: 7 Nov 2026 — migrasi terakhir `V62`; mobile disinkronkan
+> penuh dengan web (commit `e102d93`).
 
 ## Arsitektur & Port
 
@@ -28,6 +33,9 @@ Alur data:
 - CSV breakdown ditarik dari sistem sumber lalu diupload di **Ewacs Performance** (upsert).
 - Google Sheets publik (Bomak 6 PAS, R1BI, Yazu) ditarik via tombol **Sync** + cron.
 - File `~$*` (lock Excel) diabaikan git (lihat `.gitignore`).
+- Folder data lokal — `data sample excel/`, `data-equipment/`, `data-manpower/` —
+  **tidak di-commit** (sudah masuk `.gitignore`); isinya hanya untuk keperluan
+  pengujian/import di mesin lokal.
 
 ## Fitur Web
 
@@ -52,12 +60,21 @@ Agent / Administrasi**, autohide overlay, ikon per menu, dark mode penuh, notifi
 | Follow Up | **FUI** | Dossier per unit (ketik CN): kartu equipment (+serial), 10 DBR terbaru (Code USM, tanpa CONTINUE), 10 oil terakhir per component. Tombol Export PDF/PAMA **disembunyikan sementara** (`SHOW_FUI_EXPORT`). |
 | Follow Up | **Suggestion FUI** | Unit aktif yang sample terakhirnya non-NORMAL + masing-masing 3 oil terakhir, per kategori; tombol *Suggest Follow Up* per baris non-NORMAL (inputer+). |
 | Follow Up | **Report Follow Up** | Semua oil terakhir non-NORMAL + status Sudah/Belum suggest + saran terakhir; filter kategori/cari/status; riwayat suggest per lab. |
+| Technical Expert | **Hourmeter** | Pencatatan **HM bulanan** per unit (upload Excel manual): rekap per bulan, per unit, dan grafik/ringkasan pemakaian HM. Ganti input HM manual dari luar sistem. |
 | Technical Expert | **PPM** | Placeholder (konten menyusul). |
 | Technical Expert | **Measurement** | Placeholder (konten menyusul). |
 | Technical Expert | **Yazu** | Pivot **HM bulanan** per unit dari checklist inspeksi unit (sync Google Sheets), sticky header + scroll internal (vertikal & horizontal). Deteksi anomali kenaikan HM harian: **merah** bila delta `< 0` (HM mundur) atau `> 24`, **oranye** 14–24, **hijau** 10–14, normal 0–10. Delta dinormalisasi bila ada hari kosong (`delta / gap hari`). |
+| Technical Expert | **Yazu Daily Check** | Checklist harian unit (sheet kedua sumber Yazu) — pivot per tanggal dengan anomali HM sama seperti Yazu P2H. |
 | Technical Expert | **Ewacs Performance** | KPI **Physical Availability** + **Ratio SCM vs USM** (persentase), filter tanggal / EGI / Crew / CN, grafik tren PA harian + batang durasi SCM vs USM per tanggal, tabel detail breakdown, dan **Import CSV** (admin) dengan semantik **upsert**: baris dengan key sama diperbarui, baris baru ditambah, data tanggal/unit lain tidak dihapus. |
 | Technical Expert | **TAR Support** | Placeholder (konten menyusul). |
+| Technical Expert | **Proker GMC Pompa Primer** | Proker pompa primer 2.000 h + filter engine CAT; tombol **Refresh HM**; detail riwayat eksekusi, Δ HM kronologis, badge Midlife Eng. |
+| Technical Expert | **Proker Midlife Eng Booster** | Proker Midlife Engine Booster; filter product/model + chip *hanya jatuh tempo*; tombol **Refresh HM**; detail OVH/Midlife terakhir + riwayat + Δ HM. |
+| Technical Expert | **Proker Midlife Injector Primer** | Proker Midlife Injector Primer 16.000 h; grid 12 posisi PLAN/umur (hijau-kuning-merah ambang 80%/100%); tombol **Refresh HM**. |
+| Technical Expert | **Proker Thermostat CAT** | Proker Thermostat CAT 12.000 h; detail HM/deviasi/lifetime/modif 74°C + radiator check (WR/ETA parts/ETA exec/suhu); tombol **Refresh HM**. |
 | Agent | **Sugestion System** | Data **SS closed Distrik KIDE** (70.034 baris, 2020–2026): KPI Total SS / Reward / Manfaat Financial / Pencetus unik / Grade A+B, filter rentang tanggal (dasar **tanggal menilai** atau tanggal laporan) + Dept + Kategori + Grade + Status + pencarian, grafik batang berdampingan jumlah SS per bulan menurut **tanggal laporan vs tanggal menilai** (warna berbeda), donut grade, bar kategori (setelah normalisasi 29 varian → 12 kanonik), pie dept, Pareto Top 10 pencetus, tabel server-side (pagination + sortir) dan **Export CSV**. **Import Excel** (admin) multi-file dengan semantik **upsert berdasarkan NO SS** + progress bar. **Akses khusus admin.** |
+| Agent | **SS AB** | Dashboard SS AB per tahun: 6 kartu KPI (total, grade A/B + %, reward, manfaat, pencetus), kalender 12 bulan, tabel Per Dept + proporsi, tabel detail (client-side pagination 25–200) + **Export CSV**, dan tabel **Menunggu Penilaian oleh PM** + Export CSV. **Akses khusus admin.** |
+| Agent | **Manpower** (pengelompokan) | Dashboard pengelompokan Section / Crew / Status dari snapshot manpower: KPI (total, sudah dikelompokkan, staff/mekanik/repairman/general crew, cakupan crew), rincian per Section & Crew, **isi otomatis dari jabatan**, edit inline per NRP, dan aksi massal (pilih baris → terapkan Section/Crew/Status). Pengelompokan disimpan per NRP sehingga tidak hilang saat file manpower di-import ulang. |
+| Agent | **Manpower Inovasi** | Snapshot bulanan `RptInnovatorMonthly`: pemilih bulan/dept, KPI (manpower, dinilai, innovator SS, SS closed, DT/QCP/QCC), tren grafik **Manpower vs Innovator SS** per bulan, rincian per Dept, dan tabel data manpower (cari / filter innovator / pagination / sortir). |
 | Administrasi | **Users** (admin) | CRUD user + matriks izin per menu (Lihat/Tambah/Ubah/Hapus) untuk 8 role. |
 | Administrasi | **Audit Log** (admin) | Siapa login/akses apa/dari mana (termasuk login gagal), filter + pagination. |
 
@@ -100,7 +117,9 @@ menu **Users**; menu baru wajib menambah key-nya di `role_permissions_menu_check
 | Riwayat | `GET/POST/PATCH/DELETE /v1/riwayat/issues` · progress & parts CRUD · foto progress/part (upload, notes, delete, serve) |
 | Safety | `POST /v1/safety/sync` · `GET /v1/safety/{latest-sync,coverage,records,export}` |
 | R1BI | `POST /v1/r1bi/sync` · `GET /v1/r1bi/{latest-sync,coverage,records,export}` |
-| Yazu | `POST /v1/yazu/sync` · `GET /v1/yazu/{stats,units,pivot,raw}` |
+| Yazu | `POST /v1/yazu/sync` · `GET /v1/yazu/{stats,units,pivot,raw}` · `POST /v1/yazu-dc/sync` · `GET /v1/yazu-dc/{stats,units,pivot,raw}` |
+| Hourmeter | `GET /v1/hourmeter/{periods,recap,units}` · `POST /v1/hourmeter/import` |
+| Manpower | `GET /v1/manpower/{periods,summary,trend,records}` · `GET /v1/manpower/manage` · `PATCH /v1/manpower/manage/{nrp}` · `POST /v1/manpower/manage/{bulk,autofill}` |
 | Ewacs | `POST /v1/ewacs/import` · `GET /v1/ewacs/{filters,kpi,trend,detail}` · `DELETE /v1/ewacs/all` (admin) |
 | Suggestion System | `POST /v1/ss/import` · `GET /v1/ss/import/{import_id}` · `GET /v1/ss/{filters,kpi,trend,breakdown,top,records,export}` · `DELETE /v1/ss/all` (semua **admin only**) |
 | Users | `GET /v1/users/me` · `PATCH /v1/users/password` · `POST /v1/users/avatar` · `GET /v1/users/avatar/{username}` · `GET /v1/users/notifications` |
@@ -155,6 +174,7 @@ Error selalu `{detail: "..."}` dan ditampilkan verbatim oleh web (helper `errMsg
 | `V56__perm_yazudc.sql` / `V57__perm_split_ssab_manpowermanage.sql` | Pecah izin menu per halaman: `yazudc`, `ssab`, `manpowermanage` (tidak lagi berbagi dengan `yazu`/`ss`/`manpower`) |
 | `V59__proker_thermostat.sql` | Proker Thermostat CAT (12.000 h) + menu `prokerthermo` (grup Technical Expert) |
 | `V60__ewacs_egi_normalize.sql` / `V61__ewacs_egi_normalize2.sql` | Normalisasi EGI salah tulis di `ewacs_breakdown` (LS4-2000→LS42000, LS4-6000→LS46000, LEGRA 140→LEGRA140, RF-85MW→RF85MW, EGS630-6/EGS63060→EGS6306) |
+| `V62__dbr_updated_at.sql` | Kolom audit `updated_at` + trigger di `dbr_records` (label "Last update" DBR kini dari waktu data berubah, bukan waktu upload) |
 
 Fresh install: otomatis via `/docker-entrypoint-initdb.d` (urut abjad = urut versi).
 Database lama: jalankan manual file yang belum diterapkan (lihat riwayat di bawah).
@@ -164,16 +184,22 @@ Database lama: jalankan manual file yang belum diterapkan (lihat riwayat di bawa
 ```
 apps/api/      FastAPI — app/api/v1: auth, results, fleet, imports, dbr, equipment,
                activities, projects, staging, mom, riwayat, safety, r1bi, fui, yazu,
-               ewacs, ss, users; app/services: excel_map, dbr_map, safety_sync, r1bi_sync,
-               fui_pdf, pama_pdf
+               yazu_dc, hourmeter, manpower, ewacs, ss, users; app/services: excel_map,
+               dbr_map, safety_sync, r1bi_sync, fui_pdf, pama_pdf
 apps/web/      React+Vite+Tailwind — pages: Dashboard/DBR/Performance/Activity/Timeline/
                Safety/Ribi/Equipment/Staging/Mom/Riwayat/FUI/Project/Ppm/Measurement/
-               Yazu/Ewacs/TarSupport/Ss/Users/Audit/Login (ApexCharts lazy-load)
-apps/mobile/   Flutter (Riverpod + GoRouter, Clean Architecture per feature)
-infra/db/      Migrasi SQL V1..V61
+               Yazu/YazuDailyCheck/Hourmeter/Ewacs/TarSupport/Manpower/ManpowerGroup/
+               Ss/SsAb/Proker*/Users/Audit/Login (ApexCharts lazy-load)
+apps/mobile/   Flutter (Riverpod + GoRouter, Clean Architecture per feature) — paritas
+               menu web: dashboard, dbr, performance, timeline, activity, bomak, mom,
+               equipment, staging, riwayat, project, manpower(+pengelompokan), yazu,
+               yazudc, hourmeter, ewacs, ss, ssab, proker*, fui, users, audit, profil,
+               + placeholder PPM/Measurement/TAR Support
+infra/db/      Migrasi SQL V1..V62
 scripts/       build_equipment_seed.py (generator V7), analyze_staging_pompa.py
-data-equipment/ 4 dump sumber equipment
-data sample excel/ Contoh file + DBR_format.xlsx (lock ~$* diabaikan)
+data-equipment/     (LOKAL, di-ignore) dump sumber equipment
+data sample excel/  (LOKAL, di-ignore) contoh file + DBR_format.xlsx
+data-manpower/      (LOKAL, di-ignore) data NRP/manpower mentah
 handoff.md     Kontrak kerja tab Flutter paralel
 docker-compose.yml  db:5446, api:8802, web:8803 (+ volume uploads)
 .env.example   Template env (copy ke .env, JANGAN commit)
@@ -236,14 +262,14 @@ cd /opt/projects/mte-fullstack
 unset DATABASE_URL   # wajib: agar compose baca DATABASE_URL dari .env, bukan shell
 git pull --rebase origin main
 # HANYA migrasi yang belum diterapkan, mis:
-# docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V61__ewacs_egi_normalize2.sql
+# docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V62__dbr_updated_at.sql
 docker compose up -d --build api web
 ```
 
 Riwayat migrasi VPS (terakhir dicatat): V3+V4 → V5 → V6+V7 → V8 → V9+V10+V11 →
 V12+V13 → V14+V15+V16 → V17 → V18 → V19 → V20 → V21+V22 → V23+V24 → V25+V26 →
 V27..V31 → V32 → V33 → V34 → V35 → V36 → V37 → V38 → V39.
-Migrasi V40..V61 ditambahkan bersama fiturnya — jalankan hanya yang belum diterapkan.
+Migrasi V40..V62 ditambahkan bersama fiturnya — jalankan hanya yang belum diterapkan.
 Rerun aman (semua `IF NOT EXISTS`/upsert).
 
 Catatan: menambah menu baru berarti memperbarui `role_permissions_menu_check`
