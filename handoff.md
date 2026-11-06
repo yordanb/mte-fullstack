@@ -401,7 +401,7 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   DONE=Selesai/PLAN=Rencana/LATE=Terlambat/MISSED=Terlewat; booster
   OVH/Midlife; injector DONE=Terpasang/PLAN=Rencana. `analyze` bersih,
   63 test lolos (13 test baru `proker_test.dart`), APK debug terbuild.
-- **Sinkron fitur web terbaru (2026-11-06, branch `mobile/sync-web-latest`)**:
+- **Sinkron fitur web terbaru (2026-11-06, sudah merge ke main)**:
   menyelaraskan seluruh perubahan web terbaru ke aplikasi mobile.
   - **Grup A — Timeline Mingguan + sumber "Last update"** (commit `b426d3f`):
     halaman `/timeline` (rentang maks 31 hari, default 7 hari, filter
