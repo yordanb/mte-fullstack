@@ -17,6 +17,8 @@ import 'package:mte_data_center/src/features/fui/presentation/suggestion_page.da
 import 'package:mte_data_center/src/features/ss/presentation/ss_page.dart';
 import 'package:mte_data_center/src/features/ssab/presentation/ssab_page.dart';
 import 'package:mte_data_center/src/features/hourmeter/presentation/hourmeter_page.dart';
+import 'package:mte_data_center/src/features/manpower/presentation/manpower_group_page.dart';
+import 'package:mte_data_center/src/features/manpower/presentation/manpower_page.dart';
 import 'package:mte_data_center/src/features/placeholders/presentation/web_placeholder_pages.dart';
 import 'package:mte_data_center/src/features/profile/presentation/notifications_page.dart';
 import 'package:mte_data_center/src/features/profile/presentation/profile_page.dart';
@@ -72,6 +74,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/ewacs', builder: (c, s) => const EwacsPage()),
       GoRoute(path: '/riwayat', builder: (c, s) => const RiwayatPage()),
       GoRoute(path: '/project', builder: (c, s) => const ProjectPageList()),
+      GoRoute(path: '/manpower', builder: (c, s) => const ManpowerPage()),
+      GoRoute(
+          path: '/manpowermanage',
+          builder: (c, s) => const ManpowerGroupPage()),
       GoRoute(
           path: '/riwayat/:id',
           builder: (c, s) => RiwayatDetailPage(id: s.pathParameters['id']!)),

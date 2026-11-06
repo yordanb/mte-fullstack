@@ -29,6 +29,8 @@ const List<Map<String, dynamic>> _menu = [
   {'key': 'ewacs', 'label': 'Ewacs Performance', 'path': '/ewacs'},
   {'key': 'riwayat', 'label': 'Riwayat', 'path': '/riwayat'},
   {'key': 'project', 'label': 'Project Management', 'path': '/project'},
+  {'key': 'manpowermanage', 'label': 'Manpower', 'path': '/manpowermanage'},
+  {'key': 'manpower', 'label': 'Manpower Inovasi', 'path': '/manpower'},
   {'key': 'measurement', 'label': 'Measurement', 'path': '/measurement'},
   {'key': 'tarsupport', 'label': 'TAR Support', 'path': '/tarsupport'},
   {'key': 'sugfui', 'label': 'Suggestion FUI', 'path': '/suggestion'},
