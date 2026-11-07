@@ -30,15 +30,15 @@ const permMenus = [
   'dashboard', 'dbr', 'performance', 'activity', 'equipment',
   'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak',
   'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement',
-  'yazu', 'yazudc', 'ewacs', 'tarsupport', 'ss', 'ssab',
+  'yazu_lighting', 'yazudc_lighting', 'ewacs', 'tarsupport', 'ss', 'ssab',
   'proker', 'prokerbooster', 'prokerinjector', 'prokerthermo',
   'manpower', 'manpowermanage',
 ];
 
 /// Label ramah baris matriks izin (web Users.tsx:110); menu lain apa adanya.
 String menuLabel(String menu) => switch (menu) {
-      'yazu' => 'yazu — Yazu P2H',
-      'yazudc' => 'yazudc — Yazu Daily Check',
+      'yazu_lighting' => 'yazu_lighting — Yazu Lighting P2H',
+      'yazudc_lighting' => 'yazudc_lighting — Yazu Lighting Daily Check',
       'ss' => 'ss — Sugestion System',
       'ssab' => 'ssab — SS AB',
       'manpower' => 'manpower — Manpower Inovasi',

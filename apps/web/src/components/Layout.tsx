@@ -13,8 +13,8 @@ const GROUPS: MenuGroup[] = [
   ] },
   { title: 'Operasional', items: [
     { key: 'activity', label: 'Activity' },
-    { key: 'yazu', label: 'Yazu P2H' },
-    { key: 'yazudc', label: 'Yazu Daily Check' },
+    { key: 'yazu_lighting', label: 'Yazu Lighting P2H' },
+    { key: 'yazudc_lighting', label: 'Yazu Lighting Daily Check' },
   { key: 'bomak', label: 'Bomak R1BI' },
     { key: 'equipment', label: 'Equipment' },
     { key: 'staging', label: 'Staging Pump' },
@@ -131,11 +131,11 @@ const ICONS: Record<string, ReactNode> = {
   manpowermanage: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="9" cy="10" r="2.2" /><path d="M5.5 17c0-2 1.6-3.3 3.5-3.3s3.5 1.3 3.5 3.3" /><path d="M15 9h4M15 13h4M15 17h2.5" /></svg>
   ),
-  yazu: (
+  yazu_lighting: (
     // Globe dengan kursor klik — "checklist online" (Google Sheets)
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="M3.6 11h14.8" /><path d="M11 3c2.6 2.5 2.6 13.5 0 16M11 3c-2.6 2.5-2.6 13.5 0 16" /><path fill="currentColor" strokeWidth="1.2" d="M11.8 11.8 15.7 21.2 17.1 17.1 21.2 15.7Z" /></svg>
   ),
-  yazudc: (
+  yazudc_lighting: (
     // Mobil — mobilitas (daily check keliling unit)
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.9-.9-1.4-1.7-2.8-1.7h-4C5.9 6 5 6.9 5 8.1L4.5 10C3.4 10.2 2 11 2 12.9V16c0 .6.4 1 1 1h2" /><circle cx="7" cy="17" r="2" /><path d="M9 17h6" /><circle cx="17" cy="17" r="2" /></svg>
   ),

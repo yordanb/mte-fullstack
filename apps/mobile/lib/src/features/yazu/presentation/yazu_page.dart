@@ -46,7 +46,7 @@ class _YazuPageBaseState extends ConsumerState<YazuPageBase> {
   String _msg = '';
   bool _syncing = false;
 
-  bool get _isDc => widget.config.menuKey == 'yazudc';
+  bool get _isDc => widget.config.menuKey == 'yazudc_lighting';
 
   @override
   Widget build(BuildContext context) {
@@ -466,32 +466,32 @@ String _dtId(String? v) {
   return '${p2(d.day)}/${p2(d.month)}/${d.year} ${p2(d.hour)}:${p2(d.minute)}';
 }
 
-/// Yazu P2H (web Yazu.tsx).
+/// Yazu Lighting P2H (web Yazu.tsx).
 class YazuPage extends StatelessWidget {
   const YazuPage({super.key});
 
   @override
   Widget build(BuildContext context) => const YazuPageBase(
         config: YazuConfig(
-          title: 'Yazu P2H',
-          menuKey: 'yazu',
+          title: 'Yazu Lighting P2H',
+          menuKey: 'yazu_lighting',
           sourceLabel: 'Google Sheets checklist inspeksi unit',
-          prefix: '/v1/yazu',
+          prefix: '/v1/yazu-lighting',
         ),
       );
 }
 
-/// Yazu Daily Check (web YazuDailyCheck.tsx).
+/// Yazu Lighting Daily Check (web YazuDailyCheck.tsx).
 class YazuDailyCheckPage extends StatelessWidget {
   const YazuDailyCheckPage({super.key});
 
   @override
   Widget build(BuildContext context) => const YazuPageBase(
         config: YazuConfig(
-          title: 'Yazu Daily Check',
-          menuKey: 'yazudc',
+          title: 'Yazu Lighting Daily Check',
+          menuKey: 'yazudc_lighting',
           sourceLabel: 'Google Sheets Daily Check (checklist harian unit)',
-          prefix: '/v1/yazu-dc',
+          prefix: '/v1/yazu-dc-lighting',
         ),
       );
 }

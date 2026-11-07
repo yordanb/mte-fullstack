@@ -1,5 +1,5 @@
-// Yazu Daily Check — pivot HM bulanan dari checklist harian unit (sync Google Sheets).
-// Konsep tampilan sama dengan Yazu (P2H); sumber sheet & kolom checklist berbeda.
+// Yazu Lighting Daily Check — pivot HM bulanan dari checklist harian unit (sync Google Sheets).
+// Konsep tampilan sama dengan Yazu Lighting P2H; sumber sheet & kolom checklist berbeda.
 // Anomaly detection: warna font berdasarkan kenaikan HM harian vs threshold.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
@@ -121,9 +121,9 @@ export default function YazuDailyCheckPage() {
     } catch (e) { setMsg(`sync gagal: ${errMsg(e)}`) }
   }
 
-  // Tombol Sync Manual mengikuti matriks izin menu "yazudc" (centang "Tambah") —
+  // Tombol Sync Manual mengikuti matriks izin menu "yazudc_lighting" (centang "Tambah") -
   // can() sudah memberi bypass penuh untuk role admin.
-  const canSync = can('yazudc', 'add')
+  const canSync = can('yazudc_lighting', 'add')
   const today = new Date()
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1
   const todayDay = today.getDate()

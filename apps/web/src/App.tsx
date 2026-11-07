@@ -83,8 +83,8 @@ export default function App() {
       {page === 'ppm' && can('ppm', 'view') && <PpmPage />}
       {page === 'measurement' && can('measurement', 'view') && <MeasurementPage />}
       {page === 'hourmeter' && can('hourmeter', 'view') && <HourmeterPage />}
-      {page === 'yazu' && can('yazu', 'view') && <YazuPage />}
-      {page === 'yazudc' && can('yazudc', 'view') && <YazuDailyCheckPage />}
+      {page === 'yazu_lighting' && can('yazu_lighting', 'view') && <YazuPage />}
+      {page === 'yazudc_lighting' && can('yazudc_lighting', 'view') && <YazuDailyCheckPage />}
       {page === 'ewacs' && can('ewacs', 'view') && <EwacsPage />}
       {page === 'tarsupport' && can('tarsupport', 'view') && <TarSupportPage />}
       {page === 'ss' && can('ss', 'view') && <SsPage />}

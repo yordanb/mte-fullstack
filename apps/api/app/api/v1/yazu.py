@@ -14,8 +14,8 @@ from app.core.config import settings
 from app.core.deps import get_current_user, require_menu
 from app.db.session import get_db
 
-router = APIRouter(prefix="/v1/yazu", tags=["yazu"])
-log = logging.getLogger("yazu")
+router = APIRouter(prefix="/v1/yazu-lighting", tags=["yazu-lighting"])
+log = logging.getLogger("yazu-lighting")
 
 # dd/MM/yyyy HH:mm:ss  →  contoh "04/05/2026 18:27:50"
 WAKTU_FMT = "%d/%m/%Y %H:%M:%S"
@@ -134,7 +134,7 @@ async def do_sync(db: AsyncSession) -> dict:
     update_list = ",".join(f"{c}=EXCLUDED.{c}" for c in cols if c not in ("waktu", "id_unit"))
 
     sql = f"""
-        INSERT INTO yazu ({col_list})
+        INSERT INTO yazu_lighting ({col_list})
         VALUES ({param_list})
         ON CONFLICT (waktu, id_unit) DO UPDATE SET {update_list}, synced_at = NOW()
     """
@@ -145,7 +145,7 @@ async def do_sync(db: AsyncSession) -> dict:
         await db.execute(text(sql), chunk)
         upserted += len(chunk)
     await db.execute(text("""
-        INSERT INTO yazu_sync_log(started_at, finished_at, status, rows_total, rows_upserted)
+        INSERT INTO yazu_lighting_sync_log(started_at, finished_at, status, rows_total, rows_upserted)
         VALUES (:s, NOW(), 'success', :t, :u)
     """), {"s": started, "t": len(rows), "u": upserted})
     await db.commit()
@@ -154,9 +154,9 @@ async def do_sync(db: AsyncSession) -> dict:
 
 # ─── Endpoints ────────────────────────────────────────────
 
-@router.post("/sync", dependencies=[Depends(require_menu("yazu", "add"))])
+@router.post("/sync", dependencies=[Depends(require_menu("yazu_lighting", "add"))])
 async def sync_now(db: AsyncSession = Depends(get_db)):
-    """Trigger manual sync dari Google Sheets → tabel yazu."""
+    """Trigger manual sync dari Google Sheets → tabel yazu_lighting."""
     try:
         return await do_sync(db)
     except httpx.HTTPError as e:
@@ -171,11 +171,11 @@ async def stats(db: AsyncSession = Depends(get_db)):
     """Status sync terakhir + total baris."""
     last = (await db.execute(text("""
         SELECT started_at, finished_at, status, rows_total, rows_upserted, error_msg
-        FROM yazu_sync_log ORDER BY id DESC LIMIT 1
+        FROM yazu_lighting_sync_log ORDER BY id DESC LIMIT 1
     """))).fetchone()
-    total = (await db.execute(text("SELECT COUNT(*) FROM yazu"))).scalar()
-    last_data = (await db.execute(text("SELECT MAX(waktu) FROM yazu"))).scalar()
-    units = (await db.execute(text("SELECT COUNT(DISTINCT id_unit) FROM yazu"))).scalar()
+    total = (await db.execute(text("SELECT COUNT(*) FROM yazu_lighting"))).scalar()
+    last_data = (await db.execute(text("SELECT MAX(waktu) FROM yazu_lighting"))).scalar()
+    units = (await db.execute(text("SELECT COUNT(DISTINCT id_unit) FROM yazu_lighting"))).scalar()
     return {
         "total_rows": total,
         "total_units": units,
@@ -188,7 +188,7 @@ async def stats(db: AsyncSession = Depends(get_db)):
 async def list_units(db: AsyncSession = Depends(get_db)):
     """List semua ID Unit unik (untuk filter/referensi)."""
     rows = (await db.execute(text(
-        "SELECT DISTINCT id_unit FROM yazu ORDER BY id_unit"
+        "SELECT DISTINCT id_unit FROM yazu_lighting ORDER BY id_unit"
     ))).fetchall()
     return [r[0] for r in rows]
 
@@ -221,7 +221,7 @@ async def pivot(
                      waktu,
                      ROW_NUMBER() OVER (PARTITION BY id_unit, (waktu AT TIME ZONE 'Asia/Makassar')::date
                                         ORDER BY waktu DESC) AS rn
-              FROM yazu
+              FROM yazu_lighting
               WHERE waktu >= :s AND waktu < :e
             )
             SELECT id_unit, EXTRACT(DAY FROM d)::int AS day, hm
@@ -274,7 +274,7 @@ async def list_raw(
         SELECT id, waktu, id_unit, nama, nrp, lokasi, hm, layak_operasi,
                user_field, akurasi, link_lokasi, coment, apar,
                temuan_status, pic, pic_nrp, action_comment
-        FROM yazu
+        FROM yazu_lighting
         WHERE {' AND '.join(where)}
         ORDER BY waktu DESC
         LIMIT :limit OFFSET :offset

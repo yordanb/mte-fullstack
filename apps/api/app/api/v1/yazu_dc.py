@@ -1,8 +1,8 @@
-"""Yazu Daily Check — sync checklist harian unit dari Google Sheets (sheet kedua).
+"""Yazu Lighting Daily Check — sync checklist harian unit dari Google Sheets (sheet kedua).
 
 Konsep sama dengan yazu.py (sheet P2H): fetch CSV publik → parse → upsert ke
-tabel `yazu_dc` di database (UNIQUE per waktu+id_unit), catat riwayat ke
-`yazu_dc_sync_log`. Bedanya hanya sumber sheet dan mapping kolom.
+tabel `yazu_dc_lighting` di database (UNIQUE per waktu+id_unit), catat riwayat ke
+`yazu_dc_lighting_sync_log`. Bedanya hanya sumber sheet dan mapping kolom.
 
 Header sheet (gid=0):
   0 Waktu, 1 ID Unit, 2 Nama, 3 NRP, 4 Lokasi, 5 HM, 6 Layak Operasi, 7 Akurasi,
@@ -28,8 +28,8 @@ from app.core.config import settings
 from app.core.deps import get_current_user, require_menu
 from app.db.session import get_db
 
-router = APIRouter(prefix="/v1/yazu-dc", tags=["yazu-dc"])
-log = logging.getLogger("yazu-dc")
+router = APIRouter(prefix="/v1/yazu-dc-lighting", tags=["yazu-dc-lighting"])
+log = logging.getLogger("yazu-dc-lighting")
 
 # Format kolom "Waktu": "04/05/2026 18:27:50" — jam lokal site (WITA/GMT+8),
 # bukan UTC (lihat V38; parse sebagai tz-aware Asia/Makassar).
@@ -143,7 +143,7 @@ async def do_sync(db: AsyncSession) -> dict:
     update_list = ",".join(f"{c}=EXCLUDED.{c}" for c in cols if c not in ("waktu", "id_unit"))
 
     sql = f"""
-        INSERT INTO yazu_dc ({col_list})
+        INSERT INTO yazu_dc_lighting ({col_list})
         VALUES ({param_list})
         ON CONFLICT (waktu, id_unit) DO UPDATE SET {update_list}, synced_at = NOW()
     """
@@ -154,7 +154,7 @@ async def do_sync(db: AsyncSession) -> dict:
         await db.execute(text(sql), chunk)
         upserted += len(chunk)
     await db.execute(text("""
-        INSERT INTO yazu_dc_sync_log(started_at, finished_at, status, rows_total, rows_upserted)
+        INSERT INTO yazu_dc_lighting_sync_log(started_at, finished_at, status, rows_total, rows_upserted)
         VALUES (:s, NOW(), 'success', :t, :u)
     """), {"s": started, "t": len(rows), "u": upserted})
     await db.commit()
@@ -163,9 +163,9 @@ async def do_sync(db: AsyncSession) -> dict:
 
 # ─── Endpoints ────────────────────────────────────────────
 
-@router.post("/sync", dependencies=[Depends(require_menu("yazudc", "add"))])
+@router.post("/sync", dependencies=[Depends(require_menu("yazudc_lighting", "add"))])
 async def sync_now(db: AsyncSession = Depends(get_db)):
-    """Trigger manual sync dari Google Sheets (Daily Check) → tabel yazu_dc."""
+    """Trigger manual sync dari Google Sheets (Daily Check) → tabel yazu_dc_lighting."""
     try:
         return await do_sync(db)
     except httpx.HTTPError as e:
@@ -180,11 +180,11 @@ async def stats(db: AsyncSession = Depends(get_db)):
     """Status sync terakhir + total baris."""
     last = (await db.execute(text("""
         SELECT started_at, finished_at, status, rows_total, rows_upserted, error_msg
-        FROM yazu_dc_sync_log ORDER BY id DESC LIMIT 1
+        FROM yazu_dc_lighting_sync_log ORDER BY id DESC LIMIT 1
     """))).fetchone()
-    total = (await db.execute(text("SELECT COUNT(*) FROM yazu_dc"))).scalar()
-    last_data = (await db.execute(text("SELECT MAX(waktu) FROM yazu_dc"))).scalar()
-    units = (await db.execute(text("SELECT COUNT(DISTINCT id_unit) FROM yazu_dc"))).scalar()
+    total = (await db.execute(text("SELECT COUNT(*) FROM yazu_dc_lighting"))).scalar()
+    last_data = (await db.execute(text("SELECT MAX(waktu) FROM yazu_dc_lighting"))).scalar()
+    units = (await db.execute(text("SELECT COUNT(DISTINCT id_unit) FROM yazu_dc_lighting"))).scalar()
     return {
         "total_rows": total,
         "total_units": units,
@@ -197,7 +197,7 @@ async def stats(db: AsyncSession = Depends(get_db)):
 async def list_units(db: AsyncSession = Depends(get_db)):
     """List semua ID Unit unik (untuk filter/referensi)."""
     rows = (await db.execute(text(
-        "SELECT DISTINCT id_unit FROM yazu_dc ORDER BY id_unit"
+        "SELECT DISTINCT id_unit FROM yazu_dc_lighting ORDER BY id_unit"
     ))).fetchall()
     return [r[0] for r in rows]
 
@@ -230,7 +230,7 @@ async def pivot(
                      waktu,
                      ROW_NUMBER() OVER (PARTITION BY id_unit, (waktu AT TIME ZONE 'Asia/Makassar')::date
                                         ORDER BY waktu DESC) AS rn
-              FROM yazu_dc
+              FROM yazu_dc_lighting
               WHERE waktu >= :s AND waktu < :e
             )
             SELECT id_unit, EXTRACT(DAY FROM d)::int AS day, hm
@@ -283,7 +283,7 @@ async def list_raw(
         SELECT id, waktu, id_unit, nama, nrp, lokasi, hm, layak_operasi,
                akurasi, link_lokasi, coment, apar,
                status_close, pic_close, nrp_close, tgl_close, action_comment
-        FROM yazu_dc
+        FROM yazu_dc_lighting
         WHERE {' AND '.join(where)}
         ORDER BY waktu DESC
         LIMIT :limit OFFSET :offset

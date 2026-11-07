@@ -600,7 +600,7 @@ async def update_unit(cn: str, body: dict, db: AsyncSession = Depends(get_db)):
 
 @router.post("/refresh-hm", dependencies=[Depends(require_menu("prokerinjector", "add"))])
 async def refresh_hm(db: AsyncSession = Depends(get_db)):
-    """Refresh HM NOW injector dari halaman Hourmeter & Yazu Daily Check.
+    """Refresh HM NOW injector dari halaman Hourmeter & Yazu Lighting Daily Check.
 
     HM terbaru per C/N diambil dari `services/hm_sync`; Yazu DC (harian)
     diprioritaskan, Hourmeter (bulanan) menjadi cadangan. Unit yang tidak ada

@@ -389,7 +389,7 @@ export default function ProkerInjectorPage() {
             </button>
             <button onClick={doRefreshHm} disabled={refreshing}
               className="rounded-lg border px-3 py-1.5 text-theme-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/5"
-              title="Ambil HM terbaru per C/N dari halaman Hourmeter & Yazu Daily Check. Yazu DC (harian) diprioritaskan; unit yang tidak ada di sumber data dibiarkan.">
+              title="Ambil HM terbaru per C/N dari halaman Hourmeter & Yazu Lighting Daily Check. Yazu DC (harian) diprioritaskan; unit yang tidak ada di sumber data dibiarkan.">
               {refreshing ? 'Refresh…' : 'Refresh HM'}
             </button>
           </>

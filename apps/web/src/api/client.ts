@@ -910,23 +910,23 @@ export type YazuRaw = {
 }
 
 export async function syncYazu() {
-  const r = await api.post(`/v1/yazu/sync`)
+  const r = await api.post(`/v1/yazu-lighting/sync`)
   return r.data
 }
 export async function fetchYazuStats(): Promise<YazuStats> {
-  const r = await api.get(`/v1/yazu/stats`)
+  const r = await api.get(`/v1/yazu-lighting/stats`)
   return r.data
 }
 export async function fetchYazuUnits(): Promise<string[]> {
-  const r = await api.get(`/v1/yazu/units`)
+  const r = await api.get(`/v1/yazu-lighting/units`)
   return r.data
 }
 export async function fetchYazuPivot(year?: number, month?: number): Promise<YazuPivot> {
-  const r = await api.get(`/v1/yazu/pivot`, { params: { year, month } })
+  const r = await api.get(`/v1/yazu-lighting/pivot`, { params: { year, month } })
   return r.data
 }
 export async function fetchYazuRaw(params: { year?: number; month?: number; id_unit?: string; limit?: number; offset?: number }): Promise<YazuRaw[]> {
-  const r = await api.get(`/v1/yazu/raw`, { params })
+  const r = await api.get(`/v1/yazu-lighting/raw`, { params })
   return r.data
 }
 
@@ -943,19 +943,19 @@ export type YazuDcRaw = {
 }
 
 export async function syncYazuDc() {
-  const r = await api.post(`/v1/yazu-dc/sync`)
+  const r = await api.post(`/v1/yazu-dc-lighting/sync`)
   return r.data
 }
 export async function fetchYazuDcStats(): Promise<YazuDcStats> {
-  const r = await api.get(`/v1/yazu-dc/stats`)
+  const r = await api.get(`/v1/yazu-dc-lighting/stats`)
   return r.data
 }
 export async function fetchYazuDcPivot(year?: number, month?: number): Promise<YazuDcPivot> {
-  const r = await api.get(`/v1/yazu-dc/pivot`, { params: { year, month } })
+  const r = await api.get(`/v1/yazu-dc-lighting/pivot`, { params: { year, month } })
   return r.data
 }
 export async function fetchYazuDcRaw(params: { year?: number; month?: number; id_unit?: string; limit?: number; offset?: number }): Promise<YazuDcRaw[]> {
-  const r = await api.get(`/v1/yazu-dc/raw`, { params })
+  const r = await api.get(`/v1/yazu-dc-lighting/raw`, { params })
   return r.data
 }
 
