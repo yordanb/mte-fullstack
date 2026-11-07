@@ -36,6 +36,7 @@ import 'package:mte_data_center/src/features/performance/presentation/performanc
 import 'package:mte_data_center/src/features/proker/presentation/proker_booster_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_injector_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_primer_page.dart';
+import 'package:mte_data_center/src/features/proker/presentation/proker_panel_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_thermostat_page.dart';
 import 'package:mte_data_center/src/features/riwayat/presentation/riwayat_detail_page.dart';
 import 'package:mte_data_center/src/features/riwayat/presentation/riwayat_page.dart';
@@ -107,6 +108,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/prokerthermo',
           builder: (c, s) => const ProkerThermostatPage()),
+      GoRoute(
+          path: '/prokerpanel', builder: (c, s) => const ProkerPanelPage()),
       GoRoute(path: '/suggestion', builder: (c, s) => const SuggestionPage()),
       GoRoute(
         path: '/suggestion/new',

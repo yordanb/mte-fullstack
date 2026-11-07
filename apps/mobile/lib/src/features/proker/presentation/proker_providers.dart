@@ -116,6 +116,77 @@ final primerDetailProvider =
   return _guard(ref, () => api.primerDetail(cn));
 });
 
+// ─────────────────── Proker GMC Panel Booster ──────────────────────────────
+
+/// Filter halaman GMC Panel Booster (web ProkerPanel.tsx: search/product/model
+/// + halaman). Sama seperti GMC Pompa Primer tanpa filter engine CAT.
+class PanelFilter {
+  final String q;
+  final String product;
+  final String model;
+  final int page;
+
+  const PanelFilter({
+    this.q = '',
+    this.product = '',
+    this.model = '',
+    this.page = 1,
+  });
+
+  PanelFilter copyWith({String? q, String? product, String? model, int? page}) =>
+      PanelFilter(
+        q: q ?? this.q,
+        product: product ?? this.product,
+        model: model ?? this.model,
+        page: page ?? this.page,
+      );
+}
+
+class PanelFilterNotifier extends Notifier<PanelFilter> {
+  @override
+  PanelFilter build() => const PanelFilter();
+
+  /// Terapkan filter terpilih — selalu kembali ke halaman 1 (web).
+  void apply({String? q, String? product, String? model}) =>
+      state = state.copyWith(q: q, product: product, model: model, page: 1);
+
+  void setPage(int p) => state = state.copyWith(page: p);
+}
+
+final panelFilterProvider =
+    NotifierProvider<PanelFilterNotifier, PanelFilter>(PanelFilterNotifier.new);
+
+final panelStatsProvider = FutureProvider<ProkerStats>((ref) async {
+  final api = ref.watch(prokerApiProvider);
+  return _guard(ref, api.panelStats);
+});
+
+final panelFiltersProvider = FutureProvider<ProkerFilters>((ref) async {
+  final api = ref.watch(prokerApiProvider);
+  return _guard(ref, api.panelFilters);
+});
+
+final panelUnitsProvider = FutureProvider<ListPage<ProkerUnit>>((ref) async {
+  final f = ref.watch(panelFilterProvider);
+  final api = ref.watch(prokerApiProvider);
+  return _guard(
+    ref,
+    () => api.panelUnits(
+      search: f.q,
+      product: f.product,
+      model: f.model,
+      page: f.page,
+      pageSize: prokerPageSize,
+    ),
+  );
+});
+
+final panelDetailProvider =
+    FutureProvider.family<ProkerDetail, String>((ref, cn) async {
+  final api = ref.watch(prokerApiProvider);
+  return _guard(ref, () => api.panelDetail(cn));
+});
+
 // ────────── Filter bersama Booster / Injector / Thermostat ─────────────────
 
 /// Filter 3 varian lain: search/product/model + opsi "hanya jatuh tempo".
@@ -282,6 +353,13 @@ void invalidatePrimerData(WidgetRef ref) {
   ref.invalidate(primerFiltersProvider);
   ref.invalidate(primerUnitsProvider);
   ref.invalidate(primerDetailProvider);
+}
+
+void invalidatePanelData(WidgetRef ref) {
+  ref.invalidate(panelStatsProvider);
+  ref.invalidate(panelFiltersProvider);
+  ref.invalidate(panelUnitsProvider);
+  ref.invalidate(panelDetailProvider);
 }
 
 void invalidateBoosterData(WidgetRef ref) {
