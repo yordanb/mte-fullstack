@@ -959,6 +959,45 @@ export async function fetchYazuDcRaw(params: { year?: number; month?: number; id
   return r.data
 }
 
+// ─── Yazu Pumping P2H (3 kategori: primer/mhp/booster, satu spreadsheet) ───
+export type YazuPumpingPivot = {
+  kategori: string
+  year: number
+  month: number
+  days_in_month: number
+  units: string[]
+  cells: Record<string, Record<number, number | null>>
+}
+export type YazuPumpingKategoriStat = { rows: number; units: number }
+export type YazuPumpingStats = {
+  total_rows: number
+  total_units: number
+  last_data_waktu: string | null
+  last_sync: { started_at: string; finished_at: string; status: string; rows_total: number; rows_upserted: number; error_msg: string | null } | null
+  per_kategori: Record<string, YazuPumpingKategoriStat>
+}
+
+export async function syncYazuPumping() {
+  const r = await api.post(`/v1/yazu-pumping/sync`)
+  return r.data
+}
+export async function fetchYazuPumpingStats(): Promise<YazuPumpingStats> {
+  const r = await api.get(`/v1/yazu-pumping/stats`)
+  return r.data
+}
+export async function fetchYazuPumpingUnits(kategori?: string): Promise<string[]> {
+  const r = await api.get(`/v1/yazu-pumping/units`, { params: { kategori } })
+  return r.data
+}
+export async function fetchYazuPumpingPivot(kategori: string, year?: number, month?: number): Promise<YazuPumpingPivot> {
+  const r = await api.get(`/v1/yazu-pumping/pivot`, { params: { kategori, year, month } })
+  return r.data
+}
+export async function fetchYazuPumpingRaw(params: { kategori?: string; year?: number; month?: number; id_unit?: string; limit?: number; offset?: number }): Promise<Record<string, unknown>[]> {
+  const r = await api.get(`/v1/yazu-pumping/raw`, { params })
+  return r.data
+}
+
 // ─── Hourmeter (HM bulanan per unit, sumber upload Excel manual) ───
 export type HourmeterStats = {
   periods: { period: string; units: number; values_cnt: number; uploaded_at: string; uploaded_by: string }[]
