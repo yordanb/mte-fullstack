@@ -1650,6 +1650,151 @@ export async function refreshThermostatHm(): Promise<RefreshHmResult> {
 }
 
 
+// --- Proker GMC Panel Booster --------------------------------------------
+export type ProkerPanelUnitRow = {
+  cn: string
+  no: number | null
+  unit_model: string | null
+  product: string | null
+  unit_type: string | null
+  hm_now: number | null
+}
+
+export type ProkerPanelUnit = ProkerPanelUnitRow & {
+  exec_count: number
+  done_count: number
+  last_date: string | null
+  last_hm: number | null
+}
+
+export type ProkerPanelExecution = {
+  id: number
+  cn: string
+  period: string
+  period_year: number | null
+  period_seq: number | null
+  hm: number | null
+  service_date: string | null
+  mekanik: string | null
+  status: ProkerStatus
+}
+
+export type ProkerPanelDetail = {
+  unit: ProkerPanelUnitRow
+  executions: ProkerPanelExecution[]
+  stats: {
+    total: number
+    done: number
+    plan: number
+    missed: number
+    last_date: string | null
+    last_hm: number | null
+    interval: number
+    due_hm: number | null
+    sisa_hm: number | null
+  }
+}
+
+export type ProkerPanelStats = {
+  units: number
+  total: number
+  done: number
+  plan: number
+  late: number
+  missed: number
+  unit_done: number
+  last_date: string | null
+  this_year: number
+  year: number
+  per_year: { year: number; total: number; done: number }[]
+}
+
+export type ProkerPanelFilters = {
+  product: string[]
+  model: string[]
+  type: string[]
+  years: number[]
+  min_date: string | null
+  max_date: string | null
+  min_year: number | null
+  max_year: number | null
+}
+
+export type ProkerPanelUnitPage = {
+  total: number
+  page: number
+  page_size: number
+  data: ProkerPanelUnit[]
+}
+
+export async function fetchProkerPanelStats(): Promise<ProkerPanelStats> {
+  const r = await api.get('/v1/proker-panel/stats')
+  return r.data
+}
+
+export async function fetchProkerPanelFilters(): Promise<ProkerPanelFilters> {
+  const r = await api.get('/v1/proker-panel/filters')
+  return r.data
+}
+
+export async function fetchProkerPanelUnits(params: {
+  search?: string; product?: string; model?: string
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<ProkerPanelUnitPage> {
+  const r = await api.get('/v1/proker-panel/units', { params })
+  return r.data
+}
+
+export async function fetchProkerPanelUnit(cn: string): Promise<ProkerPanelDetail> {
+  const r = await api.get(`/v1/proker-panel/units/${encodeURIComponent(cn)}`)
+  return r.data
+}
+
+export async function updateProkerPanelUnit(cn: string, body: Partial<ProkerPanelUnitRow>): Promise<ProkerPanelUnitRow> {
+  const r = await api.patch(`/v1/proker-panel/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+
+export type ProkerPanelExecInput = {
+  period?: string
+  hm?: number | null
+  service_date?: string | null
+  mekanik?: string | null
+  status?: ProkerStatus
+}
+
+export async function createProkerPanelExecution(cn: string, body: ProkerPanelExecInput): Promise<ProkerPanelExecution> {
+  const r = await api.post(`/v1/proker-panel/units/${encodeURIComponent(cn)}/executions`, body)
+  return r.data
+}
+
+export async function updateProkerPanelExecution(id: number, body: ProkerPanelExecInput): Promise<ProkerPanelExecution> {
+  const r = await api.patch(`/v1/proker-panel/executions/${id}`, body)
+  return r.data
+}
+
+export async function deleteProkerPanelExecution(id: number): Promise<void> {
+  await api.delete(`/v1/proker-panel/executions/${id}`)
+}
+
+export async function importProkerPanelXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/proker-panel/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchProkerPanelImportStatus(id: string): Promise<ProkerImportStatus> {
+  const r = await api.get(`/v1/proker-panel/import/${id}`)
+  return r.data
+}
+
+export async function refreshProkerPanelHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/proker-panel/refresh-hm')
+  return r.data
+}
+
+
 // --- Proker Midlife Eng Booster ------------------------------------------
 export type BoosterKind = 'OVH' | 'MIDLIFE'
 

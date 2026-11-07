@@ -39,6 +39,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'prokerbooster', label: 'Proker Midlife Eng Booster' },
     { key: 'prokerinjector', label: 'Proker Midlife Injector Primer' },
     { key: 'prokerthermo', label: 'Proker Thermostat CAT' },
+    { key: 'prokerpanel', label: 'Proker GMC Panel Booster' },
   ] },
   { title: 'Agent', items: [
     { key: 'ss', label: 'Sugestion System' },
@@ -125,6 +126,10 @@ const ICONS: Record<string, ReactNode> = {
   prokerthermo: (
     // Termostat / termometer
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V7a2 2 0 0 1 4 0z" /><path d="M12 9v6" /></svg>
+  ),
+  prokerpanel: (
+    // Panel / dashboard kontrol (panel booster)
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M8 15v-3M12 15V8M16 15v-5" /><path d="M3 19h18" /></svg>
   ),
   manpower: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><circle cx="17" cy="9" r="2.4" /><path d="M16 14.2c3 .2 5.5 2.3 5.5 5.3" /></svg>

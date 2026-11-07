@@ -25,13 +25,13 @@ const permMatrixRoles = [
   'group leader', 'section head', 'adm te', 'adm lce',
 ];
 
-/// 29 menu izin backend (users.py MENUS; urutan penting = urutan tampil web).
+/// 31 menu izin backend (users.py MENUS; urutan penting = urutan tampil web).
 const permMenus = [
   'dashboard', 'dbr', 'performance', 'activity', 'equipment',
   'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak',
   'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement',
   'yazu_lighting', 'yazudc_lighting', 'yazupumping', 'ewacs', 'tarsupport', 'ss', 'ssab',
-  'proker', 'prokerbooster', 'prokerinjector', 'prokerthermo',
+  'proker', 'prokerbooster', 'prokerinjector', 'prokerthermo', 'prokerpanel',
   'manpower', 'manpowermanage',
 ];
 
@@ -48,6 +48,7 @@ String menuLabel(String menu) => switch (menu) {
       'prokerbooster' => 'prokerbooster — midlife eng booster',
       'prokerinjector' => 'prokerinjector — midlife injector primer',
       'prokerthermo' => 'prokerthermo — Thermostat CAT',
+      'prokerpanel' => 'prokerpanel — GMC Panel Booster',
       _ => menu,
     };
 

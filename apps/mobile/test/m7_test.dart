@@ -20,8 +20,8 @@ void main() {
     expect(r.errors.first.row, 2);
   });
 
-  test('perm matrix: 30 menu backend (sinkron users.py MENUS, urutan sama)', () {
-    expect(permMenus.length, 30);
+  test('perm matrix: 31 menu backend (sinkron users.py MENUS, urutan sama)', () {
+    expect(permMenus.length, 31);
     expect(permMenus.first, 'dashboard');
     expect(permMenus.last, 'manpowermanage');
     expect(
@@ -31,7 +31,8 @@ void main() {
           'riwayat', 'ppm', 'measurement', 'yazu_lighting', 'yazudc_lighting',
           'yazupumping', 'ewacs',
           'tarsupport', 'ss', 'ssab', 'proker', 'prokerbooster',
-          'prokerinjector', 'prokerthermo', 'manpower', 'manpowermanage',
+          'prokerinjector', 'prokerthermo', 'prokerpanel',
+          'manpower', 'manpowermanage',
         ]));
     expect(permMenus.toSet().length, permMenus.length); // tanpa duplikat
   });

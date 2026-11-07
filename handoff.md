@@ -493,3 +493,38 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   - Verifikasi: `flutter analyze lib` bersih, **131 test lolos**, `tsc` +
     `vite build` web lolos, modul Python compile OK + parser diuji langsung ke
     3 CSV (semua header ter mapping), APK debug terbuild.
+- **Modul Proker GMC Panel Booster (2026-11-07, branch
+  `mobile/proker-panel-booster`)**:
+  halaman baru grup **Technical Expert** menu **"Proker GMC Panel Booster"**
+  (2.000 jam) — program kerja dari file Excel
+  `proker gmc panel booster.xlsx`, sheet `07. GMC PANEL` (matriks 51 unit x N
+  periode, tiap periode 3 kolom `HM | DATE | MEKANIK`). **Sama formatnya dengan
+  Proker GMC Pompa Primer**, tetapi TIDAK difilter engine CAT: semua unit
+  (WARMAN / MULTIFLO / KOMATSU, dst) ditampilkan; ada **Import Excel** + tombol
+  **Refresh HM** (web), mobile tampilan + Refresh HM.
+  - **DB** `infra/db/V65__proker_panel_booster.sql`: tabel `proker_panel_unit`
+    + `proker_panel_execution` (UNIQUE (cn, period)) + indeks + trigger
+    `set_updated_at` + menu `prokerpanel` (CHECK constraint diperbarui, izin
+    disalin dari menu `proker`).
+  - **Catatan label periode**: di file sumber grup periode terakhir muncul DUA
+    KALI dengan label identik "2026 - Pertama"; import menormalkan label
+    berulang dalam satu tahun dengan menaikkan urutan (Pertama → Kedua), jadi
+    grup terakhir tersimpan sebagai "2026 - Kedua" agar kunci (cn, period)
+    unik. `hm_now` diturunkan dari HM pada grup periode terakhir yang terisi.
+  - **Backend** `app/api/v1/proker_panel.py` prefix `/v1/proker-panel`
+    (`import`/`import/{id}`/`refresh-hm`/`filters`/`stats`/`units`/
+    `units/{cn}`/create+update/delete execution). `main.py` daftarkan router;
+    `users.py` MENUS + `hm_sync.py` TABLES (`proker_panel_unit`).
+  - **Web** `pages/ProkerPanel.tsx` (klon Proker.tsx tanpa filter/kolom engine)
+    + `client.ts` (9 fungsi + tipe) + `Layout.tsx`/`App.tsx`/`Users.tsx`
+    (menu key `prokerpanel`, label "Proker GMC Panel Booster", ikon panel).
+  - **Mobile** `features/proker/presentation/proker_panel_page.dart` (klon
+    proker_primer_page.dart tanpa filter engine; reuse model & widget Proker);
+    `ProkerApi` dapat 5 method `panel*`; provider
+    `panelFilter`/`panelStats`/`panelFilters`/`panelUnits`/`panelDetail` +
+    `invalidatePanelData`; route `/prokerpanel`; `app_scaffold.dart` +
+    `user_models.dart` (`permMenus` jadi 31 + `menuLabel`).
+  - Verifikasi: `flutter analyze lib` bersih, **131 test lolos** (m7_test
+    judul/menjadi 31), `tsc` + `vite build` web lolos, modul Python compile OK
+    + parser diuji langsung ke file Excel (51 unit, 163 eksekusi, label
+    duplikat → "2026 - Kedua", tanpa duplikat (cn,period)), APK debug terbuild.

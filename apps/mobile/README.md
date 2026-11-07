@@ -34,7 +34,7 @@ Menu drawer meniru grup web (`Layout.tsx`). Seluruh menu web sudah tersedia:
 | Monitoring | Dashboard Oil Lab, DBR Breakdown, Performance, Timeline Mingguan |
 | Operasional | Activity, Yazu Lighting P2H, Yazu Lighting Daily Check, Yazu Pumping P2H, Bomak R1BI, Equipment, Staging Pump, Meeting (MoM), Riwayat, Project, Update Data |
 | Follow Up | FUI, Suggestion FUI, Report Follow Up |
-| Technical Expert | Hourmeter, PPM*, Measurement*, Ewacs Performance, TAR Support*, Proker (GMC/Booster/Injector/Thermostat) |
+| Technical Expert | Hourmeter, PPM*, Measurement*, Ewacs Performance, TAR Support*, Proker (GMC/Booster/Injector/Thermostat/Panel Booster) |
 | Agent | Suggestion System, SS AB, Manpower, Manpower Inovasi |
 | Administrasi | Users*, Audit Log* |
 

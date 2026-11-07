@@ -22,6 +22,7 @@ const List<Map<String, dynamic>> _menu = [
   {'key': 'prokerbooster', 'label': 'Proker Midlife Eng Booster', 'path': '/prokerbooster'},
   {'key': 'prokerinjector', 'label': 'Proker Midlife Injector Primer', 'path': '/prokerinjector'},
   {'key': 'prokerthermo', 'label': 'Proker Thermostat CAT', 'path': '/prokerthermo'},
+  {'key': 'prokerpanel', 'label': 'Proker GMC Panel Booster', 'path': '/prokerpanel'},
   {'key': 'ppm', 'label': 'PPM', 'path': '/ppm'},
   {'key': 'hourmeter', 'label': 'Hourmeter', 'path': '/hourmeter'},
   {'key': 'yazu_lighting', 'label': 'Yazu Lighting P2H', 'path': '/yazu'},

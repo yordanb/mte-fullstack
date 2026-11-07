@@ -6,8 +6,8 @@ import '../../../core/network/api_exception.dart';
 import '../../../core/network/dio_client.dart';
 import '../domain/proker_models.dart';
 
-/// Lapisan data modul Proker: 4 varian endpoint
-/// (/v1/proker, /v1/booster, /v1/injector, /v1/thermostat).
+/// Lapisan data modul Proker: 5 varian endpoint
+/// (/v1/proker, /v1/booster, /v1/injector, /v1/thermostat, /v1/proker-panel).
 class ProkerApi {
   final Dio _dio;
   ProkerApi(this._dio);
@@ -95,6 +95,41 @@ class ProkerApi {
 
   Future<RefreshHmResult> primerRefreshHm() async => RefreshHmResult.fromJson(
       await _post('/v1/proker/refresh-hm', 'refresh HM Proker GMC',
+          options: _optsRefresh));
+
+  // ── Proker GMC Panel Booster ────────────────────────────────────
+  // Bentuk data sama dengan Proker GMC Pompa Primer, tetapi tanpa filter
+  // engine: halaman menampilkan semua unit (WARMAN / MULTIFLO / KOMATSU).
+  Future<ProkerStats> panelStats() async => ProkerStats.fromJson(
+      await _get('/v1/proker-panel/stats', 'ringkasan Proker GMC Panel'));
+
+  Future<ProkerFilters> panelFilters() async => ProkerFilters.fromJson(
+      await _get('/v1/proker-panel/filters', 'filter Proker GMC Panel'));
+
+  Future<ListPage<ProkerUnit>> panelUnits({
+    String? search,
+    String? product,
+    String? model,
+    int page = 1,
+    int pageSize = 50,
+  }) async =>
+      ListPage.fromJson(
+        await _get('/v1/proker-panel/units', 'daftar unit Proker GMC Panel',
+            query: _q(
+                search: search,
+                product: product,
+                model: model,
+                page: page,
+                pageSize: pageSize)),
+        ProkerUnit.fromJson,
+      );
+
+  Future<ProkerDetail> panelDetail(String cn) async => ProkerDetail.fromJson(
+      await _get('/v1/proker-panel/units/${Uri.encodeComponent(cn)}',
+          'riwayat proker $cn'));
+
+  Future<RefreshHmResult> panelRefreshHm() async => RefreshHmResult.fromJson(
+      await _post('/v1/proker-panel/refresh-hm', 'refresh HM Proker GMC Panel',
           options: _optsRefresh));
 
   // ── Proker Midlife Eng Booster ──────────────────────────────────
