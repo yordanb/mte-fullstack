@@ -306,3 +306,79 @@ async def pivot(
             "last_day": last_day, "final": final, "delta": delta,
         })
     return {"period": period, "days_in_month": days_in_month, "units": units}
+
+
+# ─── Input cepat HM (tempel teks "CN hm.NNNNN") ───────────────────────────
+
+@router.post("/quick-input", dependencies=[Depends(require_menu("hourmeter", "add"))])
+async def quick_input(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Simpan pembacaan HM harian hasil tempel teks cepat.
+
+    Body: {"date": "YYYY-MM-DD", "rows": [{"cn": "WP491", "hm": 22531}, ...]}
+    - Tiap baris di-upsert ke `hourmeter_daily` (periode YYYY-MM, hari = tanggal);
+    - bila CN belum punya baris `opening` di periode itu, dibuat dengan
+      opening = HM yang diinput (Selisih bulan mulai dari 0);
+    - CN yang tidak ada di master `equipment` tetap disimpan tetapi ditandai
+      peringatan (`warning`) agar bisa dicek.
+    """
+    rows = body.get("rows")
+    if not isinstance(rows, list) or not rows:
+        raise HTTPException(400, "Tidak ada baris HM yang dikirim")
+
+    raw_date = body.get("date")
+    try:
+        d = datetime.strptime(str(raw_date)[:10], "%Y-%m-%d").date() if raw_date else date.today()
+    except ValueError:
+        raise HTTPException(400, "Tanggal tidak valid (format YYYY-MM-DD)")
+    period = f"{d.year}-{d.month:02d}"
+    day = d.day
+
+    results: list[dict] = []
+    saved = 0
+    for r in rows:
+        cn = str((r or {}).get("cn") or "").strip().upper().replace(" ", "")
+        hm = _cell_num((r or {}).get("hm"))
+        if not cn or hm is None:
+            results.append({"cn": cn, "hm": hm, "status": "invalid",
+                            "warning": "CN atau HM tidak terbaca"})
+            continue
+        known = (await db.execute(
+            text("SELECT 1 FROM equipment WHERE cn = :c"), {"c": cn})).scalar()
+        # Pastikan baris opening ada; nilai awal = HM yang diinput.
+        await db.execute(text("""
+            INSERT INTO hourmeter_opening(period, cn, egi, opening, uploaded_by)
+            VALUES (:p, :cn, NULL, :op, :who)
+            ON CONFLICT (period, cn) DO NOTHING
+        """), {"p": period, "cn": cn, "op": hm, "who": user["username"]})
+        await db.execute(text("""
+            INSERT INTO hourmeter_daily(period, cn, day, hm)
+            VALUES (:p, :cn, :d, :v)
+            ON CONFLICT (period, cn, day) DO UPDATE SET hm = EXCLUDED.hm
+        """), {"p": period, "cn": cn, "d": day, "v": hm})
+        saved += 1
+        item = {"cn": cn, "hm": hm, "status": "saved", "warning": None}
+        if not known:
+            item["warning"] = "CN tidak ada di master equipment"
+        results.append(item)
+
+    try:
+        await db.execute(text("""
+            INSERT INTO hourmeter_upload_log(period, filename, rows_units, rows_values, status, uploaded_by)
+            VALUES (:p, :f, :u, :v, 'success', :who)
+        """), {"p": period, "f": f"input-cepat {d.isoformat()}", "u": saved,
+               "v": saved, "who": user["username"]})
+        await db.commit()
+    except Exception as e:  # noqa: BLE001
+        await db.rollback()
+        log.exception("gagal simpan input cepat hourmeter")
+        raise HTTPException(500, f"gagal simpan: {e}")
+
+    warned = sum(1 for x in results if x.get("warning"))
+    return {
+        "ok": True, "period": period, "date": d.isoformat(), "day": day,
+        "saved": saved, "warned": warned, "results": results,
+    }

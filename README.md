@@ -61,7 +61,7 @@ Agent / Administrasi**, autohide overlay, ikon per menu, dark mode penuh, notifi
 | Follow Up | **FUI** | Dossier per unit (ketik CN): kartu equipment (+serial), 10 DBR terbaru (Code USM, tanpa CONTINUE), 10 oil terakhir per component. Tombol Export PDF/PAMA **disembunyikan sementara** (`SHOW_FUI_EXPORT`). |
 | Follow Up | **Suggestion FUI** | Unit aktif yang sample terakhirnya non-NORMAL + masing-masing 3 oil terakhir, per kategori; tombol *Suggest Follow Up* per baris non-NORMAL (inputer+). |
 | Follow Up | **Report Follow Up** | Semua oil terakhir non-NORMAL + status Sudah/Belum suggest + saran terakhir; filter kategori/cari/status; riwayat suggest per lab. |
-| Technical Expert | **Hourmeter** | Pencatatan **HM bulanan** per unit (upload Excel manual): rekap per bulan, per unit, dan grafik/ringkasan pemakaian HM. Ganti input HM manual dari luar sistem. |
+| Technical Expert | **Hourmeter** | Pencatatan **HM bulanan** per unit. Tab **Grid HM** (upload Excel manual): rekap per bulan/per unit + ringkasan. Tab **Input Cepat HM**: tempel teks `WP491 hm.22531` (deteksi CN+HM otomatis), tanggal default hari ini (bisa diubah), simpan ke grid bulan itu, + peringatan bila CN tidak ada di master equipment. |
 | Technical Expert | **PPM** | Placeholder (konten menyusul). |
 | Technical Expert | **Measurement** | Placeholder (konten menyusul). |
 | Operasional | **Yazu Lighting P2H** | Pivot **HM bulanan** per unit dari checklist inspeksi unit (sync Google Sheets), sticky header + scroll internal (vertikal & horizontal). Deteksi anomali kenaikan HM harian: **merah** bila delta `< 0` (HM mundur) atau `> 24`, **oranye** 14–24, **hijau** 10–14, normal 0–10. Delta dinormalisasi bila ada hari kosong (`delta / gap hari`). |
