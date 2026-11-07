@@ -440,8 +440,8 @@ profil (avatar + ganti password) + dark mode + notifikasi.
     `stagingShiftPeriod` yang ditemukan saat uji.
   - Dengan ini **seluruh menu web sudah ada di mobile** (gap menu kosong).
     `flutter analyze lib` bersih, **131 test lolos**, APK debug terbuild.
-- **Rename modul Yazu → Yazu Lighting (2026-11-07, branch
-  `mobile/yazu-lighting-rename`, commit `ad2efe7`)**: rename menyeluruh
+- **Rename modul Yazu → Yazu Lighting (2026-11-07, sudah merge ke main,
+  branch `mobile/yazu-lighting-rename`, commit `ad2efe7`; merge `ee4f29d`)**: rename menyeluruh
   sesuai permintaan — tabel DB, key menu matriks izin, label menu, judul
   halaman, dan path API; backend + web + mobile diubah bersamaan.
   - **DB** `infra/db/V63__yazu_lighting_rename.sql`: `yazu`→`yazu_lighting`,
