@@ -1035,6 +1035,28 @@ export async function fetchHourmeterPivot(year?: number, month?: number): Promis
   return r.data
 }
 
+/** Input cepat HM: simpan baris {cn, hm} pada satu tanggal (YYYY-MM-DD). */
+export type HourmeterQuickRow = { cn: string; hm: number | null }
+export type HourmeterQuickItem = {
+  cn: string
+  hm: number | null
+  status: 'saved' | 'invalid'
+  warning: string | null
+}
+export type HourmeterQuickResult = {
+  ok: boolean
+  period: string
+  date: string
+  day: number
+  saved: number
+  warned: number
+  results: HourmeterQuickItem[]
+}
+export async function saveHourmeterQuick(date: string, rows: HourmeterQuickRow[]): Promise<HourmeterQuickResult> {
+  const r = await api.post(`/v1/hourmeter/quick-input`, { date, rows })
+  return r.data
+}
+
 // ─── Ewacs Performance ────────────────────────────
 export type EwacsKpi = {
   pa: number; scm_dur: number; usm_dur: number; scm_pct: number; usm_pct: number

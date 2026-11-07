@@ -528,3 +528,25 @@ profil (avatar + ganti password) + dark mode + notifikasi.
     judul/menjadi 31), `tsc` + `vite build` web lolos, modul Python compile OK
     + parser diuji langsung ke file Excel (51 unit, 163 eksekusi, label
     duplikat → "2026 - Kedua", tanpa duplikat (cn,period)), APK debug terbuild.
+- **Hourmeter: tab "Input Cepat HM" (2026-11-07, branch
+  `web/hourmeter-quick-input`, web saja)**: halaman **Hourmeter** kini punya 2
+  tab — **Grid HM** (seperti sebelumnya) dan **Input Cepat HM**: tempel teks
+  satu baris per unit (`Wp1140 hm.2196`, `wp902 hm.11876`,
+  `Wp491 hm.22531`), di-detect menjadi CN + HM (regex toleran
+  spasi/titik/titik-dua, angka boleh ribuan ID), tanggal default **hari ini**
+  dan bisa diubah lewat DatePicker sebelum disimpan.
+  - **API** `app/api/v1/hourmeter.py` `POST /v1/hourmeter/quick-input`
+    (izin `hourmeter/add`): body `{date, rows:[{cn,hm}]}` → upsert
+    `hourmeter_daily` (period YYYY-MM, day = tanggal); bila CN belum punya
+    baris `opening` di periode itu, dibuat otomatis dengan **opening = HM yang
+    diinput** (Selisih mulai 0). CN yang tidak ada di master `equipment`
+    tetap disimpan tetapi ditandai `warning` (tidak diblokir). Dicatat di
+    `hourmeter_upload_log` (filename `input-cepat <tanggal>`).
+  - **Web** `client.ts` (`parseHmLines` dipakai di halaman; tipe + fungsi
+    `saveHourmeterQuick`) + `pages/Hourmeter.tsx` (tab bar, panel Input Cepat
+    dengan pratinjau deteksi CN/HM + peringatan CN tak dikenal dari respons
+    simpan).
+  - Verifikasi: `tsc` + `vite build` web lolos, modul Python compile OK, regex
+    parser diuji ke 10 baris contoh (semua ter-deteksi benar, mis.
+    WP491 → HM 22531), `flutter analyze lib` tetap bersih (mobile tidak
+    berubah).
