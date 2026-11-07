@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     # plus blok STATUS CLOSE / PIC CLOSE / NRP CLOSE / TGL CLOSE / ACTION COMMENT.
     yazu_dc_sheet_id: str = "1TLUMzLruxkvpHOeB1A3K6Fy4EAGlr7s0Nv0DYN7yYGg"
     yazu_dc_sheet_gid: int = 0
+    # Yazu Pumping P2H — satu spreadsheet, tiga tab (gid berbeda):
+    # primer / mhp / booster. Kolom checklist beda tipis antar tab.
+    yazu_pumping_sheet_id: str = "1QhRDCBnimoD4GserO9X-DB2cR4IvPafEG-gBxYsLsRI"
+    yazu_pumping_gid_primer: int = 1513255410
+    yazu_pumping_gid_mhp: int = 138785798
+    yazu_pumping_gid_booster: int = 754306640
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -41,5 +47,13 @@ class Settings(BaseSettings):
     @property
     def yazu_dc_csv_url(self) -> str:
         return f"https://docs.google.com/spreadsheets/d/{self.yazu_dc_sheet_id}/gviz/tq?tqx=out:csv&gid={self.yazu_dc_sheet_gid}"
+
+    def yazu_pumping_csv_url(self, kategori: str) -> str:
+        gid = {
+            "primer": self.yazu_pumping_gid_primer,
+            "mhp": self.yazu_pumping_gid_mhp,
+            "booster": self.yazu_pumping_gid_booster,
+        }[kategori]
+        return f"https://docs.google.com/spreadsheets/d/{self.yazu_pumping_sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
 
 settings = Settings()

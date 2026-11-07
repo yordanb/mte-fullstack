@@ -6,15 +6,17 @@ import '../domain/yazu_models.dart';
 
 /// Lapisan data Yazu (yazu.py) & Yazu Daily Check (yazu_dc.py).
 /// Keduanya identik, hanya beda prefix: `/v1/yazu` vs `/v1/yazu-dc`.
+/// `kategori` (opsional) dipakai modul Yazu Pumping (primer/mhp/booster).
 class YazuApi {
   final Dio _dio;
   final String prefix;
   YazuApi(this._dio, this.prefix);
 
-  Future<YazuPivot> pivot({int? year, int? month}) async {
+  Future<YazuPivot> pivot({int? year, int? month, String? kategori}) async {
     final r = await _dio.get('$prefix/pivot', queryParameters: {
       if (year != null) 'year': year,
       if (month != null) 'month': month,
+      if (kategori != null) 'kategori': kategori,
     });
     return YazuPivot.fromJson((r.data as Map).cast<String, dynamic>());
   }
@@ -35,3 +37,7 @@ final yazuApiProvider =
 
 final yazuDcApiProvider = Provider<YazuApi>(
     (ref) => YazuApi(ref.watch(dioProvider), '/v1/yazu-dc'));
+
+/// Yazu Pumping P2H — satu endpoint, kategori dikirim sebagai parameter.
+final yazuPumpingApiProvider = Provider<YazuApi>(
+    (ref) => YazuApi(ref.watch(dioProvider), '/v1/yazu-pumping'));

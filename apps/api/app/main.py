@@ -17,6 +17,7 @@ from app.api.v1.mom import router as mom_router
 from app.api.v1.riwayat import router as riwayat_router
 from app.api.v1.yazu import router as yazu_router, do_sync
 from app.api.v1.yazu_dc import router as yazu_dc_router, do_sync as do_sync_dc
+from app.api.v1.yazu_pumping import router as yazu_pumping_router, do_sync as do_sync_pumping
 from app.api.v1.hourmeter import router as hourmeter_router
 from app.api.v1.ewacs import router as ewacs_router
 from app.api.v1.ss import router as ss_router
@@ -122,6 +123,7 @@ app.include_router(mom_router)
 app.include_router(riwayat_router)
 app.include_router(yazu_router)
 app.include_router(yazu_dc_router)
+app.include_router(yazu_pumping_router)
 app.include_router(hourmeter_router)
 app.include_router(ewacs_router)
 app.include_router(ss_router)
@@ -140,11 +142,15 @@ _scheduler: AsyncIOScheduler | None = None
 
 
 async def _yazu_scheduled_sync():
-    """Sync terjadwal: sheet P2H (yazu) lalu sheet Daily Check (yazu_dc).
+    """Sync terjadwal: sheet P2H (yazu), Daily Check (yazu_dc), lalu Pumping P2H.
 
-    Keduanya berjalan independen — kegagalan satu sheet tidak menghentikan yang lain.
+    Ketiganya independen — kegagalan satu sheet tidak menghentikan yang lain.
     """
-    for sync_fn, label in ((do_sync, "yazu_lighting"), (do_sync_dc, "yazu_dc_lighting")):
+    for sync_fn, label in (
+        (do_sync, "yazu_lighting"),
+        (do_sync_dc, "yazu_dc_lighting"),
+        (do_sync_pumping, "yazu_pumping"),
+    ):
         async with SessionLocal() as db:
             try:
                 r = await sync_fn(db)

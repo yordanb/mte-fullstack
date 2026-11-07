@@ -465,4 +465,30 @@ profil (avatar + ganti password) + dark mode + notifikasi.
     `user_models.dart` `permMenus` + `menuLabel`; test `m7_test.dart`
     disesuaikan. `flutter analyze lib` bersih, **131 test lolos**, `tsc` web
     bersih, modul Python compile OK, APK debug terbuild.
-
+- **Modul Yazu Pumping P2H (2026-11-07, branch `mobile/yazu-pumping-p2h`)**:
+  halaman baru grup **Operasional** menu **"Yazu Pumping P2H"** — checklist
+  inspeksi unit pompa dari satu Google Sheets
+  (`1QhRDCBnimoD4GserO9X-DB2cR4IvPafEG-gBxYsLsRI`) dengan **3 kategori tab:
+  Primer / MHP / Booster** (gid `1513255410` / `138785798` / `754306640`).
+  Tampilan paritas Yazu Lighting P2H: pivot HM bulanan + anomali + 1 tombol
+  **Sync Manual** (menarik ketiga tab sekaligus) + filter bulan/tahun.
+  - **DB** `infra/db/V64__yazu_pumping.sql`: satu tabel `yazu_pumping` +
+    kolom `kategori` ('primer'|'mhp'|'booster'), UNIQUE (kategori,waktu,id_unit);
+    `yazu_pumping_sync_log`; menu `yazupumping` (salin izin dari `yazu_lighting`).
+  - **Backend** `app/api/v1/yazu_pumping.py` prefix `/v1/yazu-pumping`
+    (`sync`/`stats`/`units`/`pivot?kategori=`/`raw`). Parsing **berdasarkan nama
+    header** (bukan index) karena kolom antar tab beda tipis: primer (Level Oli
+    Vacuum), mhp (Level Oli Transmisi, Fungsi AC), booster (Fungsi Panel Motor
+    355KW). `main.py` scheduler 06:00/18:00 ikut menarik pumping; `users.py`
+    MENUS + `config.py` (sheet id + 3 gid).
+  - **Web** `pages/YazuPumping.tsx` (tab kategori + pivot + anomali, reuse
+    helper Yazu.tsx) + `client.ts` (5 fungsi) + `Layout.tsx`/`App.tsx`/
+    `Users.tsx` (menu key `yazupumping`, label "Yazu Pumping P2H", ikon pompa).
+  - **Mobile** `features/yazu/presentation/yazu_pumping_page.dart` (tab +
+    pivot + anomali; reuse `yazu_models.dart` & `yazuComputeDeltas`); `YazuApi`
+    dapat param `kategori` + `yazuPumpingApiProvider`; provider
+    `yazuPumpingKategori`/`Month`/`Pivot`/`Stats`; route `/yazupumping`;
+    `app_scaffold.dart` + `user_models.dart` (`permMenus` jadi 30 + `menuLabel`).
+  - Verifikasi: `flutter analyze lib` bersih, **131 test lolos**, `tsc` +
+    `vite build` web lolos, modul Python compile OK + parser diuji langsung ke
+    3 CSV (semua header ter mapping), APK debug terbuild.

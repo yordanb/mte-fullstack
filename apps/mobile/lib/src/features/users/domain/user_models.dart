@@ -30,7 +30,7 @@ const permMenus = [
   'dashboard', 'dbr', 'performance', 'activity', 'equipment',
   'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak',
   'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement',
-  'yazu_lighting', 'yazudc_lighting', 'ewacs', 'tarsupport', 'ss', 'ssab',
+  'yazu_lighting', 'yazudc_lighting', 'yazupumping', 'ewacs', 'tarsupport', 'ss', 'ssab',
   'proker', 'prokerbooster', 'prokerinjector', 'prokerthermo',
   'manpower', 'manpowermanage',
 ];
@@ -39,6 +39,7 @@ const permMenus = [
 String menuLabel(String menu) => switch (menu) {
       'yazu_lighting' => 'yazu_lighting — Yazu Lighting P2H',
       'yazudc_lighting' => 'yazudc_lighting — Yazu Lighting Daily Check',
+      'yazupumping' => 'yazupumping — Yazu Pumping P2H',
       'ss' => 'ss — Sugestion System',
       'ssab' => 'ssab — SS AB',
       'manpower' => 'manpower — Manpower Inovasi',

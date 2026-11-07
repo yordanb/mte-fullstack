@@ -15,6 +15,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'activity', label: 'Activity' },
     { key: 'yazu_lighting', label: 'Yazu Lighting P2H' },
     { key: 'yazudc_lighting', label: 'Yazu Lighting Daily Check' },
+    { key: 'yazupumping', label: 'Yazu Pumping P2H' },
   { key: 'bomak', label: 'Bomak R1BI' },
     { key: 'equipment', label: 'Equipment' },
     { key: 'staging', label: 'Staging Pump' },
@@ -138,6 +139,10 @@ const ICONS: Record<string, ReactNode> = {
   yazudc_lighting: (
     // Mobil — mobilitas (daily check keliling unit)
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.9-.9-1.4-1.7-2.8-1.7h-4C5.9 6 5 6.9 5 8.1L4.5 10C3.4 10.2 2 11 2 12.9V16c0 .6.4 1 1 1h2" /><circle cx="7" cy="17" r="2" /><path d="M9 17h6" /><circle cx="17" cy="17" r="2" /></svg>
+  ),
+  yazupumping: (
+    // Pompa: impeler + pipa masuk/keluar
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="6" /><path d="M12 7V3M12 3h4" /><path d="M6 13H2v-3" /><path d="M12 13l3.5-2" /><path d="M12 13l-3.5-2" /><path d="M12 13v3.5" /></svg>
   ),
 }
 

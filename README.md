@@ -5,7 +5,8 @@ Aplikasi monitoring terpusat untuk plant: **report analisa oli**, **DBR breakdow
 **FUI follow-up**, **activity + foto/video**, **staging pump**, **Minute of Meeting**,
 **riwayat issue**, **project management**, **manpower inovasi + pengelompokan**,
 **safety (Bomak 6 PAS + R1BI)**, grup **Technical Expert**
-(Hourmeter, PPM, Measurement, Yazu P2H, Yazu Daily Check, Ewacs Performance,
+(Hourmeter, PPM, Measurement, Yazu Lighting P2H, Yazu Lighting Daily Check,
+Yazu Pumping P2H, Ewacs Performance,
 TAR Support, Proker GMC/Booster/Injector/Thermostat), dan grup **Agent**
 (Sugestion System + SS AB — data SS closed KIDE).
 
@@ -15,7 +16,7 @@ semua berjalan sebagai container Docker di VPS dan diupdate via `git pull`.
 Web adalah acuan fitur; **aplikasi mobile menyusul seluruh menu web** (lihat
 tabel parity di `handoff.md` §7).
 
-> Terakhir diperbarui: 7 Nov 2026 — migrasi terakhir `V62`; mobile disinkronkan
+> Terakhir diperbarui: 7 Nov 2026 — migrasi terakhir `V64`; mobile disinkronkan
 > penuh dengan web (commit `e102d93`).
 
 ## Arsitektur & Port
@@ -63,8 +64,9 @@ Agent / Administrasi**, autohide overlay, ikon per menu, dark mode penuh, notifi
 | Technical Expert | **Hourmeter** | Pencatatan **HM bulanan** per unit (upload Excel manual): rekap per bulan, per unit, dan grafik/ringkasan pemakaian HM. Ganti input HM manual dari luar sistem. |
 | Technical Expert | **PPM** | Placeholder (konten menyusul). |
 | Technical Expert | **Measurement** | Placeholder (konten menyusul). |
-| Technical Expert | **Yazu** | Pivot **HM bulanan** per unit dari checklist inspeksi unit (sync Google Sheets), sticky header + scroll internal (vertikal & horizontal). Deteksi anomali kenaikan HM harian: **merah** bila delta `< 0` (HM mundur) atau `> 24`, **oranye** 14–24, **hijau** 10–14, normal 0–10. Delta dinormalisasi bila ada hari kosong (`delta / gap hari`). |
-| Technical Expert | **Yazu Daily Check** | Checklist harian unit (sheet kedua sumber Yazu) — pivot per tanggal dengan anomali HM sama seperti Yazu P2H. |
+| Operasional | **Yazu Lighting P2H** | Pivot **HM bulanan** per unit dari checklist inspeksi unit (sync Google Sheets), sticky header + scroll internal (vertikal & horizontal). Deteksi anomali kenaikan HM harian: **merah** bila delta `< 0` (HM mundur) atau `> 24`, **oranye** 14–24, **hijau** 10–14, normal 0–10. Delta dinormalisasi bila ada hari kosong (`delta / gap hari`). |
+| Operasional | **Yazu Lighting Daily Check** | Checklist harian unit (sheet kedua sumber Lighting) — pivot per tanggal dengan anomali HM sama seperti Yazu Lighting P2H. |
+| Operasional | **Yazu Pumping P2H** | Checklist inspeksi unit **pompa** dari satu Google Sheets dengan **3 kategori tab: Primer / MHP / Booster** (gid berbeda). Pivot HM bulanan + anomali sama seperti Yazu Lighting P2H; satu tombol **Sync Manual** menarik ketiga tab sekaligus. Kolom checklist khas per kategori (mis. Level Oli Vacuum di Primer, Fungsi AC di MHP, Fungsi Panel Motor 355KW di Booster). |
 | Technical Expert | **Ewacs Performance** | KPI **Physical Availability** + **Ratio SCM vs USM** (persentase), filter tanggal / EGI / Crew / CN, grafik tren PA harian + batang durasi SCM vs USM per tanggal, tabel detail breakdown, dan **Import CSV** (admin) dengan semantik **upsert**: baris dengan key sama diperbarui, baris baru ditambah, data tanggal/unit lain tidak dihapus. |
 | Technical Expert | **TAR Support** | Placeholder (konten menyusul). |
 | Technical Expert | **Proker GMC Pompa Primer** | Proker pompa primer 2.000 h + filter engine CAT; tombol **Refresh HM**; detail riwayat eksekusi, Δ HM kronologis, badge Midlife Eng. |
@@ -117,7 +119,7 @@ menu **Users**; menu baru wajib menambah key-nya di `role_permissions_menu_check
 | Riwayat | `GET/POST/PATCH/DELETE /v1/riwayat/issues` · progress & parts CRUD · foto progress/part (upload, notes, delete, serve) |
 | Safety | `POST /v1/safety/sync` · `GET /v1/safety/{latest-sync,coverage,records,export}` |
 | R1BI | `POST /v1/r1bi/sync` · `GET /v1/r1bi/{latest-sync,coverage,records,export}` |
-| Yazu | `POST /v1/yazu/sync` · `GET /v1/yazu/{stats,units,pivot,raw}` · `POST /v1/yazu-dc/sync` · `GET /v1/yazu-dc/{stats,units,pivot,raw}` |
+| Yazu | `POST /v1/yazu-lighting/sync` · `GET /v1/yazu-lighting/{stats,units,pivot,raw}` · `POST /v1/yazu-dc-lighting/sync` · `GET /v1/yazu-dc-lighting/{stats,units,pivot,raw}` · `POST /v1/yazu-pumping/sync` · `GET /v1/yazu-pumping/{stats,units,pivot,raw}` |
 | Hourmeter | `GET /v1/hourmeter/{periods,recap,units}` · `POST /v1/hourmeter/import` |
 | Manpower | `GET /v1/manpower/{periods,summary,trend,records}` · `GET /v1/manpower/manage` · `PATCH /v1/manpower/manage/{nrp}` · `POST /v1/manpower/manage/{bulk,autofill}` |
 | Ewacs | `POST /v1/ewacs/import` · `GET /v1/ewacs/{filters,kpi,trend,detail}` · `DELETE /v1/ewacs/all` (admin) |
@@ -157,7 +159,7 @@ Error selalu `{detail: "..."}` dan ditampilkan verbatim oleh web (helper `errMsg
 | `V29__riwayat_parts_progress.sql` / `V30__riwayat_part_photos.sql` | Part terkait progress / foto part request |
 | `V31__photo_notes.sql` | Kolom `notes` untuk evidence foto |
 | `V32__technical_expert_menus.sql` | Menu `ppm` & `measurement` (grup Technical Expert) |
-| `V33__yazu_table.sql` | Tabel `yazu` + menu `yazu` |
+| `V33__yazu_table.sql` | Tabel `yazu` + menu `yazu` (setelah V63: `yazu_lighting` + menu `yazu_lighting`) |
 | `V34__new_roles.sql` | Role `planner`, `group leader`, `section head`, `adm te` |
 | `V35__ewacs.sql` | `ewacs_breakdown` + index + menu `ewacs` |
 | `V36__tar_support.sql` | Menu `tarsupport` (grup Technical Expert) |
@@ -168,13 +170,15 @@ Error selalu `{detail: "..."}` dan ditampilkan verbatim oleh web (helper `errMsg
 | `V44__ss_outstanding.sql` | SS: dukungan upload `ReportOutstandingSS` (SS belum dinilai) di samping SS closed |
 | `V45__manpower.sql` / `V47__manpower_profile.sql` / `V48..V52__manpower_*.sql` | Manpower Inovasi: snapshot bulanan `manpower_month` + pengelompokan section/crew/status (Tyre, MTE, LCE, General Crew) + menu `manpower` |
 | `V46__spl2_only.sql` | Kebijakan data: hanya DEPT SPL2 |
-| `V53__yazu_daily_check.sql` | Tabel `yazu_dc` — Yazu Daily Check (sheet kedua: checklist harian) |
+| `V53__yazu_daily_check.sql` | Tabel `yazu_dc` — Yazu Lighting Daily Check (setelah V63: `yazu_dc_lighting`) |
 | `V54__hourmeter.sql` | Tabel `hourmeter` — pencatatan HM bulanan per unit (upload Excel manual) |
 | `V55__role_adm_lce.sql` / `V58__sync_adm_te_lce.sql` | Role `adm lce` (inherit inputer) + akses Sync manual untuk `adm te`/`adm lce` (yazu & yazudc) |
 | `V56__perm_yazudc.sql` / `V57__perm_split_ssab_manpowermanage.sql` | Pecah izin menu per halaman: `yazudc`, `ssab`, `manpowermanage` (tidak lagi berbagi dengan `yazu`/`ss`/`manpower`) |
 | `V59__proker_thermostat.sql` | Proker Thermostat CAT (12.000 h) + menu `prokerthermo` (grup Technical Expert) |
 | `V60__ewacs_egi_normalize.sql` / `V61__ewacs_egi_normalize2.sql` | Normalisasi EGI salah tulis di `ewacs_breakdown` (LS4-2000→LS42000, LS4-6000→LS46000, LEGRA 140→LEGRA140, RF-85MW→RF85MW, EGS630-6/EGS63060→EGS6306) |
 | `V62__dbr_updated_at.sql` | Kolom audit `updated_at` + trigger di `dbr_records` (label "Last update" DBR kini dari waktu data berubah, bukan waktu upload) |
+| `V63__yazu_lighting_rename.sql` | Rename modul Yazu → **Yazu Lighting**: tabel `yazu`→`yazu_lighting`, `yazu_dc`→`yazu_dc_lighting` (+ sync log), menu `yazu`→`yazu_lighting`, `yazudc`→`yazudc_lighting` |
+| `V64__yazu_pumping.sql` | Modul baru **Yazu Pumping P2H**: tabel `yazu_pumping` (+ kolom `kategori`: primer/mhp/booster) + `yazu_pumping_sync_log` + menu `yazupumping` |
 
 Fresh install: otomatis via `/docker-entrypoint-initdb.d` (urut abjad = urut versi).
 Database lama: jalankan manual file yang belum diterapkan (lihat riwayat di bawah).
@@ -184,18 +188,19 @@ Database lama: jalankan manual file yang belum diterapkan (lihat riwayat di bawa
 ```
 apps/api/      FastAPI — app/api/v1: auth, results, fleet, imports, dbr, equipment,
                activities, projects, staging, mom, riwayat, safety, r1bi, fui, yazu,
-               yazu_dc, hourmeter, manpower, ewacs, ss, users; app/services: excel_map,
-               dbr_map, safety_sync, r1bi_sync, fui_pdf, pama_pdf
+               yazu_dc, yazu_pumping, hourmeter, manpower, ewacs, ss, users;
+               app/services: excel_map, dbr_map, safety_sync, r1bi_sync, fui_pdf, pama_pdf
 apps/web/      React+Vite+Tailwind — pages: Dashboard/DBR/Performance/Activity/Timeline/
                Safety/Ribi/Equipment/Staging/Mom/Riwayat/FUI/Project/Ppm/Measurement/
-               Yazu/YazuDailyCheck/Hourmeter/Ewacs/TarSupport/Manpower/ManpowerGroup/
-               Ss/SsAb/Proker*/Users/Audit/Login (ApexCharts lazy-load)
+               Yazu/YazuDailyCheck/YazuPumping/Hourmeter/Ewacs/TarSupport/Manpower/
+               ManpowerGroup/Ss/SsAb/Proker*/Users/Audit/Login (ApexCharts lazy-load)
 apps/mobile/   Flutter (Riverpod + GoRouter, Clean Architecture per feature) — paritas
                menu web: dashboard, dbr, performance, timeline, activity, bomak, mom,
                equipment, staging, riwayat, project, manpower(+pengelompokan), yazu,
-               yazudc, hourmeter, ewacs, ss, ssab, proker*, fui, users, audit, profil,
+               yazudc, yazupumping, hourmeter, ewacs, ss, ssab, proker*, fui, users,
+               audit, profil,
                + placeholder PPM/Measurement/TAR Support
-infra/db/      Migrasi SQL V1..V62
+infra/db/      Migrasi SQL V1..V64
 scripts/       build_equipment_seed.py (generator V7), analyze_staging_pompa.py
 data-equipment/     (LOKAL, di-ignore) dump sumber equipment
 data sample excel/  (LOKAL, di-ignore) contoh file + DBR_format.xlsx
@@ -262,14 +267,14 @@ cd /opt/projects/mte-fullstack
 unset DATABASE_URL   # wajib: agar compose baca DATABASE_URL dari .env, bukan shell
 git pull --rebase origin main
 # HANYA migrasi yang belum diterapkan, mis:
-# docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V62__dbr_updated_at.sql
+# docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V64__yazu_pumping.sql
 docker compose up -d --build api web
 ```
 
 Riwayat migrasi VPS (terakhir dicatat): V3+V4 → V5 → V6+V7 → V8 → V9+V10+V11 →
 V12+V13 → V14+V15+V16 → V17 → V18 → V19 → V20 → V21+V22 → V23+V24 → V25+V26 →
 V27..V31 → V32 → V33 → V34 → V35 → V36 → V37 → V38 → V39.
-Migrasi V40..V62 ditambahkan bersama fiturnya — jalankan hanya yang belum diterapkan.
+Migrasi V40..V64 ditambahkan bersama fiturnya — jalankan hanya yang belum diterapkan.
 Rerun aman (semua `IF NOT EXISTS`/upsert).
 
 Catatan: menambah menu baru berarti memperbarui `role_permissions_menu_check`
