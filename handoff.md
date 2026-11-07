@@ -465,7 +465,8 @@ profil (avatar + ganti password) + dark mode + notifikasi.
     `user_models.dart` `permMenus` + `menuLabel`; test `m7_test.dart`
     disesuaikan. `flutter analyze lib` bersih, **131 test lolos**, `tsc` web
     bersih, modul Python compile OK, APK debug terbuild.
-- **Modul Yazu Pumping P2H (2026-11-07, branch `mobile/yazu-pumping-p2h`)**:
+- **Modul Yazu Pumping P2H (2026-11-07, sudah merge ke main, branch
+  `mobile/yazu-pumping-p2h`, commit `d58136d`; merge `a17fb24`)**:
   halaman baru grup **Operasional** menu **"Yazu Pumping P2H"** — checklist
   inspeksi unit pompa dari satu Google Sheets
   (`1QhRDCBnimoD4GserO9X-DB2cR4IvPafEG-gBxYsLsRI`) dengan **3 kategori tab:
