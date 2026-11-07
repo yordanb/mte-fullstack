@@ -440,4 +440,29 @@ profil (avatar + ganti password) + dark mode + notifikasi.
     `stagingShiftPeriod` yang ditemukan saat uji.
   - Dengan ini **seluruh menu web sudah ada di mobile** (gap menu kosong).
     `flutter analyze lib` bersih, **131 test lolos**, APK debug terbuild.
+- **Rename modul Yazu → Yazu Lighting (2026-11-07, branch
+  `mobile/yazu-lighting-rename`, commit `ad2efe7`)**: rename menyeluruh
+  sesuai permintaan — tabel DB, key menu matriks izin, label menu, judul
+  halaman, dan path API; backend + web + mobile diubah bersamaan.
+  - **DB** `infra/db/V63__yazu_lighting_rename.sql`: `yazu`→`yazu_lighting`,
+    `yazu_sync_log`→`yazu_lighting_sync_log`, `yazu_dc`→`yazu_dc_lighting`,
+    `yazu_dc_sync_log`→`yazu_dc_lighting_sync_log`; CHECK
+    `role_permissions_menu_check` `'yazu','yazudc'`→`'*_lighting'` + migrasi
+    baris izin existing + jaring pengaman admin. **Perlu diterapkan manual di
+    VPS.**
+  - **Backend**: prefix `/v1/yazu`→`/v1/yazu-lighting`, `/v1/yazu-dc`→
+    `/v1/yazu-dc-lighting`; `require_menu`/SQL/tag/log `*_lighting`;
+    `users.py` MENUS, `hm_sync.py` (baca `yazu_dc_lighting`), `main.py`
+    label scheduler, docstring refresh HM proker/booster/injector/thermostat.
+    Nama konfigurasi internal (`yazu_sheet_id`, dst.) dan nama modul Python
+    dibiarkan (internal, tidak terlihat user).
+  - **Web**: `client.ts` path baru; `Layout.tsx` key+label "Yazu Lighting
+    P2H"/"Yazu Lighting Daily Check"; `App.tsx` key; `Yazu.tsx`/
+    `YazuDailyCheck.tsx` `can()` + komentar; `Users.tsx` MENUS+label; tooltip
+    Refresh HM di 4 halaman Proker.
+  - **Mobile**: `yazu_page.dart` judul/menuKey/prefix + cek `_isDc`;
+    `app_scaffold.dart` label+key menu (path route tetap `/yazu`,`/yazudc`);
+    `user_models.dart` `permMenus` + `menuLabel`; test `m7_test.dart`
+    disesuaikan. `flutter analyze lib` bersih, **131 test lolos**, `tsc` web
+    bersih, modul Python compile OK, APK debug terbuild.
 

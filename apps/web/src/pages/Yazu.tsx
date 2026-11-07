@@ -117,9 +117,9 @@ export default function YazuPage() {
     } catch (e) { setMsg(`sync gagal: ${errMsg(e)}`) }
   }
 
-  // Tombol Sync Manual mengikuti matriks izin menu "yazu" (centang "Tambah") —
+  // Tombol Sync Manual mengikuti matriks izin menu "yazu_lighting" (centang "Tambah") -
   // can() sudah memberi bypass penuh untuk role admin.
-  const canSync = can('yazu', 'add')
+  const canSync = can('yazu_lighting', 'add')
   const today = new Date()
   const isCurrentMonth = year === today.getFullYear() && month === today.getMonth() + 1
   const todayDay = today.getDate()

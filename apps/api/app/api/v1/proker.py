@@ -460,7 +460,7 @@ _AGG = """
 
 @router.post("/refresh-hm", dependencies=[Depends(require_menu("proker", "add"))])
 async def refresh_hm(db: AsyncSession = Depends(get_db)):
-    """Refresh HM NOW unit CAT dari halaman Hourmeter & Yazu Daily Check.
+    """Refresh HM NOW unit CAT dari halaman Hourmeter & Yazu Lighting Daily Check.
 
     HM terbaru per C/N diambil dari `services/hm_sync`; Yazu DC (harian)
     diprioritaskan, Hourmeter (bulanan) menjadi cadangan. Unit yang tidak ada

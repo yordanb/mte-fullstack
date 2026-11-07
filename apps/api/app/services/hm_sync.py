@@ -4,7 +4,7 @@ Mengambil pembacaan HM terbaru per C/N dari dua sumber:
   * Hourmeter        — tabel hourmeter_opening/hourmeter_daily (upload bulanan);
                        nilai = HM hari terakhir pada periode terbaru per C/N
                        (fallback: opening periode terbaru bila tak ada nilai harian).
-  * Yazu Daily Check — tabel yazu_dc (sync harian 06:00/18:00); nilai = HM pada
+  * Yazu Lighting Daily Check — tabel yazu_dc_lighting (sync harian 06:00/18:00); nilai = HM pada
                        baris dengan waktu paling baru per ID unit.
 
 Aturan:
@@ -26,10 +26,10 @@ def _norm(cn: str | None) -> str:
 
 
 async def _yazu_map(db: AsyncSession) -> dict[str, int]:
-    """C/N ter-normalisasi → HM pada baris yazu_dc paling baru."""
+    """C/N ter-normalisasi → HM pada baris yazu_dc_lighting paling baru."""
     rows = (await db.execute(text("""
         SELECT DISTINCT ON (id_unit) id_unit, hm
-        FROM yazu_dc
+        FROM yazu_dc_lighting
         WHERE hm IS NOT NULL AND hm > 0
         ORDER BY id_unit, waktu DESC
     """))).mappings().all()
@@ -100,7 +100,7 @@ async def refresh_hm_from_sources(db: AsyncSession, table: str,
     for cn, before in current.items():
         key = _norm(cn)
         if key in yazu:
-            new_hm, source = yazu[key], "yazu_dc"
+            new_hm, source = yazu[key], "yazu_dc_lighting"
         elif key in hourmeter:
             new_hm, source = hourmeter[key], "hourmeter"
         else:

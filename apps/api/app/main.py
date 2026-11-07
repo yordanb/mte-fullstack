@@ -144,7 +144,7 @@ async def _yazu_scheduled_sync():
 
     Keduanya berjalan independen — kegagalan satu sheet tidak menghentikan yang lain.
     """
-    for sync_fn, label in ((do_sync, "yazu"), (do_sync_dc, "yazu_dc")):
+    for sync_fn, label in ((do_sync, "yazu_lighting"), (do_sync_dc, "yazu_dc_lighting")):
         async with SessionLocal() as db:
             try:
                 r = await sync_fn(db)

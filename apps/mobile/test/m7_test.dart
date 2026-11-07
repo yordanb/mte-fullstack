@@ -28,7 +28,7 @@ void main() {
         permMenus,
         containsAll([
           'import', 'timeline', 'project', 'bomak', 'staging', 'mom',
-          'riwayat', 'ppm', 'measurement', 'yazu', 'yazudc', 'ewacs',
+          'riwayat', 'ppm', 'measurement', 'yazu_lighting', 'yazudc_lighting', 'ewacs',
           'tarsupport', 'ss', 'ssab', 'proker', 'prokerbooster',
           'prokerinjector', 'prokerthermo', 'manpower', 'manpowermanage',
         ]));
@@ -46,7 +46,7 @@ void main() {
   test('menuLabel: label ramah web, menu lain apa adanya', () {
     expect(menuLabel('ss'), 'ss — Sugestion System');
     expect(menuLabel('ssab'), 'ssab — SS AB');
-    expect(menuLabel('yazu'), 'yazu — Yazu P2H');
+    expect(menuLabel('yazu_lighting'), 'yazu_lighting — Yazu Lighting P2H');
     expect(menuLabel('dbr'), 'dbr');
   });
 
