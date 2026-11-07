@@ -40,13 +40,13 @@ class EwacsFilter {
       );
 }
 
-/// Default: 30 hari terakhir s/d hari ini (web).
+/// Default: awal bulan berjalan (tanggal 1) s/d hari ini (web).
 EwacsFilter defaultEwacsFilter() {
   String iso(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}'
       '-${d.day.toString().padLeft(2, '0')}';
   final now = DateTime.now();
   return EwacsFilter(
-    start: iso(now.subtract(const Duration(days: 30))),
+    start: iso(DateTime(now.year, now.month, 1)),
     end: iso(now),
   );
 }

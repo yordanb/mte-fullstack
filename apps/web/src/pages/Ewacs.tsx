@@ -10,8 +10,10 @@ import {
 
 export default function EwacsPage() {
   const today = new Date().toISOString().slice(0, 10)
-  const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
-  const [start, setStart] = useState(monthAgo)
+  // Default "Dari" = awal bulan berjalan (tanggal 1), "Sampai" = hari ini.
+  const firstOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+  const monthStart = `${firstOfMonth.getFullYear()}-${String(firstOfMonth.getMonth() + 1).padStart(2, '0')}-01`
+  const [start, setStart] = useState(monthStart)
   const [end, setEnd] = useState(today)
   const [egi, setEgi] = useState('')
   const [crew, setCrew] = useState('')
