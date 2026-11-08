@@ -146,7 +146,11 @@ def parse_rows(csv_text: str, kategori: str) -> list[dict]:
     for raw in reader:
         if not raw or not any(c.strip() for c in raw):
             continue
-        d: dict = {"kategori": kategori}
+        # Isi SEMUA kolom data dulu dengan None, lalu timpa dengan yang ada di
+        # header. Penting: SQL executemany menuntut setiap baris punya semua
+        # bind parameter; tab yang tidak punya kolom tertentu (mis. "Backlog"
+        # di tab Primer sheet baru) harus tetap terisi None, bukan hilang.
+        d: dict = {"kategori": kategori, **{c: None for c in DATA_COLS}}
         for i, key in col_of.items():
             val = raw[i] if len(raw) > i else ""
             d[key] = _to_int(val) if key in INT_COLS else _to_str(val)
