@@ -16,7 +16,7 @@ semua berjalan sebagai container Docker di VPS dan diupdate via `git pull`.
 Web adalah acuan fitur; **aplikasi mobile menyusul seluruh menu web** (lihat
 tabel parity di `handoff.md` §7).
 
-> Terakhir diperbarui: 7 Nov 2026 — migrasi terakhir `V64`; mobile disinkronkan
+> Terakhir diperbarui: 8 Nov 2026 — migrasi terakhir `V66`; mobile disinkronkan
 > penuh dengan web (commit `e102d93`).
 
 ## Arsitektur & Port
@@ -57,7 +57,7 @@ Agent / Administrasi**, autohide overlay, ikon per menu, dark mode penuh, notifi
 | Operasional | **Minute of Meeting** | Meeting (judul, tanggal, lokasi, kategori, status open/closed) → agenda → action items (PIC, due date, priority high/medium/low, status open/in_progress/closed, notes). Copy meeting sebelumnya + carry item antar meeting. |
 | Operasional | **Riwayat** | Issue tracking per CN: kategori (Breakdown Un/Scheduled, Maintenance Rutin, Inspection, Modification, Lainnya), status (open/in_progress/waiting_part/waiting_crew/closed), progress timeline, parts requirement (needed/ordered/received/installed/cancelled + ETA), evidence foto/file dengan keterangan + lightbox. Kartu daftar issue menampilkan **progress terakhir + tanggal update**. |
 | Operasional | **Project** | Project → Tahap (rencana tanggal + bobot) → Update (progress, status RAG, foto eviden); progress agregat, status Terlambat otomatis, timeline vs hari ini. |
-| Operasional | **Update Data** | Kartu gaya SAP Fiori: *Report Analisa Oli* (Dry-run + Commit + progress 2 tahap) dan *DBR Breakdown* (Upload + progress). |
+| Operasional | **Update Data** | Kartu gaya SAP Fiori untuk upload: *Report Analisa Oli* (Dry-run + Commit), *DBR Breakdown*, *Sugestion System*, dan *Manpower Inovasi* — semuanya di gerbang izin menu **Update Data** (`import`) sendiri, lepas dari izin halaman SS/Manpower. Default hanya **admin + adm te** (bisa diatur per role di halaman Users). |
 | Follow Up | **FUI** | Dossier per unit (ketik CN): kartu equipment (+serial), 10 DBR terbaru (Code USM, tanpa CONTINUE), 10 oil terakhir per component. Tombol Export PDF/PAMA **disembunyikan sementara** (`SHOW_FUI_EXPORT`). |
 | Follow Up | **Suggestion FUI** | Unit aktif yang sample terakhirnya non-NORMAL + masing-masing 3 oil terakhir, per kategori; tombol *Suggest Follow Up* per baris non-NORMAL (inputer+). |
 | Follow Up | **Report Follow Up** | Semua oil terakhir non-NORMAL + status Sudah/Belum suggest + saran terakhir; filter kategori/cari/status; riwayat suggest per lab. |
@@ -74,7 +74,7 @@ Agent / Administrasi**, autohide overlay, ikon per menu, dark mode penuh, notifi
 | Technical Expert | **Proker Midlife Injector Primer** | Proker Midlife Injector Primer 16.000 h; grid 12 posisi PLAN/umur (hijau-kuning-merah ambang 80%/100%); tombol **Refresh HM**. |
 | Technical Expert | **Proker Thermostat CAT** | Proker Thermostat CAT 12.000 h; detail HM/deviasi/lifetime/modif 74°C + radiator check (WR/ETA parts/ETA exec/suhu); tombol **Refresh HM**. |
 | Technical Expert | **Proker GMC Panel Booster** | Proker GMC Panel Booster 2.000 h (semua unit, tanpa filter engine CAT — WARMAN/MULTIFLO/KOMATSU); filter product/model + **Import Excel**; detail riwayat eksekusi + Δ HM kronologis; tombol **Refresh HM**. |
-| Agent | **Sugestion System** | Data **SS closed Distrik KIDE** (70.034 baris, 2020–2026): KPI Total SS / Reward / Manfaat Financial / Pencetus unik / Grade A+B, filter rentang tanggal (dasar **tanggal menilai** atau tanggal laporan) + Dept + Kategori + Grade + Status + pencarian, grafik batang berdampingan jumlah SS per bulan menurut **tanggal laporan vs tanggal menilai** (warna berbeda), donut grade, bar kategori (setelah normalisasi 29 varian → 12 kanonik), pie dept, Pareto Top 10 pencetus, tabel server-side (pagination + sortir) dan **Export CSV**. **Import Excel** (admin) multi-file dengan semantik **upsert berdasarkan NO SS** + progress bar. **Akses khusus admin.** |
+| Agent | **Sugestion System** | Data **SS closed Distrik KIDE** (70.034 baris, 2020–2026): KPI Total SS / Reward / Manfaat Financial / Pencetus unik / Grade A+B, filter rentang tanggal (dasar **tanggal menilai** atau tanggal laporan) + Dept + Kategori + Grade + Status + pencarian, grafik batang berdampingan jumlah SS per bulan menurut **tanggal laporan vs tanggal menilai** (warna berbeda), donut grade, bar kategori (setelah normalisasi 29 varian → 12 kanonik), pie dept, Pareto Top 10 pencetus, tabel server-side (pagination + sortir) dan **Export CSV**. Upload Excel multi-file (upsert berdasarkan NO SS) dilakukan dari menu **Update Data** (izin menu Update Data). **Halaman ini akses khusus admin.** |
 | Agent | **SS AB** | Dashboard SS AB per tahun: 6 kartu KPI (total, grade A/B + %, reward, manfaat, pencetus), kalender 12 bulan, tabel Per Dept + proporsi, tabel detail (client-side pagination 25–200) + **Export CSV**, dan tabel **Menunggu Penilaian oleh PM** + Export CSV. **Akses khusus admin.** |
 | Agent | **Manpower** (pengelompokan) | Dashboard pengelompokan Section / Crew / Status dari snapshot manpower: KPI (total, sudah dikelompokkan, staff/mekanik/repairman/general crew, cakupan crew), rincian per Section & Crew, **isi otomatis dari jabatan**, edit inline per NRP, dan aksi massal (pilih baris → terapkan Section/Crew/Status). Pengelompokan disimpan per NRP sehingga tidak hilang saat file manpower di-import ulang. |
 | Agent | **Manpower Inovasi** | Snapshot bulanan `RptInnovatorMonthly`: pemilih bulan/dept, KPI (manpower, dinilai, innovator SS, SS closed, DT/QCP/QCC), tren grafik **Manpower vs Innovator SS** per bulan, rincian per Dept, dan tabel data manpower (cari / filter innovator / pagination / sortir). |
@@ -181,6 +181,7 @@ Error selalu `{detail: "..."}` dan ditampilkan verbatim oleh web (helper `errMsg
 | `V63__yazu_lighting_rename.sql` | Rename modul Yazu → **Yazu Lighting**: tabel `yazu`→`yazu_lighting`, `yazu_dc`→`yazu_dc_lighting` (+ sync log), menu `yazu`→`yazu_lighting`, `yazudc`→`yazudc_lighting` |
 | `V64__yazu_pumping.sql` | Modul baru **Yazu Pumping P2H**: tabel `yazu_pumping` (+ kolom `kategori`: primer/mhp/booster) + `yazu_pumping_sync_log` + menu `yazupumping` |
 | `V65__proker_panel_booster.sql` | Proker GMC Panel Booster (2.000 h): tabel `proker_panel_unit` + `proker_panel_execution` + menu `prokerpanel` (grup Technical Expert) |
+| `V66__update_data_perm.sql` | Update Data (`import`) jadi gerbang izin tersendiri: upload SS & Manpower Inovasi lepas dari izin halaman sumber; default hanya admin + `adm te` |
 
 Fresh install: otomatis via `/docker-entrypoint-initdb.d` (urut abjad = urut versi).
 Database lama: jalankan manual file yang belum diterapkan (lihat riwayat di bawah).
@@ -202,7 +203,7 @@ apps/mobile/   Flutter (Riverpod + GoRouter, Clean Architecture per feature) —
                yazudc, yazupumping, hourmeter, ewacs, ss, ssab, proker*, fui, users,
                audit, profil,
                + placeholder PPM/Measurement/TAR Support
-infra/db/      Migrasi SQL V1..V64
+infra/db/      Migrasi SQL V1..V66
 scripts/       build_equipment_seed.py (generator V7), analyze_staging_pompa.py
 data-equipment/     (LOKAL, di-ignore) dump sumber equipment
 data sample excel/  (LOKAL, di-ignore) contoh file + DBR_format.xlsx
@@ -276,7 +277,7 @@ docker compose up -d --build api web
 Riwayat migrasi VPS (terakhir dicatat): V3+V4 → V5 → V6+V7 → V8 → V9+V10+V11 →
 V12+V13 → V14+V15+V16 → V17 → V18 → V19 → V20 → V21+V22 → V23+V24 → V25+V26 →
 V27..V31 → V32 → V33 → V34 → V35 → V36 → V37 → V38 → V39.
-Migrasi V40..V64 ditambahkan bersama fiturnya — jalankan hanya yang belum diterapkan.
+Migrasi V40..V66 ditambahkan bersama fiturnya — jalankan hanya yang belum diterapkan.
 Rerun aman (semua `IF NOT EXISTS`/upsert).
 
 Catatan: menambah menu baru berarti memperbarui `role_permissions_menu_check`

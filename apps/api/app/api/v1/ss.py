@@ -26,7 +26,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.deps import get_current_user, require_role
+from app.core.deps import get_current_user, require_menu, require_role
 from app.db.session import get_db, SessionLocal
 
 router = APIRouter(prefix="/v1/ss", tags=["ss"])
@@ -424,7 +424,7 @@ async def _run(import_id: str, files: list[tuple[str, bytes]]):
             log.exception("ss import gagal: %s", e)
 
 
-@router.post("/import", dependencies=[Depends(require_role("admin"))], status_code=202)
+@router.post("/import", dependencies=[Depends(require_menu("import", "add"))], status_code=202)
 async def import_xlsx(
     bg: BackgroundTasks,
     files: list[UploadFile] = File(...),
@@ -454,7 +454,7 @@ async def import_xlsx(
     return {"import_id": import_id, "status": "PROCESSING", "files": len(payload)}
 
 
-@router.get("/import/{import_id}", dependencies=[Depends(require_role("admin"))])
+@router.get("/import/{import_id}", dependencies=[Depends(require_menu("import", "view"))])
 async def import_status(import_id: str, db: AsyncSession = Depends(get_db)):
     """Progres + ringkasan hasil import (inserted/updated/errors)."""
     row = (await db.execute(text(

@@ -550,3 +550,29 @@ profil (avatar + ganti password) + dark mode + notifikasi.
     parser diuji ke 10 baris contoh (semua ter-deteksi benar, mis.
     WP491 → HM 22531), `flutter analyze lib` tetap bersih (mobile tidak
     berubah).
+- **Update Data: izin menu tersendiri (2026-11-08, branch
+  `fix/update-data-permission`)**: halaman **Update Data** (menu `import`)
+  kini menjadi gerbang izin tersendiri untuk SEMUA kartu uploadnya (Report Oli,
+  DBR, Sugestion System, Manpower Inovasi) — tidak lagi bergantung pada role
+  admin (SS) atau izin halaman `manpower` (Manpower Inovasi). Sebuah role bisa
+  diberi izin upload di Update Data tanpa harus bisa membuka halaman SS/SS AB/
+  Manpower.
+  - **Root cause**: kartu SS di-hardcode `isAdmin()`, kartu Manpower Inovasi
+    memakai `can('manpower','add')`; baris `manpower` non-admin all-FALSE
+    karena V45 menyalin dari `ss` (V39 seed all-FALSE) dengan
+    `ON CONFLICT DO NOTHING`, sehingga safety-net V45 tak pernah terpakai.
+  - **Migrasi** `V66__update_data_perm.sql`: set izin menu `import` — admin
+    penuh, `adm te` Lihat+Tambah+Ubah, role lain FALSE (bisa diubah via
+    halaman Users). Pewarisan `ROLE_INHERITS` tetap berlaku di `require_menu`
+    (bool_or role + base).
+  - **Backend** gate upload diubah ke menu `import`: `POST /v1/imports`
+    (`imports.py`), `POST /v1/dbr/imports` (`dbr.py`), `POST /v1/ss/import` +
+    `GET /v1/ss/import/{id}` (`ss.py`), `POST /v1/manpower/import` +
+    `GET /v1/manpower/import/{id}` (`manpower.py`).
+  - **Web** `pages/Pages.tsx`: kartu SS & Manpower Inovasi memakai
+    `canUpload = can('import','add')`, `disabledNote` diseragamkan; impor
+    `isAdmin` dihapus.
+  - Default hanya **admin + adm te** (inputer/planner/adm lce kehilangan
+    akses Update Data bawaan; aktifkan lagi via halaman Users bila perlu).
+  - Verifikasi: `tsc` + `vite build` web lolos, 4 modul Python compile OK,
+    `flutter analyze lib` bersih + **131 test lolos** (mobile tidak berubah).
