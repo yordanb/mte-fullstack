@@ -674,3 +674,11 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   keputusan yang perlu disetujui pengguna. Kode tetap dikerjakan di branch
   (jangan commit fitur langsung ke `main`); artefak non-kode tetap tidak
   di-commit.
+- **Kategori Crew "Dept Head" (2026-11-08, branch `fix/crew-dept-head`)**:
+  daftar opsi `CREWS` di `apps/api/app/api/v1/manpower.py` ditambah
+  `"Dept Head"` agar selaras dengan opsi Section (sebelumnya `Dept Head` hanya
+  ada di `SECTIONS`). Efeknya otomatis ke web & mobile karena dropdown
+  filter/pengelompokan (bulk & per baris) mengambil daftar dari respons
+  `GET /v1/manpower/manage` (`crews`), sekaligus validasi `PATCH /manage/{nrp}`
+  dan `/manage/bulk` kini menerima crew `Dept Head`. Tidak ada perubahan
+  web/mobile/DB. Verifikasi: `py_compile` OK.

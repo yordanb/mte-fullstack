@@ -30,7 +30,7 @@ SECTIONS = [
 ]
 CREWS = [
     "Big Wheel", "PCH", "Mobile", "Lighting", "Pumping", "Tyre",
-    "MTE", "LCE", "General Crew",
+    "MTE", "LCE", "Dept Head", "General Crew",
 ]
 STATUSES = ["Staff", "Mekanik", "Repairman", "General Crew"]
 GENERAL_CREW = "General Crew"
