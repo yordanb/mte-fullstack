@@ -682,3 +682,17 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   `GET /v1/manpower/manage` (`crews`), sekaligus validasi `PATCH /manage/{nrp}`
   dan `/manage/bulk` kini menerima crew `Dept Head`. Tidak ada perubahan
   web/mobile/DB. Verifikasi: `py_compile` OK.
+- **Perbaikan lanjutan Crew "Dept Head" di DB (2026-11-08, branch
+  `fix/manpower-crew-dept-head-db`)**: penyebab "ubah Crew NRP 61130113 tidak
+  tersimpan" adalah CHECK constraint DB `manpower_profile_crew_check`
+  (V50 + 'General Crew' dari V52) belum memuat `Dept Head`. Dropdown menerima
+  nilainya dan validasi Python lolos, tetapi saat `UPDATE` postgres menolak
+  (`violates check constraint`) → HTTP 500 → tidak ada perubahan. Pola ini
+  sama dengan yang pernah diperbaiki di V49/V50/V52. Fix:
+  `infra/db/V68__manpower_crew_dept_head.sql` men-drop & re-add constraint
+  dengan daftar baru (Big Wheel, PCH, Mobile, Lighting, Pumping, Tyre, MTE,
+  LCE, **Dept Head**, General Crew). Section/Status tidak berubah. Deploy:
+  migrasi harus dijalankan manual (DB yang sudah ada tidak memakai
+  `/docker-entrypoint-initdb.d`) —
+  `docker exec -i mte-fs-db psql -U mte -d mte < infra/db/V68__manpower_crew_dept_head.sql`
+  lalu `docker compose up -d --build api`.
