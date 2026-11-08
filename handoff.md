@@ -493,6 +493,17 @@ profil (avatar + ganti password) + dark mode + notifikasi.
   - Verifikasi: `flutter analyze lib` bersih, **131 test lolos**, `tsc` +
     `vite build` web lolos, modul Python compile OK + parser diuji langsung ke
     3 CSV (semua header ter mapping), APK debug terbuild.
+  - **Perbaikan sync (2026-11-08, branch `fix/yazu-pumping-sync-missing-cols`)**:
+    `parse_rows` kini mengisi **semua** kolom `DATA_COLS` (default None) sebelum
+    menimpa dari header. Sebelumnya baris hanya berisi kolom yang ada di header,
+    sehingga tab yang tidak punya kolom tertentu (mis. `Backlog` di tab Primer
+    sheet baru) memicu `InvalidRequestError: A value is required for bind
+    parameter 'backlog'` saat INSERT executemany → seluruh transaksi rollback
+    (tabel `yazu_pumping` kosong). Ketiga CSV sheet baru diverifikasi: key
+    lengkap, Primer 3 baris ter-parse.
+  - **Link sumber baru (2026-11-08)**: spreadsheet
+    `1H9Hr36a4UVCHRkE799AyaCrsfDfNFYYZwYLev1wIgpI`, gid primer `1718277338`,
+    mhp `40942257`, booster `1548923775` (di `core/config.py`).
 - **Modul Proker GMC Panel Booster (2026-11-07, branch
   `mobile/proker-panel-booster`)**:
   halaman baru grup **Technical Expert** menu **"Proker GMC Panel Booster"**
