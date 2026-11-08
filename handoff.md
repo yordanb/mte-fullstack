@@ -621,3 +621,20 @@ profil (avatar + ganti password) + dark mode + notifikasi.
     judul/menjadi 32), `tsc` + `vite build` web lolos, modul Python compile OK
     + parser diuji langsung ke 3 CSV (key lengkap; Primer 8 baris, Booster 18
     baris, MHP 0 baris).
+- **Perbaikan izin SS/SSAB (2026-11-08, branch `fix/ss-require-menu`)**:
+  halaman **Sugestion System** & **SS AB** menampilkan menu untuk role yang
+  diberi izin (mis. `adm te`) tetapi API-nya menolak `403 Akses ditolak`.
+  - **Root cause**: seluruh endpoint baca `ss.py` memakai
+    `require_role("admin")` (hard-coded role admin), sehingga matriks izin di
+    halaman Users tidak berpengaruh. Ini menyimpang dari modul data lain
+    (`manpower`/`proker`/`hourmeter`) yang memakai `require_menu`.
+  - **Perbaikan**: 16 endpoint diganti ke `require_menu` — endpoint halaman SS
+    (`/filters`,`/kpi`,`/eiictm`,`/target-crew`,`/trend`,`/breakdown`,`/top`,
+    `/top-nrp`,`/records`,`/staff-daily`,`/crew-daily`,`/export`) → `ss`/view;
+    endpoint halaman SS AB (`/ab`,`/ab/export`,`/ab/export-waiting`) →
+    `ssab`/view; `DELETE /all` → `ss`/delete. Import tetap `import`/add|view
+    (gerbang Update Data, V66).
+  - Default tidak berubah: seed `ss` & `ssab` all-FALSE untuk non-admin
+    (V39/V57), jadi hanya role yang dicentang di halaman Users yang dapat
+    akses. `require_menu` tetap menghormati `ROLE_INHERITS` (bool_or role+base).
+  - Verifikasi: `py_compile` OK; tanpa perubahan web/mobile.
