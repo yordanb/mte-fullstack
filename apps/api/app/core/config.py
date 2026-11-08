@@ -19,10 +19,10 @@ class Settings(BaseSettings):
     yazu_dc_sheet_gid: int = 0
     # Yazu Pumping P2H — satu spreadsheet, tiga tab (gid berbeda):
     # primer / mhp / booster. Kolom checklist beda tipis antar tab.
-    yazu_pumping_sheet_id: str = "1QhRDCBnimoD4GserO9X-DB2cR4IvPafEG-gBxYsLsRI"
-    yazu_pumping_gid_primer: int = 1513255410
-    yazu_pumping_gid_mhp: int = 138785798
-    yazu_pumping_gid_booster: int = 754306640
+    yazu_pumping_sheet_id: str = "1H9Hr36a4UVCHRkE799AyaCrsfDfNFYYZwYLev1wIgpI"
+    yazu_pumping_gid_primer: int = 1718277338
+    yazu_pumping_gid_mhp: int = 40942257
+    yazu_pumping_gid_booster: int = 1548923775
 
     @field_validator("database_url", mode="before")
     @classmethod
