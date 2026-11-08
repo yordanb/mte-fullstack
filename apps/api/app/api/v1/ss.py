@@ -26,7 +26,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.deps import get_current_user, require_menu, require_role
+from app.core.deps import get_current_user, require_menu
 from app.db.session import get_db, SessionLocal
 
 router = APIRouter(prefix="/v1/ss", tags=["ss"])
@@ -466,7 +466,7 @@ async def import_status(import_id: str, db: AsyncSession = Depends(get_db)):
     return dict(row)
 
 
-@router.get("/filters", dependencies=[Depends(require_role("admin"))])
+@router.get("/filters", dependencies=[Depends(require_menu("ss", "view"))])
 async def get_filters(db: AsyncSession = Depends(get_db)):
     depts = (await db.execute(text(
         "SELECT DISTINCT dept FROM ss_report WHERE dept IS NOT NULL AND dept <> '' ORDER BY dept"
@@ -572,7 +572,7 @@ def _filters(f: dict, with_date: bool = True) -> tuple[str, dict]:
     return _where(f, with_date=with_date)
 
 
-@router.get("/kpi", dependencies=[Depends(require_role("admin"))])
+@router.get("/kpi", dependencies=[Depends(require_menu("ss", "view"))])
 async def get_kpi(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
     where, p = _filters(f)
     row = (await db.execute(text(f"""
@@ -605,7 +605,7 @@ async def get_kpi(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)
     }
 
 
-@router.get("/ab", dependencies=[Depends(require_role("admin"))])
+@router.get("/ab", dependencies=[Depends(require_menu("ssab", "view"))])
 async def get_ss_ab(
     year: int | None = Query(None, ge=2000, le=2100),
     db: AsyncSession = Depends(get_db),
@@ -727,7 +727,7 @@ async def get_ss_ab(
     }
 
 
-@router.get("/eiictm", dependencies=[Depends(require_role("admin"))])
+@router.get("/eiictm", dependencies=[Depends(require_menu("ss", "view"))])
 async def get_eiictm(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
     """EIICTM — Employee Innovation Involvement Coverage Through Manpower.
 
@@ -822,7 +822,7 @@ async def get_eiictm(f: dict = Depends(_params), db: AsyncSession = Depends(get_
 SS_TARGET_PER_NRP = 3
 
 
-@router.get("/target-crew", dependencies=[Depends(require_role("admin"))])
+@router.get("/target-crew", dependencies=[Depends(require_menu("ss", "view"))])
 async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
     """Target SS per Crew (1 NRP = 3 SS) vs aktual.
 
@@ -936,7 +936,7 @@ async def get_target_crew(f: dict = Depends(_params), db: AsyncSession = Depends
     }
 
 
-@router.get("/trend", dependencies=[Depends(require_role("admin"))])
+@router.get("/trend", dependencies=[Depends(require_menu("ss", "view"))])
 async def get_trend(
     f: dict = Depends(_params),
     granularity: str = Query("month", pattern="^(day|month|year)$"),
@@ -992,7 +992,7 @@ _BREAK_COL = {
 }
 
 
-@router.get("/breakdown", dependencies=[Depends(require_role("admin"))])
+@router.get("/breakdown", dependencies=[Depends(require_menu("ss", "view"))])
 async def get_breakdown(
     f: dict = Depends(_params),
     by: str = Query("grade"),
@@ -1012,7 +1012,7 @@ async def get_breakdown(
     return [dict(r) for r in rows]
 
 
-@router.get("/top-nrp", dependencies=[Depends(require_role("admin"))])
+@router.get("/top-nrp", dependencies=[Depends(require_menu("ss", "view"))])
 async def get_top_nrp(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
     """Top 10 NRP dengan judul SS terbanyak (TANGGAL LAPORAN).
 
@@ -1052,7 +1052,7 @@ async def get_top_nrp(f: dict = Depends(_params), db: AsyncSession = Depends(get
             "month_lo": f["start"], "month_hi": f["end"], "data": data}
 
 
-@router.get("/top", dependencies=[Depends(require_role("admin"))])
+@router.get("/top", dependencies=[Depends(require_menu("ss", "view"))])
 async def get_top(
     f: dict = Depends(_params),
     by: str = Query("pencetus", pattern="^(pencetus|penilai)$"),
@@ -1090,7 +1090,7 @@ _SELECT = ("id, no_ss, tgl_laporan, judul, pencetus, nrp, dept, distrik, divisi,
            "kategori_norm, reward, status_karyawan, management, status_ss, outstanding")
 
 
-@router.get("/records", dependencies=[Depends(require_role("admin"))])
+@router.get("/records", dependencies=[Depends(require_menu("ss", "view"))])
 async def get_records(
     f: dict = Depends(_params),
     page: int = Query(1, ge=1),
@@ -1120,7 +1120,7 @@ CREW_ORDER = [
 ]
 
 
-@router.get("/staff-daily", dependencies=[Depends(require_role("admin"))])
+@router.get("/staff-daily", dependencies=[Depends(require_menu("ss", "view"))])
 async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
     """Jumlah SS per posisi staff per hari untuk tiap bulan dalam rentang filter."""
     today = datetime.date.today()
@@ -1235,7 +1235,7 @@ async def get_staff_daily(f: dict = Depends(_params), db: AsyncSession = Depends
     return {"months": months}
 
 
-@router.get("/crew-daily", dependencies=[Depends(require_role("admin"))])
+@router.get("/crew-daily", dependencies=[Depends(require_menu("ss", "view"))])
 async def get_crew_daily(f: dict = Depends(_params), db: AsyncSession = Depends(get_db)):
     """Jumlah SS per crew per hari untuk tiap bulan dalam rentang filter.
 
@@ -1349,7 +1349,7 @@ EXPORT_HEADERS = [
 ]
 
 
-@router.get("/export", dependencies=[Depends(require_role("admin"))])
+@router.get("/export", dependencies=[Depends(require_menu("ss", "view"))])
 async def export_csv(
     f: dict = Depends(_params),
     db: AsyncSession = Depends(get_db),
@@ -1380,7 +1380,7 @@ async def export_csv(
     )
 
 
-@router.get("/ab/export", dependencies=[Depends(require_role("admin"))])
+@router.get("/ab/export", dependencies=[Depends(require_menu("ssab", "view"))])
 async def export_ss_ab(
     year: int | None = Query(None, ge=2000, le=2100),
     db: AsyncSession = Depends(get_db),
@@ -1423,7 +1423,7 @@ WAITING_HEADERS = [
 ]
 
 
-@router.get("/ab/export-waiting", dependencies=[Depends(require_role("admin"))])
+@router.get("/ab/export-waiting", dependencies=[Depends(require_menu("ssab", "view"))])
 async def export_ss_ab_waiting(
     year: int | None = Query(None, ge=2000, le=2100),
     db: AsyncSession = Depends(get_db),
@@ -1460,7 +1460,7 @@ async def export_ss_ab_waiting(
     )
 
 
-@router.delete("/all", dependencies=[Depends(require_role("admin"))])
+@router.delete("/all", dependencies=[Depends(require_menu("ss", "delete"))])
 async def clear_all(db: AsyncSession = Depends(get_db)):
     """Kosongkan data SS (untuk re-import dari nol)."""
     res = await db.execute(text("DELETE FROM ss_report"))
