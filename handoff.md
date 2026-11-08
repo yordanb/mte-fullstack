@@ -587,3 +587,37 @@ profil (avatar + ganti password) + dark mode + notifikasi.
     akses Update Data bawaan; aktifkan lagi via halaman Users bila perlu).
   - Verifikasi: `tsc` + `vite build` web lolos, 4 modul Python compile OK,
     `flutter analyze lib` bersih + **131 test lolos** (mobile tidak berubah).
+- **Modul Yazu Pumping Daily Check (2026-11-08, branch
+  `feat/yazu-pumping-daily-check`)**:
+  halaman baru grup **Operasional** menu **"Yazu Pumping Daily Check"** —
+  checklist **harian** unit pompa dari spreadsheet yang sama dengan Yazu
+  Pumping P2H (`1H9Hr36a4UVCHRkE799AyaCrsfDfNFYYZwYLev1wIgpI`), tab **Primer /
+  MHP / Booster** (gid `258487670` / `359555334` / `1301719762`). Header lebih
+  ringkas (15 kolom): `Waktu, ID Unit, HM, Nama, NRP, Role, Lokasi, Link
+  Lokasi, Akurasi, Backlog (JSON item OPEN/CLOSED), Fungsi Loto, Fungsi
+  Emergency Stop, Fungsi Control Panel, Komentar, Layak Operasi`. Tampilan
+  **paritas Yazu Pumping P2H**: tab kategori + pivot HM bulanan + anomali + 1
+  tombol **Sync Manual** + filter bulan/tahun. Kolom `Backlog` disimpan di DB
+  (untuk kebutuhan berikutnya) tetapi **tidak ditampilkan** di halaman.
+  - **DB** `infra/db/V67__yazu_pumping_dc.sql`: tabel `yazu_pumping_dc` +
+    kolom `kategori`, UNIQUE (kategori,waktu,id_unit); `yazu_pumping_dc_sync_log`;
+    menu `yazupumpingdc` (CHECK constraint diperbarui, izin disalin dari
+    `yazupumping` + jaring pengaman admin).
+  - **Backend** `app/api/v1/yazu_pumping_dc.py` prefix `/v1/yazu-pumping-dc`
+    (`sync`/`stats`/`units`/`pivot?kategori=`/`raw`), gate sync
+    `require_menu("yazupumpingdc","add")`; `main.py` (import + router +
+    scheduler 06:00/18:00) + `users.py` MENUS + `config.py`
+    (sheet id + 3 gid + `yazu_pumping_dc_csv_url`). `parse_rows` mengisi semua
+    `DATA_COLS` (default None) seperti perbaikan P2H.
+  - **Web** `pages/YazuPumpingDc.tsx` (klon YazuPumping.tsx) + `client.ts`
+    (5 fungsi + tipe) + `Layout.tsx`/`App.tsx`/`Users.tsx` (menu key
+    `yazupumpingdc`, label "Yazu Pumping Daily Check", ikon pompa+ceklis).
+  - **Mobile** `features/yazu/presentation/yazu_pumping_dc_page.dart` (klon
+    yazu_pumping_page.dart; reuse `yazu_models.dart` & `yazuComputeDeltas`);
+    `yazuPumpingDcApiProvider`; provider `yazuPumpingDcKategori`/`Month`/
+    `Pivot`/`Stats`; route `/yazupumpingdc`; `app_scaffold.dart` +
+    `user_models.dart` (`permMenus` jadi 32 + `menuLabel`).
+  - Verifikasi: `flutter analyze lib` bersih, **131 test lolos** (m7_test
+    judul/menjadi 32), `tsc` + `vite build` web lolos, modul Python compile OK
+    + parser diuji langsung ke 3 CSV (key lengkap; Primer 8 baris, Booster 18
+    baris, MHP 0 baris).

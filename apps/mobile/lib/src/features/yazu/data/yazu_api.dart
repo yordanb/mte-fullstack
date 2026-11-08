@@ -41,3 +41,7 @@ final yazuDcApiProvider = Provider<YazuApi>(
 /// Yazu Pumping P2H — satu endpoint, kategori dikirim sebagai parameter.
 final yazuPumpingApiProvider = Provider<YazuApi>(
     (ref) => YazuApi(ref.watch(dioProvider), '/v1/yazu-pumping'));
+
+/// Yazu Pumping Daily Check — konsep sama, prefix endpoint berbeda.
+final yazuPumpingDcApiProvider = Provider<YazuApi>(
+    (ref) => YazuApi(ref.watch(dioProvider), '/v1/yazu-pumping-dc'));

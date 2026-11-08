@@ -6,7 +6,7 @@ Aplikasi monitoring terpusat untuk plant: **report analisa oli**, **DBR breakdow
 **riwayat issue**, **project management**, **manpower inovasi + pengelompokan**,
 **safety (Bomak 6 PAS + R1BI)**, grup **Technical Expert**
 (Hourmeter, PPM, Measurement, Yazu Lighting P2H, Yazu Lighting Daily Check,
-Yazu Pumping P2H, Ewacs Performance,
+Yazu Pumping P2H, Yazu Pumping Daily Check, Ewacs Performance,
 TAR Support, Proker GMC/Booster/Injector/Thermostat), dan grup **Agent**
 (Sugestion System + SS AB — data SS closed KIDE).
 
@@ -67,6 +67,7 @@ Agent / Administrasi**, autohide overlay, ikon per menu, dark mode penuh, notifi
 | Operasional | **Yazu Lighting P2H** | Pivot **HM bulanan** per unit dari checklist inspeksi unit (sync Google Sheets), sticky header + scroll internal (vertikal & horizontal). Deteksi anomali kenaikan HM harian: **merah** bila delta `< 0` (HM mundur) atau `> 24`, **oranye** 14–24, **hijau** 10–14, normal 0–10. Delta dinormalisasi bila ada hari kosong (`delta / gap hari`). |
 | Operasional | **Yazu Lighting Daily Check** | Checklist harian unit (sheet kedua sumber Lighting) — pivot per tanggal dengan anomali HM sama seperti Yazu Lighting P2H. |
 | Operasional | **Yazu Pumping P2H** | Checklist inspeksi unit **pompa** dari satu Google Sheets dengan **3 kategori tab: Primer / MHP / Booster** (gid berbeda). Pivot HM bulanan + anomali sama seperti Yazu Lighting P2H; satu tombol **Sync Manual** menarik ketiga tab sekaligus. Kolom checklist khas per kategori (mis. Level Oli Vacuum di Primer, Fungsi AC di MHP, Fungsi Panel Motor 355KW di Booster). |
+| Operasional | **Yazu Pumping Daily Check** | Checklist **harian** unit **pompa** (spreadsheet yang sama dengan Yazu Pumping P2H, tab **Primer / MHP / Booster** dengan gid berbeda). Header lebih ringkas: Fungsi Loto / Emergency Stop / Control Panel, `Backlog` (JSON item OPEN/CLOSED), Komentar, Layak Operasi. Tampilan paritas P2H: pivot HM bulanan + anomali + **Sync Manual**. |
 | Technical Expert | **Ewacs Performance** | KPI **Physical Availability** + **Ratio SCM vs USM** (persentase), filter tanggal / EGI / Crew / CN, grafik tren PA harian + batang durasi SCM vs USM per tanggal, tabel detail breakdown, dan **Import CSV** (admin) dengan semantik **upsert**: baris dengan key sama diperbarui, baris baru ditambah, data tanggal/unit lain tidak dihapus. |
 | Technical Expert | **TAR Support** | Placeholder (konten menyusul). |
 | Technical Expert | **Proker GMC Pompa Primer** | Proker pompa primer 2.000 h + filter engine CAT; tombol **Refresh HM**; detail riwayat eksekusi, Δ HM kronologis, badge Midlife Eng. |
@@ -182,6 +183,7 @@ Error selalu `{detail: "..."}` dan ditampilkan verbatim oleh web (helper `errMsg
 | `V64__yazu_pumping.sql` | Modul baru **Yazu Pumping P2H**: tabel `yazu_pumping` (+ kolom `kategori`: primer/mhp/booster) + `yazu_pumping_sync_log` + menu `yazupumping` |
 | `V65__proker_panel_booster.sql` | Proker GMC Panel Booster (2.000 h): tabel `proker_panel_unit` + `proker_panel_execution` + menu `prokerpanel` (grup Technical Expert) |
 | `V66__update_data_perm.sql` | Update Data (`import`) jadi gerbang izin tersendiri: upload SS & Manpower Inovasi lepas dari izin halaman sumber; default hanya admin + `adm te` |
+| `V67__yazu_pumping_dc.sql` | Modul baru **Yazu Pumping Daily Check**: tabel `yazu_pumping_dc` (+ kolom `kategori`: primer/mhp/booster) + `yazu_pumping_dc_sync_log` + menu `yazupumpingdc` (salin izin dari `yazupumping`) |
 
 Fresh install: otomatis via `/docker-entrypoint-initdb.d` (urut abjad = urut versi).
 Database lama: jalankan manual file yang belum diterapkan (lihat riwayat di bawah).
@@ -191,19 +193,19 @@ Database lama: jalankan manual file yang belum diterapkan (lihat riwayat di bawa
 ```
 apps/api/      FastAPI — app/api/v1: auth, results, fleet, imports, dbr, equipment,
                activities, projects, staging, mom, riwayat, safety, r1bi, fui, yazu,
-               yazu_dc, yazu_pumping, hourmeter, manpower, ewacs, ss, users;
+               yazu_dc, yazu_pumping, yazu_pumping_dc, hourmeter, manpower, ewacs, ss, users;
                app/services: excel_map, dbr_map, safety_sync, r1bi_sync, fui_pdf, pama_pdf
 apps/web/      React+Vite+Tailwind — pages: Dashboard/DBR/Performance/Activity/Timeline/
                Safety/Ribi/Equipment/Staging/Mom/Riwayat/FUI/Project/Ppm/Measurement/
-               Yazu/YazuDailyCheck/YazuPumping/Hourmeter/Ewacs/TarSupport/Manpower/
-               ManpowerGroup/Ss/SsAb/Proker*/Users/Audit/Login (ApexCharts lazy-load)
+               Yazu/YazuDailyCheck/YazuPumping/YazuPumpingDc/Hourmeter/Ewacs/TarSupport/
+               Manpower/ManpowerGroup/Ss/SsAb/Proker*/Users/Audit/Login (ApexCharts lazy-load)
 apps/mobile/   Flutter (Riverpod + GoRouter, Clean Architecture per feature) — paritas
                menu web: dashboard, dbr, performance, timeline, activity, bomak, mom,
                equipment, staging, riwayat, project, manpower(+pengelompokan), yazu,
-               yazudc, yazupumping, hourmeter, ewacs, ss, ssab, proker*, fui, users,
-               audit, profil,
+               yazudc, yazupumping, yazupumpingdc, hourmeter, ewacs, ss, ssab, proker*, fui,
+               users, audit, profil,
                + placeholder PPM/Measurement/TAR Support
-infra/db/      Migrasi SQL V1..V66
+infra/db/      Migrasi SQL V1..V67
 scripts/       build_equipment_seed.py (generator V7), analyze_staging_pompa.py
 data-equipment/     (LOKAL, di-ignore) dump sumber equipment
 data sample excel/  (LOKAL, di-ignore) contoh file + DBR_format.xlsx
