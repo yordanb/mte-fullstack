@@ -472,7 +472,7 @@ async def _run(import_id: str, files: list[tuple[str, bytes]], override: dt.date
             log.exception("manpower import gagal: %s", e)
 
 
-@router.post("/import", dependencies=[Depends(require_menu("manpower", "add"))],
+@router.post("/import", dependencies=[Depends(require_menu("import", "add"))],
              status_code=202)
 async def import_xlsx(
     bg: BackgroundTasks,
@@ -508,7 +508,7 @@ async def import_xlsx(
     return {"import_id": import_id, "status": "PROCESSING", "files": len(payload)}
 
 
-@router.get("/import/{import_id}", dependencies=[Depends(require_menu("manpower", "view"))])
+@router.get("/import/{import_id}", dependencies=[Depends(require_menu("import", "view"))])
 async def import_status(import_id: str, db: AsyncSession = Depends(get_db)):
     row = (await db.execute(text(
         "SELECT id, filename, status, total_rows, ok_rows, fail_rows, processed_rows, "

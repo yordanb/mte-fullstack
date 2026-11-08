@@ -1,5 +1,5 @@
 ﻿import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, isVideoType, can, canWrite, todayLocal, errMsg, isAdmin, importSsXlsx, fetchSsImportStatus, importManpowerXlsx, fetchManpowerImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, isVideoType, can, canWrite, todayLocal, errMsg, importSsXlsx, fetchSsImportStatus, importManpowerXlsx, fetchManpowerImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
 import { DatePicker } from '../components/DatePicker'
 import { VesselTable } from '../components/Widgets'
 
@@ -421,8 +421,8 @@ export function ImportPage() {
             'Boleh pilih beberapa file sekaligus (closed + outstanding).',
           ]}
           startLabel="Upload Suggestion System"
-          disabled={!isAdmin()}
-          disabledNote="Upload data SS hanya bisa dilakukan oleh role admin."
+          disabled={!canUpload}
+          disabledNote="Role Anda tidak memiliki izin menambah data di menu Update Data."
           onUpload={importSsXlsx}
           fetchStatus={fetchSsImportStatus}
           summary={(e) =>
@@ -446,8 +446,8 @@ export function ImportPage() {
             'Hanya baris DEPT SPL2 yang disimpan; baris DEPT lain dilewati dan dihitung pada ringkasan.',
           ]}
           startLabel="Upload Manpower Inovasi"
-          disabled={!can('manpower', 'add')}
-          disabledNote="Role Anda tidak memiliki izin menambah data Manpower Inovasi."
+          disabled={!canUpload}
+          disabledNote="Role Anda tidak memiliki izin menambah data di menu Update Data."
           onUpload={importManpowerXlsx}
           fetchStatus={fetchManpowerImportStatus}
           summary={(e) =>

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Query, HTTPException, 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
-from app.core.deps import get_current_user, require_role
+from app.core.deps import get_current_user, require_menu
 from app.db.session import get_db, SessionLocal
 from app.services.dbr_map import HEADER_MAP, HEADER_ROW, DATA_START_ROW, SHEET, coerce
 
@@ -92,7 +92,7 @@ async def _run(import_id: str, content: bytes):
             await db.commit()
             raise
 
-@router.post("/imports", dependencies=[Depends(require_role("inputer", "admin"))], status_code=202)
+@router.post("/imports", dependencies=[Depends(require_menu("import", "add"))], status_code=202)
 async def upload_dbr(bg: BackgroundTasks, file: UploadFile = File(...),
                      db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
     content = await file.read()
