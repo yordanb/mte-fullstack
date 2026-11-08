@@ -12,6 +12,7 @@ from fastapi import (
 )
 from pydantic import BaseModel
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -963,10 +964,18 @@ async def update_manage(
     if not sets:
         raise HTTPException(400, "Tidak ada field yang diubah")
 
-    await db.execute(text(
-        f"UPDATE manpower_profile SET {', '.join(sets)}, auto = FALSE, "
-        f"updated_by = :u, updated_at = now() WHERE nrp = :n"), params)
-    await db.execute(text("COMMIT"))
+    try:
+        await db.execute(text(
+            f"UPDATE manpower_profile SET {', '.join(sets)}, auto = FALSE, "
+            f"updated_by = :u, updated_at = now() WHERE nrp = :n"), params)
+        await db.execute(text("COMMIT"))
+    except IntegrityError as e:
+        # CHECK constraint DB (manpower_profile_*_check) belum sinkron dengan
+        # daftar Section/Crew/Status di kode — jangan lempar 500 yang opaque.
+        raise HTTPException(
+            400,
+            "Nilai pengelompokan ditolak database (daftar pilihan belum "
+            "sinkron — jalankan migrasi terbaru). " + str(e.orig))
     row = (await db.execute(text(
         "SELECT nrp, section, crew, status, auto AS auto_filled, updated_by, updated_at "
         "FROM manpower_profile WHERE nrp = :n"), {"n": key})).mappings().first()
@@ -992,10 +1001,16 @@ async def bulk_update(
     if not sets:
         raise HTTPException(400, "Tidak ada field yang diubah")
 
-    res = await db.execute(text(
-        f"UPDATE manpower_profile SET {', '.join(sets)}, auto = FALSE, "
-        f"updated_by = :u, updated_at = now() WHERE nrp = ANY(:n)"), params)
-    await db.execute(text("COMMIT"))
+    try:
+        res = await db.execute(text(
+            f"UPDATE manpower_profile SET {', '.join(sets)}, auto = FALSE, "
+            f"updated_by = :u, updated_at = now() WHERE nrp = ANY(:n)"), params)
+        await db.execute(text("COMMIT"))
+    except IntegrityError as e:
+        raise HTTPException(
+            400,
+            "Nilai pengelompokan ditolak database (daftar pilihan belum "
+            "sinkron — jalankan migrasi terbaru). " + str(e.orig))
     return {"updated": res.rowcount or 0, "nrps": len(nrps)}
 
 
