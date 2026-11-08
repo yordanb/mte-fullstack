@@ -668,3 +668,9 @@ profil (avatar + ganti password) + dark mode + notifikasi.
     `crew_label`.
   - Verifikasi: `py_compile` OK; web `tsc` + `vite build` lolos;
     `flutter analyze lib` bersih + **131 test lolos** (baseline tidak berubah).
+- **Preferensi pengguna (2026-11-08)**: setelah fitur lolos verifikasi
+  (analyze/test/tsc/build/py_compile), **langsung merge `--no-ff` ke `main` +
+  push `origin main` secara otomatis tanpa bertanya ulang** — kecuali masih ada
+  keputusan yang perlu disetujui pengguna. Kode tetap dikerjakan di branch
+  (jangan commit fitur langsung ke `main`); artefak non-kode tetap tidak
+  di-commit.
