@@ -64,6 +64,10 @@ class ManpowerApi {
     String? section,
     String? crew,
     String? status,
+    /// Drill-down label kartu "Rincian per Section/Crew" (label hasil derivasi
+    /// kartu, bukan nilai kolom — backend cocokkan persis CASE di breakdown).
+    String? sectionLabel,
+    String? crewLabel,
     String? search,
     int page = 1,
     int pageSize = 25,
@@ -76,6 +80,8 @@ class ManpowerApi {
       if (section != null && section.isNotEmpty) 'section': section,
       if (crew != null && crew.isNotEmpty) 'crew': crew,
       if (status != null && status.isNotEmpty) 'status': status,
+      if (sectionLabel != null && sectionLabel.isNotEmpty) 'section_label': sectionLabel,
+      if (crewLabel != null && crewLabel.isNotEmpty) 'crew_label': crewLabel,
       if (search != null && search.isNotEmpty) 'search': search,
       'page': page,
       'page_size': pageSize,

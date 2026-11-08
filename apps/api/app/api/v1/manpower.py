@@ -755,8 +755,16 @@ _MANAGE_SELECT = """
 
 def _manage_where(dept: str | None = None, section: str | None = None,
                   crew: str | None = None, status: str | None = None,
-                  search: str | None = None) -> tuple[str, dict]:
-    """Filter untuk /manage; base tabel = manpower_profile (alias p)."""
+                  search: str | None = None,
+                  section_label: str | None = None,
+                  crew_label: str | None = None) -> tuple[str, dict]:
+    """Filter untuk /manage; base tabel = manpower_profile (alias p).
+
+    `section_label`/`crew_label` untuk drill-down dari kartu "Rincian per
+    Section/Crew": label kartu itu HASIL DERIVASI (bukan nilai mentah kolom),
+    mis. crew NULL milik Dept Head tampil berlabel 'Dept Head'. Agen: cocokkan
+    persis ekspresi CASE yang dipakai `_breakdown_sql` di `manage_dashboard`.
+    """
     conds: list[str] = []
     p: dict = {}
     if dept:
@@ -776,6 +784,19 @@ def _manage_where(dept: str | None = None, section: str | None = None,
         else:
             conds.append(f"{col} = :{key}")
             p[key] = val
+    if section_label:
+        conds.append(
+            "(CASE WHEN p.section IS NOT NULL THEN p.section "
+            "WHEN p.status = 'General Crew' THEN 'General Crew' "
+            "ELSE '(belum diisi)' END) = :section_label")
+        p["section_label"] = section_label
+    if crew_label:
+        conds.append(
+            "(CASE WHEN p.crew IS NOT NULL THEN p.crew "
+            "WHEN p.status = 'General Crew' THEN 'General Crew' "
+            "WHEN p.crew IS NULL AND p.section = 'Dept Head' THEN 'Dept Head' "
+            "ELSE '(belum diisi)' END) = :crew_label")
+        p["crew_label"] = crew_label
     return (" AND ".join(conds), p)
 
 
@@ -787,6 +808,10 @@ async def manage_dashboard(
     crew: str | None = Query(None),
     status: str | None = Query(None),
     search: str | None = Query(None),
+    # Drill-down dari kartu "Rincian per Section/Crew" (label dibandingkan
+    # persis dengan hasil CASE kartu, bukan nilai kolom).
+    section_label: str | None = Query(None),
+    crew_label: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(25, ge=1, le=200),
     sort: str = Query("nama"),
@@ -813,7 +838,8 @@ async def manage_dashboard(
                 "depts": [], "total": 0, "page": 1, "page_size": page_size,
                 "data": [], "profiled": 0}
 
-    w, p = _manage_where(dept, section, crew, status, search)
+    w, p = _manage_where(dept, section, crew, status, search,
+                         section_label=section_label, crew_label=crew_label)
     join = ("FROM manpower_profile p "
             "LEFT JOIN manpower_month m ON m.nrp = p.nrp AND m.periode = :periode")
     p["periode"] = per
@@ -862,8 +888,8 @@ async def manage_dashboard(
                  "general_crew": int(r["general_crew"] or 0)}
                 for r in rows]
 
-    by_section = await breakdown("section", section=None)
-    by_crew = await breakdown("crew", crew=None)
+    by_section = await breakdown("section", section=None, section_label=None)
+    by_crew = await breakdown("crew", crew=None, crew_label=None)
     by_status = await breakdown("status", status=None)
 
     depts = [r[0] for r in (await db.execute(text(
