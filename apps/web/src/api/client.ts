@@ -2512,6 +2512,8 @@ export type ManpowerManage = {
 
 export async function fetchManpowerManage(params: {
   periode?: string; dept?: string; section?: string; crew?: string; status?: string
+  /** Drill-down label kartu "Rincian per Section/Crew" (label mentah kartu). */
+  section_label?: string; crew_label?: string
   search?: string; page?: number; page_size?: number; sort?: string; dir?: 'asc' | 'desc'
 }): Promise<ManpowerManage> {
   const r = await api.get('/v1/manpower/manage', { params })

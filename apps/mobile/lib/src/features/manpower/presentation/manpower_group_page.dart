@@ -250,9 +250,9 @@ class _ManpowerGroupPageState extends ConsumerState<ManpowerGroupPage> {
       children: [
         _kpiGrid(d, classifiedPct),
         const SizedBox(height: 12),
-        _breakdown('Rincian per Section', d.bySection),
+        _breakdown('Rincian per Section', d.bySection, isCrew: false),
         const SizedBox(height: 12),
-        _breakdown('Rincian per Crew', d.byCrew),
+        _breakdown('Rincian per Crew', d.byCrew, isCrew: true),
         const SizedBox(height: 12),
         if (canEdit && _selected.isNotEmpty) _bulkBar(d),
         _tableCard(d, canEdit),
@@ -333,7 +333,15 @@ class _ManpowerGroupPageState extends ConsumerState<ManpowerGroupPage> {
     );
   }
 
-  Widget _breakdown(String title, List<ManpowerBreakdown> rows) {
+  Widget _breakdown(String title, List<ManpowerBreakdown> rows,
+      {bool isCrew = false}) {
+    // Drill-down: klik label "Kelompok" → tabel "Data Manpower" di bawah
+    // difilter ke kelompok itu (klik lagi = batalkan). Label kartu adalah
+    // hasil derivasi (mis. crew NULL Dept Head tampil 'Dept Head'), jadi
+    // dikirim ke backend sebagai section_label/crew_label.
+    final f = ref.watch(manpowerManageFilterProvider);
+    final picked = isCrew ? f.crewLabel : f.sectionLabel;
+    final notifier = ref.read(manpowerManageFilterProvider.notifier);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -368,18 +376,26 @@ class _ManpowerGroupPageState extends ConsumerState<ManpowerGroupPage> {
                     ]),
                   for (final b in rows)
                     DataRow(cells: [
-                      DataCell(Text(b.label,
+                      DataCell(Text(
+                          b.label == picked ? '${b.label} ●' : b.label,
                           style: TextStyle(
                               fontSize: 11.5,
                               fontStyle: b.label == '(belum diisi)'
                                   ? FontStyle.italic
                                   : FontStyle.normal,
-                              color: b.label == '(belum diisi)'
-                                  ? Colors.grey
-                                  : null,
-                              fontWeight: b.label == '(belum diisi)'
-                                  ? FontWeight.normal
-                                  : FontWeight.w600))),
+                              color: b.label == picked
+                                  ? Theme.of(context).colorScheme.primary
+                                  : b.label == '(belum diisi)'
+                                      ? Colors.grey
+                                      : null,
+                              fontWeight: b.label == picked
+                                  ? FontWeight.w700
+                                  : b.label == '(belum diisi)'
+                                      ? FontWeight.normal
+                                      : FontWeight.w600)),
+                          onTap: () => isCrew
+                              ? notifier.setCrewPick(b.label)
+                              : notifier.setSectionPick(b.label)),
                       DataCell(Text(mpNum(b.staff), style: _bc())),
                       DataCell(Text(mpNum(b.mekanik), style: _bc())),
                       DataCell(Text(mpNum(b.repairman), style: _bc())),
@@ -393,6 +409,11 @@ class _ManpowerGroupPageState extends ConsumerState<ManpowerGroupPage> {
               ),
             ),
             const SizedBox(height: 6),
+            Text(
+              'Ketuk kolom "Kelompok" untuk menampilkan kelompok itu di tabel Data Manpower.',
+              style: TextStyle(fontSize: 10.5, color: Colors.grey.shade500),
+            ),
+            const SizedBox(height: 2),
             Text(
               'Persentase performa memakai manpower dinilai (total dikurangi General Crew).',
               style: TextStyle(fontSize: 10.5, color: Colors.grey.shade500),
@@ -442,9 +463,47 @@ class _ManpowerGroupPageState extends ConsumerState<ManpowerGroupPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Data Manpower — ${manpowerFmtPeriode(d.periode)} · ${mpNum(d.total)} orang',
-                style: const TextStyle(
-                    fontSize: 12.5, fontWeight: FontWeight.w600)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                      'Data Manpower — ${manpowerFmtPeriode(d.periode)} · ${mpNum(d.total)} orang',
+                      style: const TextStyle(
+                          fontSize: 12.5, fontWeight: FontWeight.w600)),
+                ),
+                if (f.hasFilter)
+                  TextButton(
+                    onPressed: () => ref
+                        .read(manpowerManageFilterProvider.notifier)
+                        .reset(),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                    ),
+                    child: const Text('Reset',
+                        style: TextStyle(fontSize: 11.5)),
+                  ),
+              ],
+            ),
+            if (f.hasFilter)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  [
+                    if (f.sectionLabel.isNotEmpty) 'Section: ${f.sectionLabel}',
+                    if (f.crewLabel.isNotEmpty) 'Crew: ${f.crewLabel}',
+                    if (f.section.isNotEmpty) 'Section: ${f.section}',
+                    if (f.crew.isNotEmpty) 'Crew: ${f.crew}',
+                    if (f.status.isNotEmpty) 'Status: ${f.status}',
+                    if (f.search.isNotEmpty) '"${f.search}"',
+                    if (f.dept.isNotEmpty) 'Dept: ${f.dept}',
+                  ].where((s) => s.isNotEmpty).join(' · '),
+                  style: TextStyle(
+                      fontSize: 10.5,
+                      color: Theme.of(context).colorScheme.primary),
+                ),
+              ),
             const SizedBox(height: 8),
             if (canEdit)
               CheckboxListTile(

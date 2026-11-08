@@ -40,6 +40,10 @@ export default function ManpowerGroupPage() {
   const [fSection, setFSection] = useState('')
   const [fCrew, setFCrew] = useState('')
   const [fStatus, setFStatus] = useState('')
+  // Drill-down dari kartu "Rincian per Section/Crew": label kartu diklik →
+  // tabel "Data Manpower" difilter kelompok itu (label exact, bukan kolom).
+  const [pickSection, setPickSection] = useState('')
+  const [pickCrew, setPickCrew] = useState('')
   const [q, setQ] = useState('')
   const [search, setSearch] = useState('')
 
@@ -78,7 +82,7 @@ export default function ManpowerGroupPage() {
     return () => window.clearTimeout(t)
   }, [q])
 
-  useEffect(() => { setPage(1) }, [periode, dept, fSection, fCrew, fStatus, search])
+  useEffect(() => { setPage(1) }, [periode, dept, fSection, fCrew, fStatus, search, pickSection, pickCrew])
 
   useEffect(() => {
     if (!periode) { setData(null); return }
@@ -90,6 +94,8 @@ export default function ManpowerGroupPage() {
       section: fSection || undefined,
       crew: fCrew || undefined,
       status: fStatus || undefined,
+      section_label: pickSection || undefined,
+      crew_label: pickCrew || undefined,
       search: search || undefined,
       page, page_size: pageSize, sort, dir,
     })
@@ -97,7 +103,7 @@ export default function ManpowerGroupPage() {
       .catch((e) => { if (alive) setMsg(`gagal: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
-  }, [periode, dept, fSection, fCrew, fStatus, search, page, pageSize, sort, dir, tick])
+  }, [periode, dept, fSection, fCrew, fStatus, search, pickSection, pickCrew, page, pageSize, sort, dir, tick])
 
   // Sekali saja: bila tabel pengelompokan masih kosong, isi otomatis dari JABATAN.
   useEffect(() => {
@@ -116,6 +122,25 @@ export default function ManpowerGroupPage() {
   }, [data, canEdit])
 
   const reload = () => setTick((x) => x + 1)
+
+  // Klik data "Kelompok" di kartu Rincian → tabel "Data Manpower" di bawah
+  // difilter ke kelompok itu. Klik label yang sudah aktif = batalkan (tampilan
+  // semua). Select Section/Crew manual dibersihkan agar tak bentrok dengan
+  // drill-down label.
+  const pickSectionRow = (label: string) => {
+    setFSection('')
+    setPickSection((cur) => (cur === label ? '' : label))
+  }
+  const pickCrewRow = (label: string) => {
+    setFCrew('')
+    setPickCrew((cur) => (cur === label ? '' : label))
+  }
+  const resetFilters = () => {
+    setDept(''); setFSection(''); setFCrew(''); setFStatus('')
+    setPickSection(''); setPickCrew('')
+    setQ(''); setSearch('')
+    setPage(1)
+  }
 
   const sortBy = (key: string) => {
     if (sort === key) setDir(dir === 'desc' ? 'asc' : 'desc')
@@ -273,7 +298,7 @@ export default function ManpowerGroupPage() {
         </div>
         <button
           className="rounded-lg border px-3 py-1.5 text-theme-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5"
-          onClick={() => { setDept(''); setFSection(''); setFCrew(''); setFStatus(''); setQ(''); setSearch('') }}
+          onClick={resetFilters}
         >
           Reset
         </button>
@@ -397,21 +422,32 @@ export default function ManpowerGroupPage() {
                       {block.rows.length === 0 && (
                         <tr><td colSpan={7} className="px-3 py-4 text-center text-gray-400">Tidak ada data.</td></tr>
                       )}
-                      {block.rows.map((b) => (
-                        <tr key={b.label} className="border-t dark:border-gray-800">
-                          <td className={`px-3 py-1.5 ${b.label === '(belum diisi)' ? 'text-gray-400 italic' : 'font-medium'}`}>
-                            {b.label}
-                          </td>
-                          <td className="px-3 py-1.5 text-right">{fmtNum(b.staff)}</td>
-                          <td className="px-3 py-1.5 text-right">{fmtNum(b.mekanik)}</td>
-                          <td className="px-3 py-1.5 text-right">{fmtNum(b.repairman)}</td>
-                          <td className="px-3 py-1.5 text-right text-gray-500">{fmtNum(b.general_crew)}</td>
-                          <td className="px-3 py-1.5 text-right text-gray-400">
-                            {fmtNum(b.total - b.staff - b.mekanik - b.repairman - b.general_crew)}
-                          </td>
-                          <td className="px-3 py-1.5 text-right font-semibold">{fmtNum(b.total)}</td>
-                        </tr>
-                      ))}
+                      {block.rows.map((b) => {
+                        const active = block.title === 'Rincian per Crew'
+                          ? pickCrew === b.label
+                          : pickSection === b.label
+                        return (
+                          <tr
+                            key={b.label}
+                            onClick={() => (block.title === 'Rincian per Crew' ? pickCrewRow : pickSectionRow)(b.label)}
+                            className={`cursor-pointer select-none border-t dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/60 ${active ? 'bg-brand-50 dark:bg-brand-900/20' : ''}`}
+                            title={`Klik untuk menampilkan ${b.label} di tabel "Data Manpower" di bawah — klik lagi untuk membatalkan`}
+                          >
+                            <td className={`px-3 py-1.5 ${b.label === '(belum diisi)' ? 'text-gray-400 italic' : 'font-medium'} ${active ? 'text-brand-600' : ''}`}>
+                              {b.label}
+                              {active && <span className="ml-1 text-theme-xs">●</span>}
+                            </td>
+                            <td className="px-3 py-1.5 text-right">{fmtNum(b.staff)}</td>
+                            <td className="px-3 py-1.5 text-right">{fmtNum(b.mekanik)}</td>
+                            <td className="px-3 py-1.5 text-right">{fmtNum(b.repairman)}</td>
+                            <td className="px-3 py-1.5 text-right text-gray-500">{fmtNum(b.general_crew)}</td>
+                            <td className="px-3 py-1.5 text-right text-gray-400">
+                              {fmtNum(b.total - b.staff - b.mekanik - b.repairman - b.general_crew)}
+                            </td>
+                            <td className="px-3 py-1.5 text-right font-semibold">{fmtNum(b.total)}</td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -466,12 +502,37 @@ export default function ManpowerGroupPage() {
           {/* Tabel */}
           <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h3 className="font-semibold text-theme-sm">
-                Data Manpower — {fmtPeriode(data.periode)} · {fmtNum(data.total)} orang
-              </h3>
-              <select className={inp} value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}>
-                {[25, 50, 100].map((n) => <option key={n} value={n}>{n} / halaman</option>)}
-              </select>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-semibold text-theme-sm">
+                  Data Manpower — {fmtPeriode(data.periode)} · {fmtNum(data.total)} orang
+                </h3>
+                {(pickSection || pickCrew || dept || fSection || fCrew || fStatus || search) && (
+                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-theme-xs font-medium text-brand-600 dark:bg-brand-900/30">
+                    {[
+                      pickSection && `Section: ${pickSection}`,
+                      pickCrew && `Crew: ${pickCrew}`,
+                      dept && `Dept: ${dept}`,
+                      fSection && `Section: ${fSection}`,
+                      fCrew && `Crew: ${fCrew}`,
+                      fStatus && `Status: ${fStatus}`,
+                      search && `“${search}”`,
+                    ].filter(Boolean).join(' · ')}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="rounded-lg border px-3 py-1.5 text-theme-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 dark:text-gray-300 dark:hover:bg-white/5"
+                  onClick={resetFilters}
+                  disabled={!(pickSection || pickCrew || dept || fSection || fCrew || fStatus || search)}
+                  title="Bersihkan semua filter tabel"
+                >
+                  Reset
+                </button>
+                <select className={inp} value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}>
+                  {[25, 50, 100].map((n) => <option key={n} value={n}>{n} / halaman</option>)}
+                </select>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-theme-sm">

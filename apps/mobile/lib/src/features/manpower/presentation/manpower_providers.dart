@@ -154,6 +154,11 @@ class ManpowerManageFilter {
   final String section;
   final String crew;
   final String status;
+  /// Drill-down dari kartu "Rincian per Section/Crew": label kartu diklik →
+  /// tabel "Data Manpower" difilter kelompok itu (label hasil derivasi kartu,
+  /// bukan nilai kolom — backend cocokkan persis CASE di breakdown).
+  final String sectionLabel;
+  final String crewLabel;
   final String search;
   final int page;
   final int pageSize;
@@ -165,6 +170,8 @@ class ManpowerManageFilter {
     this.section = '',
     this.crew = '',
     this.status = '',
+    this.sectionLabel = '',
+    this.crewLabel = '',
     this.search = '',
     this.page = 1,
     this.pageSize = 25,
@@ -178,6 +185,8 @@ class ManpowerManageFilter {
     String? section,
     String? crew,
     String? status,
+    String? sectionLabel,
+    String? crewLabel,
     String? search,
     int? page,
     int? pageSize,
@@ -190,12 +199,24 @@ class ManpowerManageFilter {
         section: section ?? this.section,
         crew: crew ?? this.crew,
         status: status ?? this.status,
+        sectionLabel: sectionLabel ?? this.sectionLabel,
+        crewLabel: crewLabel ?? this.crewLabel,
         search: search ?? this.search,
         page: page ?? this.page,
         pageSize: pageSize ?? this.pageSize,
         sort: sort ?? this.sort,
         dir: dir ?? this.dir,
       );
+
+  /// Apakah ada filter aktif (untuk menampilkan tombol Reset).
+  bool get hasFilter =>
+      dept.isNotEmpty ||
+      section.isNotEmpty ||
+      crew.isNotEmpty ||
+      status.isNotEmpty ||
+      sectionLabel.isNotEmpty ||
+      crewLabel.isNotEmpty ||
+      search.isNotEmpty;
 }
 
 class ManpowerManageFilterNotifier extends Notifier<ManpowerManageFilter> {
@@ -210,6 +231,22 @@ class ManpowerManageFilterNotifier extends Notifier<ManpowerManageFilter> {
   void setSearch(String v) => state = state.copyWith(search: v, page: 1);
   void setPage(int p) => state = state.copyWith(page: p < 1 ? 1 : p);
   void setPageSize(int n) => state = state.copyWith(pageSize: n, page: 1);
+
+  /// Klik label di kartu "Rincian per Section" → filter tabel ke label itu;
+  /// klik label yang sudah aktif = batalkan (tampil semua). Select Section
+  /// manual dibersihkan agar tak bentrok dengan drill-down label.
+  void setSectionPick(String label) => state = state.copyWith(
+        sectionLabel: state.sectionLabel == label ? '' : label,
+        section: '',
+        page: 1,
+      );
+
+  /// Klik label di kartu "Rincian per Crew", mirip [setSectionPick].
+  void setCrewPick(String label) => state = state.copyWith(
+        crewLabel: state.crewLabel == label ? '' : label,
+        crew: '',
+        page: 1,
+      );
 
   void reset() => state = ManpowerManageFilter(periode: state.periode);
 
@@ -251,6 +288,8 @@ final manpowerManageProvider =
           section: f.section,
           crew: f.crew,
           status: f.status,
+          sectionLabel: f.sectionLabel.isEmpty ? null : f.sectionLabel,
+          crewLabel: f.crewLabel.isEmpty ? null : f.crewLabel,
           search: f.search,
           page: f.page,
           pageSize: f.pageSize,

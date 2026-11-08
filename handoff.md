@@ -638,3 +638,33 @@ profil (avatar + ganti password) + dark mode + notifikasi.
     (V39/V57), jadi hanya role yang dicentang di halaman Users yang dapat
     akses. `require_menu` tetap menghormati `ROLE_INHERITS` (bool_or role+base).
   - Verifikasi: `py_compile` OK; tanpa perubahan web/mobile.
+- **Drill-down Manpower (2026-11-08, branch `feat/manpower-drilldown`)**:
+  halaman **Manpower** (grup `Manpowermanage`): klik data **"Kelompok"** di
+  kartu **"Rincian per Section" / "Rincian per Crew"** → tabel
+  **"Data Manpower — …· N orang"** difilter ke kelompok itu; klik label yang
+  sudah aktif = batalkan (tampilkan semua). Tombol **Reset** ditambah di
+  header tabel (dekat pemilih "25/50/100 / halaman") dan membersihkan SEMUA
+  filter (dept/section/crew/status/search/section_label/crew_label), paritas
+  dengan tombol Reset di bar filter atas.
+  - Label kartu adalah **hasil derivasi** (bukan nilai kolom): crew NULL milik
+    Dept Head tampil `'Dept Head'`; status General Crew tampil
+    `'General Crew'`; NULL lainnya `'(belum diisi)'` — sehingga klik tidak bisa
+    memakai filter `crew`/`section` mentah.
+  - **API** `apps/api/app/api/v1/manpower.py`: `/v1/manpower/manage` menerima
+    query baru `section_label` & `crew_label` (cocokkan persis ekspresi CASE
+    yang sama seperti breakdown di `manage_dashboard`); perhitungan breakdown
+    masing-masing dimensi melewatkan filter label miliknya sendiri (kartu tidak
+    "kolaps" saat tabel difilter).
+  - **Web** `ManpowerGroup.tsx`: baris breakdown dapat diklik (hover, highlight
+    `bg-brand-50`, titik `●` pada label aktif), chip filter aktif di header
+    tabel, tombol **Reset** dekat pemilih page-size. Baris breakdown yang sama
+    menghitung filter aktif header (KPI header "Data Manpower — N orang"
+    mengikuti filter).
+  - **Mobile** `manpower_group_page.dart` + `_providers` + `_api`: paritas —
+    label DataCell dapat diketuk (aktif = warna primary + `●` + bold), info
+    filter aktif + tombol **Reset** di judul tabel, `ManpowerManageFilter`
+    field baru `sectionLabel`/`crewLabel` (+ setter toggle-and-clear select
+    manual Section/Crew, `hasFilter`), `manage()` kirim `section_label`/
+    `crew_label`.
+  - Verifikasi: `py_compile` OK; web `tsc` + `vite build` lolos;
+    `flutter analyze lib` bersih + **131 test lolos** (baseline tidak berubah).
