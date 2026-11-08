@@ -43,6 +43,7 @@ import 'package:mte_data_center/src/features/riwayat/presentation/riwayat_page.d
 import 'package:mte_data_center/src/features/timeline/presentation/timeline_page.dart';
 import 'package:mte_data_center/src/features/yazu/presentation/yazu_page.dart';
 import 'package:mte_data_center/src/features/yazu/presentation/yazu_pumping_page.dart';
+import 'package:mte_data_center/src/features/yazu/presentation/yazu_pumping_dc_page.dart';
 
 /// GoRouter Milestone 1: /login, / (dashboard), + route stub milestone
 /// berikutnya. Redirect ke /login bila tanpa token; /users & /audit
@@ -75,6 +76,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/yazu', builder: (c, s) => const YazuPage()),
       GoRoute(path: '/yazudc', builder: (c, s) => const YazuDailyCheckPage()),
       GoRoute(path: '/yazupumping', builder: (c, s) => const YazuPumpingPage()),
+      GoRoute(path: '/yazupumpingdc', builder: (c, s) => const YazuPumpingDcPage()),
       GoRoute(path: '/ewacs', builder: (c, s) => const EwacsPage()),
       GoRoute(path: '/riwayat', builder: (c, s) => const RiwayatPage()),
       GoRoute(path: '/project', builder: (c, s) => const ProjectPageList()),

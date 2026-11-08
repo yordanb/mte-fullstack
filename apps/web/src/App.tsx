@@ -15,6 +15,7 @@ import MeasurementPage from './pages/Measurement'
 import YazuPage from './pages/Yazu'
 import YazuDailyCheckPage from './pages/YazuDailyCheck'
 import YazuPumpingPage from './pages/YazuPumping'
+import YazuPumpingDcPage from './pages/YazuPumpingDc'
 import HourmeterPage from './pages/Hourmeter'
 import EwacsPage from './pages/Ewacs'
 import TarSupportPage from './pages/TarSupport'
@@ -88,6 +89,7 @@ export default function App() {
       {page === 'yazu_lighting' && can('yazu_lighting', 'view') && <YazuPage />}
       {page === 'yazudc_lighting' && can('yazudc_lighting', 'view') && <YazuDailyCheckPage />}
       {page === 'yazupumping' && can('yazupumping', 'view') && <YazuPumpingPage />}
+      {page === 'yazupumpingdc' && can('yazupumpingdc', 'view') && <YazuPumpingDcPage />}
       {page === 'ewacs' && can('ewacs', 'view') && <EwacsPage />}
       {page === 'tarsupport' && can('tarsupport', 'view') && <TarSupportPage />}
       {page === 'ss' && can('ss', 'view') && <SsPage />}

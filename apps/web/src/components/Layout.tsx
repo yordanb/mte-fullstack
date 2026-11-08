@@ -16,6 +16,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'yazu_lighting', label: 'Yazu Lighting P2H' },
     { key: 'yazudc_lighting', label: 'Yazu Lighting Daily Check' },
     { key: 'yazupumping', label: 'Yazu Pumping P2H' },
+    { key: 'yazupumpingdc', label: 'Yazu Pumping Daily Check' },
   { key: 'bomak', label: 'Bomak R1BI' },
     { key: 'equipment', label: 'Equipment' },
     { key: 'staging', label: 'Staging Pump' },
@@ -148,6 +149,10 @@ const ICONS: Record<string, ReactNode> = {
   yazupumping: (
     // Pompa: impeler + pipa masuk/keluar
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="6" /><path d="M12 7V3M12 3h4" /><path d="M6 13H2v-3" /><path d="M12 13l3.5-2" /><path d="M12 13l-3.5-2" /><path d="M12 13v3.5" /></svg>
+  ),
+  yazupumpingdc: (
+    // Pompa + ceklis: impeler, pipa, dan tanda centang harian
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="14" r="5" /><path d="M11 9V5M11 5h3" /><path d="M6 14H3v-2" /><path d="M11 14l3-1.8" /><path d="M11 14v3" /><path d="M15.5 4.5l1.4 1.4 2.6-2.6" /></svg>
   ),
 }
 

@@ -18,6 +18,7 @@ from app.api.v1.riwayat import router as riwayat_router
 from app.api.v1.yazu import router as yazu_router, do_sync
 from app.api.v1.yazu_dc import router as yazu_dc_router, do_sync as do_sync_dc
 from app.api.v1.yazu_pumping import router as yazu_pumping_router, do_sync as do_sync_pumping
+from app.api.v1.yazu_pumping_dc import router as yazu_pumping_dc_router, do_sync as do_sync_pumping_dc
 from app.api.v1.hourmeter import router as hourmeter_router
 from app.api.v1.ewacs import router as ewacs_router
 from app.api.v1.ss import router as ss_router
@@ -125,6 +126,7 @@ app.include_router(riwayat_router)
 app.include_router(yazu_router)
 app.include_router(yazu_dc_router)
 app.include_router(yazu_pumping_router)
+app.include_router(yazu_pumping_dc_router)
 app.include_router(hourmeter_router)
 app.include_router(ewacs_router)
 app.include_router(ss_router)
@@ -152,6 +154,7 @@ async def _yazu_scheduled_sync():
         (do_sync, "yazu_lighting"),
         (do_sync_dc, "yazu_dc_lighting"),
         (do_sync_pumping, "yazu_pumping"),
+        (do_sync_pumping_dc, "yazu_pumping_dc"),
     ):
         async with SessionLocal() as db:
             try:

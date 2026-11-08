@@ -23,6 +23,15 @@ class Settings(BaseSettings):
     yazu_pumping_gid_primer: int = 1718277338
     yazu_pumping_gid_mhp: int = 40942257
     yazu_pumping_gid_booster: int = 1548923775
+    # Yazu Pumping Daily Check — spreadsheet yang sama dengan P2H, tiga tab
+    # (gid berbeda): primer / mhp / booster. Header lebih ringkas dari P2H:
+    #   Waktu, ID Unit, HM, Nama, NRP, Role, Lokasi, Link Lokasi, Akurasi,
+    #   Backlog (JSON item OPEN/CLOSED), Fungsi Loto, Fungsi Emergency Stop,
+    #   Fungsi Control Panel, Komentar, Layak Operasi
+    yazu_pumping_dc_sheet_id: str = "1H9Hr36a4UVCHRkE799AyaCrsfDfNFYYZwYLev1wIgpI"
+    yazu_pumping_dc_gid_primer: int = 258487670
+    yazu_pumping_dc_gid_mhp: int = 359555334
+    yazu_pumping_dc_gid_booster: int = 1301719762
 
     @field_validator("database_url", mode="before")
     @classmethod
@@ -55,5 +64,13 @@ class Settings(BaseSettings):
             "booster": self.yazu_pumping_gid_booster,
         }[kategori]
         return f"https://docs.google.com/spreadsheets/d/{self.yazu_pumping_sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
+
+    def yazu_pumping_dc_csv_url(self, kategori: str) -> str:
+        gid = {
+            "primer": self.yazu_pumping_dc_gid_primer,
+            "mhp": self.yazu_pumping_dc_gid_mhp,
+            "booster": self.yazu_pumping_dc_gid_booster,
+        }[kategori]
+        return f"https://docs.google.com/spreadsheets/d/{self.yazu_pumping_dc_sheet_id}/gviz/tq?tqx=out:csv&gid={gid}"
 
 settings = Settings()

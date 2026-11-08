@@ -25,12 +25,12 @@ const permMatrixRoles = [
   'group leader', 'section head', 'adm te', 'adm lce',
 ];
 
-/// 31 menu izin backend (users.py MENUS; urutan penting = urutan tampil web).
+/// 32 menu izin backend (users.py MENUS; urutan penting = urutan tampil web).
 const permMenus = [
   'dashboard', 'dbr', 'performance', 'activity', 'equipment',
   'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak',
   'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement',
-  'yazu_lighting', 'yazudc_lighting', 'yazupumping', 'ewacs', 'tarsupport', 'ss', 'ssab',
+  'yazu_lighting', 'yazudc_lighting', 'yazupumping', 'yazupumpingdc', 'ewacs', 'tarsupport', 'ss', 'ssab',
   'proker', 'prokerbooster', 'prokerinjector', 'prokerthermo', 'prokerpanel',
   'manpower', 'manpowermanage',
 ];
@@ -40,6 +40,7 @@ String menuLabel(String menu) => switch (menu) {
       'yazu_lighting' => 'yazu_lighting — Yazu Lighting P2H',
       'yazudc_lighting' => 'yazudc_lighting — Yazu Lighting Daily Check',
       'yazupumping' => 'yazupumping — Yazu Pumping P2H',
+      'yazupumpingdc' => 'yazupumpingdc — Yazu Pumping Daily Check',
       'ss' => 'ss — Sugestion System',
       'ssab' => 'ssab — SS AB',
       'manpower' => 'manpower — Manpower Inovasi',

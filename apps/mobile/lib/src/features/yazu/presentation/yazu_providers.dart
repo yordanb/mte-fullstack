@@ -78,5 +78,25 @@ final yazuPumpingStatsProvider = FutureProvider<YazuStats>((ref) async {
   return ref.watch(yazuPumpingApiProvider).stats();
 });
 
+// ── Yazu Pumping Daily Check: kategori aktif + periode ──
+final yazuPumpingDcKategoriProvider =
+    NotifierProvider<YazuPumpingKategoriNotifier, String>(
+        YazuPumpingKategoriNotifier.new);
+
+final yazuPumpingDcMonthProvider =
+    NotifierProvider<YazuMonthNotifier, YazuMonth>(YazuMonthNotifier.new);
+
+final yazuPumpingDcPivotProvider = FutureProvider<YazuPivot>((ref) async {
+  final p = ref.watch(yazuPumpingDcMonthProvider);
+  final k = ref.watch(yazuPumpingDcKategoriProvider);
+  return ref
+      .watch(yazuPumpingDcApiProvider)
+      .pivot(year: p.year, month: p.month, kategori: k);
+});
+
+final yazuPumpingDcStatsProvider = FutureProvider<YazuStats>((ref) async {
+  return ref.watch(yazuPumpingDcApiProvider).stats();
+});
+
 /// Map DioException → pesan server (untuk UI).
 String yazuErr(Object e) => apiMessage(e);
