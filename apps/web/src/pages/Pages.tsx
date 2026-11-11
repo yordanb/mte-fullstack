@@ -633,7 +633,6 @@ export function EquipmentPage() {
     const o = sort === key && order === 'asc' ? 'desc' : 'asc'
     setSort(key); setOrder(o); load(1, key, o)
   }
-  const arrow = (key: string) => (sort === key ? (order === 'asc' ? ' ▲' : ' ▼') : '')
   useEffect(() => { load(1) }, [])
   const pages = Math.max(1, Math.ceil(total / 20))
   const save = async (cn: string | null, body: Partial<Equipment>) => {
@@ -663,6 +662,9 @@ export function EquipmentPage() {
           <button className="rounded-lg border px-4 py-2" onClick={() => setAdding(true)}>+ Tambah Unit</button>
         )}
         <span className="text-theme-sm text-gray-500">Total {total.toLocaleString('id-ID')}</span>
+        <span className="text-theme-xs text-gray-400">
+          urut: {EQ_COLS.find((c) => c.key === sort)?.label ?? sort} {order === 'asc' ? '↑' : '↓'}
+        </span>
       </div>
       {msg && <p className="text-theme-sm text-red-600">{msg}</p>}
       <div className="overflow-x-auto rounded-2xl border bg-white">
@@ -670,9 +672,17 @@ export function EquipmentPage() {
           <thead className="bg-[#d6e4c9] font-semibold">
             <tr>
               {EQ_COLS.map((c) => (
-                <th key={c.key} className="border px-2 py-2 whitespace-nowrap">
-                  <button onClick={() => toggleSort(c.key)} title="Urutkan">
-                    {c.label}{arrow(c.key)}
+                <th key={c.key} className="border p-0 whitespace-nowrap"
+                  aria-sort={sort === c.key ? (order === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                  <button type="button" onClick={() => toggleSort(c.key)}
+                    title={`Urutkan berdasarkan ${c.label}`}
+                    className={`flex w-full cursor-pointer items-center justify-center gap-1 px-2 py-2 hover:bg-black/5 dark:hover:bg-white/10 ${
+                      sort === c.key ? 'font-bold text-brand-700 dark:text-brand-300' : ''
+                    }`}>
+                    {c.label}
+                    <span aria-hidden="true" className={sort === c.key ? '' : 'text-gray-400 dark:text-gray-500'}>
+                      {sort === c.key ? (order === 'asc' ? '▲' : '▼') : '↕'}
+                    </span>
                   </button>
                 </th>
               ))}

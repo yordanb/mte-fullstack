@@ -15,6 +15,18 @@ WRITABLE = (
 )
 CATEGORIES = ("BIGWHEEL", "LIGHTING", "MOBILE", "PUMPING")
 
+# Kolom yang boleh diurutkan + nama kolom DB (engine = pasangan merk+model).
+SORT_COLS = {
+    "cn": ("cn",),
+    "unit_type": ("unit_type",),
+    "unit_product": ("unit_product",),
+    "unit_model": ("unit_model",),
+    "category": ("category",),
+    "status": ("status",),
+    "aktif": ("aktif",),
+    "engine": ("engine_merk", "engine_model"),
+}
+
 
 def _coerce(field: str, value):
     """JSON selalu string/number: ubah ke tipe kolom (asyncpg tak terima str untuk DATE)."""
@@ -62,11 +74,15 @@ async def list_equipment(
         conds.append("aktif = :akt")
         p["akt"] = aktif
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
-    sort_col = {"engine": "engine_merk, engine_model"}.get(sort, sort)
-    nl = "NULLS LAST"
+    # Arah diterapkan ke SEMUA kolom gabungan (engine = merk + model) dan
+    # ditutup tiebreaker `cn` supaya urutan stabil antar-halaman saat nilai sama.
+    cols = SORT_COLS.get(sort, ("cn",))
+    order_by = ", ".join(f"{c} {order.upper()} NULLS LAST" for c in cols)
+    if sort != "cn":
+        order_by += ", cn ASC"
     total = (await db.execute(text(f"SELECT count(*) FROM equipment {where}"), p)).scalar()
     rows = (await db.execute(text(
-        f"SELECT * FROM equipment {where} ORDER BY {sort_col} {order.upper()} {nl} "
+        f"SELECT * FROM equipment {where} ORDER BY {order_by} "
         f"LIMIT :lim OFFSET :off"), p)
     ).mappings().all()
     return {"total": total, "page": page, "page_size": page_size,
