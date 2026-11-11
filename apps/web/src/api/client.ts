@@ -1592,6 +1592,9 @@ export type ProkerUnitPage = {
   total: number
   page: number
   page_size: number
+  /* jumlah unit berstatus DONE & belum pernah DONE pada filter aktif */
+  executed_units?: number
+  not_executed_units?: number
   data: ProkerUnit[]
 }
 
@@ -1631,6 +1634,7 @@ export async function fetchProkerFilters(): Promise<ProkerFilters> {
 
 export async function fetchProkerUnits(params: {
   search?: string; product?: string; model?: string; engine?: string
+  executed?: 'yes' | 'no'
   sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
 }): Promise<ProkerUnitPage> {
   const r = await api.get('/v1/proker/units', { params })

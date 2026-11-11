@@ -545,6 +545,7 @@ async def list_units(
     product: str | None = None,
     model: str | None = None,
     engine: str | None = None,
+    executed: str | None = Query(None, pattern="^(yes|no)$"),
     sort: str = Query("cn"),
     order: str = Query("asc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
@@ -566,6 +567,22 @@ async def list_units(
         conds.append("u.engine_model = :engine")
         p["engine"] = engine
     where = f"WHERE {' AND '.join(conds)}" if conds else ""
+    # Cakupan eksekusi dihitung SEBELUM filter executed, supaya angka chip
+    # tetap menggambarkan seluruh unit pada filter product/model/search aktif.
+    done_exists = ("EXISTS (SELECT 1 FROM proker_execution x "
+                   "WHERE x.cn = u.cn AND x.status = 'DONE')")
+    scope = {k: v for k, v in p.items() if k not in ("lim", "off")}
+    cov = (await db.execute(text(f"""
+        SELECT COUNT(*) FILTER (WHERE {done_exists}) AS executed,
+               COUNT(*) FILTER (WHERE NOT {done_exists}) AS not_executed
+        FROM proker_unit u {where}
+    """), scope)).mappings().first()
+    if executed == "yes":
+        conds.append(done_exists)
+    elif executed == "no":
+        conds.append(f"NOT {done_exists}")
+    if executed:
+        where = f"WHERE {' AND '.join(conds)}"
     col = _SORT.get(sort, "u.cn")
     total = (await db.execute(text(f"SELECT COUNT(*) FROM proker_unit u {where}"), p)).scalar() or 0
     rows = (await db.execute(text(f"""
@@ -581,6 +598,8 @@ async def list_units(
         LIMIT :lim OFFSET :off
     """), p)).mappings().all()
     return {"total": total, "page": page, "page_size": page_size,
+            "executed_units": cov["executed"] if cov else 0,
+            "not_executed_units": cov["not_executed"] if cov else 0,
             "data": [dict(r) for r in rows]}
 
 

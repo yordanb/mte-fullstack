@@ -53,6 +53,8 @@ export default function ProkerPage() {
   const [product, setProduct] = useState('')
   const [model, setModel] = useState('')
   const [engine, setEngine] = useState('')
+  const [execFilter, setExecFilter] = useState<'' | 'yes' | 'no'>('')
+  const [coverage, setCoverage] = useState<{ executed: number; notExecuted: number } | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(50)
 
@@ -84,7 +86,7 @@ export default function ProkerPage() {
     return () => window.clearTimeout(t)
   }, [q])
 
-  useEffect(() => { setPage(1) }, [search, product, model, engine])
+  useEffect(() => { setPage(1) }, [search, product, model, engine, execFilter])
 
   useEffect(() => {
     Promise.all([fetchProkerFilters(), fetchProkerStats()])
@@ -98,17 +100,23 @@ export default function ProkerPage() {
     fetchProkerUnits({
       search: search || undefined, product: product || undefined,
       model: model || undefined, engine: engine || undefined,
+      executed: execFilter || undefined,
       page, page_size: pageSize,
     })
       .then((r) => {
         if (!alive) return
         setUnits(r.data); setTotal(r.total)
-        if (!cn && r.data.length) setCn(r.data[0].cn)
+        setCoverage({
+          executed: r.executed_units ?? 0,
+          notExecuted: r.not_executed_units ?? 0,
+        })
+        // Saat filter berubah, C/N terpilih bisa tidak ada di halaman ini.
+        if ((!cn || !r.data.some((u) => u.cn === cn)) && r.data.length) setCn(r.data[0].cn)
       })
       .catch((e) => { if (alive) setMsg(`gagal memuat unit: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoadingUnits(false) })
     return () => { alive = false }
-  }, [search, product, model, engine, page, pageSize, reload]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [search, product, model, engine, execFilter, page, pageSize, reload]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!cn) { setDetail(null); return }
@@ -298,9 +306,11 @@ export default function ProkerPage() {
     } finally { setSaving(false) }
   }
 
-  const resetFilter = () => { setQ(''); setSearch(''); setProduct(''); setModel(''); setEngine('') }
+  const resetFilter = () => { setQ(''); setSearch(''); setProduct(''); setModel(''); setEngine(''); setExecFilter('') }
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
   const s = detail?.stats
+  const donePct = stats && stats.units > 0 ? Math.round((stats.unit_done / stats.units) * 100) : 0
+  const scopeTotal = coverage ? coverage.executed + coverage.notExecuted : total
   const progPct = prog && prog.total_rows > 0
     ? Math.min(100, Math.round((prog.processed_rows / prog.total_rows) * 100))
     : prog?.status === 'COMMITTED' ? 100 : 0
@@ -399,9 +409,18 @@ export default function ProkerPage() {
         </p>
         <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-            <p className="text-theme-xs text-gray-500">Unit CAT</p>
-            <p className="text-theme-2xl font-bold text-brand-600">{fmtNum(stats.units)}</p>
-            <p className="text-theme-xs text-gray-400">{fmtNum(stats.unit_done)} unit sudah pernah proker</p>
+            <p className="text-theme-xs text-gray-500">Sudah tereksekusi</p>
+            <p className="text-theme-2xl font-bold text-green-600">
+              {fmtNum(stats.unit_done)}
+              <span className="text-theme-sm font-normal text-gray-400"> / {fmtNum(stats.units)} unit</span>
+            </p>
+            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+              title={`${donePct}% unit CAT sudah pernah proker`}>
+              <div className="h-full rounded-full bg-green-500" style={{ width: `${donePct}%` }} />
+            </div>
+            <p className="mt-1 text-theme-xs text-gray-400">
+              {fmtNum(Math.max(0, stats.units - stats.unit_done))} unit belum pernah proker · {donePct}%
+            </p>
           </div>
           <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
             <p className="text-theme-xs text-gray-500">Total eksekusi</p>
@@ -437,6 +456,27 @@ export default function ProkerPage() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>›</button>
             </div>
           </div>
+          <div className="flex flex-wrap items-center gap-1.5 border-b px-3 py-2">
+            {([
+              { key: '', label: 'Semua', n: scopeTotal },
+              { key: 'yes', label: 'Sudah proker', n: coverage?.executed },
+              { key: 'no', label: 'Belum proker', n: coverage?.notExecuted },
+            ] as const).map((c) => (
+              <button key={c.key || 'all'} onClick={() => setExecFilter(c.key)}
+                className={`rounded-full border px-2.5 py-1 text-theme-xs font-medium ${
+                  execFilter === c.key
+                    ? c.key === 'no'
+                      ? 'border-gray-400 bg-gray-200 text-gray-800 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-100'
+                      : c.key === 'yes'
+                        ? 'border-green-500 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                        : 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
+                    : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-white/5'
+                }`}>
+                {c.label}
+                {c.n != null && <span className="ml-1 tabular-nums opacity-70">({fmtNum(c.n)})</span>}
+              </button>
+            ))}
+          </div>
           <div className="w-full overflow-auto" style={{ maxHeight: 600 }}>
             <table className="w-full border-collapse text-theme-xs">
               <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
@@ -446,6 +486,7 @@ export default function ProkerPage() {
                   <th className="px-2 py-2 text-left font-semibold" title="Engine / Product">Engine</th>
                   <th className="px-2 py-2 text-right font-semibold">HM now</th>
                   <th className="px-2 py-2 text-center font-semibold">Proker</th>
+                  <th className="px-2 py-2 text-center font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -475,11 +516,23 @@ export default function ProkerPage() {
                       </span>
                       <span className="mt-0.5 block text-theme-xs text-gray-400">{fmtDate(u.last_date)}</span>
                     </td>
+                    <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                      {u.done_count > 0 ? (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                          title={`${u.done_count} eksekusi selesai`}>Sudah</span>
+                      ) : (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">Belum</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {units.length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center text-theme-sm text-gray-400">
-                    Belum ada unit CAT. Import file GMC POMPA PRIMER (2.000 HOURS) (.xlsx) lewat tombol di atas.
+                  <tr><td colSpan={6} className="px-4 py-10 text-center text-theme-sm text-gray-400">
+                    {execFilter === 'no'
+                      ? 'Semua unit CAT pada filter ini sudah pernah proker.'
+                      : execFilter === 'yes'
+                        ? 'Belum ada unit CAT yang tereksekusi pada filter ini.'
+                        : 'Belum ada unit CAT. Import file GMC POMPA PRIMER (2.000 HOURS) (.xlsx) lewat tombol di atas.'}
                   </td></tr>
                 )}
               </tbody>
