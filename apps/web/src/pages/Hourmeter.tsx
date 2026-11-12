@@ -421,13 +421,14 @@ export default function HourmeterPage() {
 //
 // Format tabel sama dengan "Grid HM" (unit baris, sticky CN Unit + EGI), tetapi
 // hanya unit dragflow (pasangan Activity → tab DC Dragflow) dan kolomnya:
-//   EX · Code Number · HM Last RFU · Date RFU · Lifetime Now · HM 7 Hari
-//   Terakhir · HM Tercatat · aksi
-// Sumber HM: pembacaan HM TERAKHIR (tanggal paling baru) lintas periode.
+//   EX · Code Number · HM Last RFU · Date RFU · Lifetime Now · Last HM DC ·
+//   Last Date DC · HM Tercatat · aksi
+// Sumber HM RFU: pembacaan HM TERAKHIR (tanggal paling baru) lintas periode.
 //   Date RFU       = tanggal pembacaan itu;
 //   HM Tercatat    = kapan nilai itu tersimpan di database (`updated_at`);
-//   HM 7 Hari Terakhir = jumlah pemakaian (Selisih) pada 7 pembacaan terakhir;
-//   Lifetime Now   = HM terbesar yang pernah tercatat − pembacaan HM RFU terakhir.
+//   Last HM DC     = HM Daily Check terbaru dari Activity → tab DC Dragflow;
+//   Last Date DC   = tanggal HM DC terbaru itu;
+//   Lifetime Now   = HM Daily Check terbaru − pembacaan HM RFU terakhir.
 // Tombol "Isi/Ubah RFU" menulis pembacaan pada tanggal yang dipilih lewat
 // endpoint input cepat; "Hapus" membatalkan input yang salah.
 
@@ -526,9 +527,11 @@ function DragflowTab({
                 <th className="top-0 z-40 min-w-[100px] bg-gray-50 px-2 py-2 text-center font-semibold dark:bg-gray-800"
                   title="Tanggal HM Last RFU dibaca / dicatat">Date RFU</th>
                 <th className="top-0 z-40 min-w-[120px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
-                  title="HM terbesar yang pernah tercatat − pembacaan HM RFU terakhir">Lifetime Now</th>
-                <th className="top-0 z-40 min-w-[140px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
-                  title="Jumlah pemakaian (Selisih) pada 7 pembacaan terakhir">HM 7 Hari Terakhir</th>
+                  title="HM Daily Check terbaru dari Activity → tab DC Dragflow − HM Last RFU">Lifetime Now</th>
+                <th className="top-0 z-40 min-w-[120px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
+                  title="HM Daily Check terbaru dari Activity → tab DC Dragflow">Last HM DC</th>
+                <th className="top-0 z-40 min-w-[110px] bg-gray-50 px-2 py-2 text-center font-semibold dark:bg-gray-800"
+                  title="Tanggal HM DC terbaru (Activity → tab DC Dragflow)">Last Date DC</th>
                 <th className="top-0 z-40 min-w-[150px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800"
                   title="Kapan nilai HM tersebut tercatat di database">HM Tercatat</th>
                 {canFill && <th className="top-0 z-40 min-w-[90px] bg-gray-50 px-2 py-2 text-center font-semibold dark:bg-gray-800">Aksi</th>}
@@ -539,11 +542,12 @@ function DragflowTab({
                 const u = byCn.get(p.wp)
                 const at = fmtStamp(u?.hm_at)
                 const rdate = fmtDateOnly(u?.hm_date)
+                const dcDate = fmtDateOnly(u?.dc_date)
                 const editing = rfEdit?.cn === p.wp
                 const rowBg = editing
                   ? 'bg-brand-50/70 dark:bg-brand-500/10'
                   : ri % 2 ? 'bg-gray-50/50 dark:bg-gray-800/30' : 'bg-white dark:bg-gray-900'
-                const colSpan = canFill ? 8 : 7
+                const colSpan = canFill ? 9 : 8
                 return (
                   <Fragment key={p.wp}>
                     <tr className={rowBg}>
@@ -559,7 +563,10 @@ function DragflowTab({
                         {u ? fmtHmVal(u.lifetime) : '·'}
                       </td>
                       <td className="min-w-[140px] px-2 py-1.5 text-right tabular-nums text-gray-600 dark:text-gray-400">
-                        {u ? fmtHmVal(u.hm_recent7) : '·'}
+                        {u ? fmtHmVal(u.dc_hm) : '·'}
+                      </td>
+                      <td className="min-w-[110px] whitespace-nowrap px-2 py-1.5 text-center tabular-nums text-gray-600 dark:text-gray-400">
+                        {dcDate ?? <span className="text-gray-300">·</span>}
                       </td>
                       <td className={`min-w-[150px] whitespace-nowrap px-2 py-1.5 ${at ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300'}`}>
                         {at ?? (u ? 'belum ada pembacaan' : 'belum ada di grid')}
@@ -646,8 +653,8 @@ function DragflowTab({
       <p className="mt-2 text-theme-xs text-gray-400">
         HM Last RFU = pembacaan HM terakhir unit WP dari database (tanggal paling baru, lintas periode;
         {' '}fallback Opening terakhir bila belum ada pembacaan harian). Date RFU = tanggal pembacaan itu.
-        HM 7 Hari Terakhir = jumlah pemakaian (Selisih) pada 7 pembacaan terakhir.
-        Lifetime Now = HM terbesar yang pernah tercatat − pembacaan HM RFU terakhir.
+        Last HM DC = HM Daily Check terbaru dari Activity → tab DC Dragflow; Last Date DC = tanggalnya.
+        Lifetime Now = HM Daily Check terbaru − pembacaan HM RFU terakhir.
         HM Tercatat = waktu nilai itu tersimpan di database (upload Excel HM atau Input Cepat HM).
         {canFill && ' Tombol "Isi/Ubah RFU" menyimpan HM RFU beserta tanggalnya; "Hapus" membatalkan input yang salah.'}
       </p>

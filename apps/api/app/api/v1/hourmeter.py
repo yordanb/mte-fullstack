@@ -321,13 +321,14 @@ async def summary(
     di seluruh periode), karena angka itulah yang dipakai untuk mengukur
     lifetime. Mengganti bulan/tahun di UI tidak boleh mengubah nilainya.
 
-    - `hm_last`/`hm_at`/`hm_date` = pembacaan terakhir (tanggal terbesar).
+    - `hm_last`/`hm_at`/`hm_date` = pembacaan RFU terakhir (tanggal terbesar).
       Fallback ke `opening` terakhir (Open bulan terbesar) hanya bila unit
       belum pernah punya pembacaan harian; Date RFU dibiarkan kosong.
-    - `hm_recent7` = jumlah pemakaian (selisih antar pembacaan berurutan,
-      penurunan diabaikan) pada 7 pembacaan terakhir.
-    - `lifetime`   = HM terbesar yang pernah tercatat untuk unit − pembacaan
-      HM RFU terakhir (HM Last RFU).
+    - `dc_hm`/`dc_date` = HM Daily Check (DC) terbaru dari aktivitas
+      kategori "Daily Check Dragflow" (halaman Activity → tab DC Dragflow),
+      dicocokkan lewat kode WP (`activities.cn`). Dipakai sebagai
+      "HM (Daily Check)" pada rumus Lifetime.
+    - `lifetime`   = HM Daily Check terbaru − pembacaan HM RFU terakhir.
     """
     # Daftar CN = semua unit yang pernah muncul (opening ATAU pembacaan harian),
     # sehingga unit tidak hilang hanya karena periode yang dipilih berbeda.
@@ -359,35 +360,37 @@ async def summary(
                      ORDER BY period DESC, day DESC) AS rn
           FROM hourmeter_daily
         ),
-        -- 7 pembacaan terakhir, diurutkan dari terlama ke terbaru agar LAG()
-        -- memberi pembacaan sebelumnya (penurunan/reset diabaikan via CASE).
-        prev7 AS (
-          SELECT cn, period, day, hm, updated_at,
-                 LAG(hm) OVER (PARTITION BY cn
-                     ORDER BY period ASC, day ASC) AS prev_hm
-          FROM rank WHERE rn <= 7
-        ),
-        r7 AS (
-          SELECT cn,
-                 SUM(CASE WHEN hm > prev_hm THEN hm - prev_hm ELSE 0 END) AS recent7,
-                 MAX(hm) AS max7
-          FROM prev7 GROUP BY cn
-        ),
         last_read AS (
           SELECT r.cn, r.hm, r.updated_at, r.period, r.day
           FROM rank r WHERE r.rn = 1
+        ),
+        -- HM DC: pembacaan terbaru dari aktivitas kategori "Daily Check
+        -- Dragflow" (halaman Activity → tab DC Dragflow), dicocokkan lewat
+        -- kode WP pada kolom `activities.cn`. Satu tanggal bisa punya dua
+        -- shift; yang dipakai pembacaan terakhir (shift terbesar).
+        dc_rank AS (
+          SELECT cn, hm, date,
+                 ROW_NUMBER() OVER (PARTITION BY cn
+                     ORDER BY date DESC, shift DESC NULLS LAST,
+                              created_at DESC) AS rn
+          FROM activities
+          WHERE hm IS NOT NULL
+            AND cn IS NOT NULL
+            AND category = 'Daily Check Dragflow'
+        ),
+        dc AS (
+          SELECT cn, hm, date FROM dc_rank WHERE rn = 1
         )
         SELECT b.cn, b.egi, b.opening,
                l.hm         AS last_hm,
                l.updated_at AS last_at,
                l.period     AS last_period,
                l.day        AS last_day,
-               r.recent7    AS recent7,
-               (SELECT MAX(hm) FROM hourmeter_daily z
-                 WHERE z.cn = b.cn) AS max_hm
+               d.hm              AS dc_hm,
+               CAST(d.date AS TEXT) AS dc_date
         FROM base b
         LEFT JOIN last_read l ON l.cn = b.cn
-        LEFT JOIN r7        r ON r.cn = b.cn
+        LEFT JOIN dc        d ON d.cn = b.cn
         ORDER BY b.cn
     """))).mappings().all()
 
@@ -396,6 +399,11 @@ async def summary(
         last_hm = r["last_hm"] if r["last_hm"] is not None else r["opening"]
         last_period = r["last_period"]
         last_day = r["last_day"]
+        # HM Daily Check terbaru (bisa datang sebagai date atau datetime).
+        dc_hm = r["dc_hm"]
+        raw_dc = r["dc_date"]
+        dc_date = (str(raw_dc)[:10] if raw_dc is not None
+                   else None)
         units.append({
             "cn": r["cn"],
             "egi": r["egi"],
@@ -405,10 +413,12 @@ async def summary(
             # Tanggal pembacaan terakhir (YYYY-MM-DD) — null bila hanya opening.
             "hm_date": (f"{last_period}-{int(last_day):02d}"
                         if (last_period and last_day is not None) else None),
-            # HM 7 hari terakhir & Lifetime (HM terbesar − pembacaan HM RFU terakhir).
-            "hm_recent7": r["recent7"],
-            "lifetime": ((r["max_hm"] - last_hm)
-                         if (r["max_hm"] is not None and last_hm is not None) else None),
+            # HM DC & tanggal terbaru dari Activity → tab DC Dragflow, serta
+            # Lifetime = HM DC − pembacaan HM RFU terakhir.
+            "dc_hm": dc_hm,
+            "dc_date": dc_date,
+            "lifetime": (dc_hm - last_hm
+                         if (dc_hm is not None and last_hm is not None) else None),
         })
 
     return {"units": units}

@@ -1078,19 +1078,20 @@ export async function fetchHourmeterPivot(year?: number, month?: number): Promis
 export type HourmeterSummaryUnit = {
   cn: string
   egi: string | null
-  /** Pembacaan HM terakhir lintas periode (fallback opening periode terpilih). */
+  /** Pembacaan HM RFU terakhir lintas periode (fallback opening terakhir). */
   hm_last: number | null
   /** Waktu pembacaan tercatat di DB (ISO) — null bila hanya opening. */
   hm_at: string | null
-  /** Tanggal pembacaan terakhir (YYYY-MM-DD) — null bila hanya opening. */
+  /** Tanggal pembacaan RFU terakhir (YYYY-MM-DD) — null bila hanya opening. */
   hm_date: string | null
-  /** HM 7 hari terakhir: total pemakaian pada 7 pembacaan terakhir. */
-  hm_recent7: number | null
-  /** Lifetime: HM terbesar pada 7 pembacaan terakhir − HM Last RFU. */
+  /** HM Daily Check terbaru dari Activity → tab DC Dragflow. */
+  dc_hm: number | null
+  /** Tanggal HM DC terbaru (YYYY-MM-DD) — null bila belum ada DC. */
+  dc_date: string | null
+  /** Lifetime: HM DC (Daily Check terbaru) − HM Last RFU. */
   lifetime: number | null
 }
 export type HourmeterSummary = {
-  period: string
   units: HourmeterSummaryUnit[]
 }
 export async function fetchHourmeterSummary(): Promise<HourmeterSummary> {
