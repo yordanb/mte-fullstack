@@ -312,105 +312,104 @@ async def pivot(
 
 @router.get("/summary")
 async def summary(
-    year: int = Query(None), month: int = Query(None, ge=1, le=12),
     db: AsyncSession = Depends(get_db), _user=Depends(get_current_user),
 ):
-    """HM per unit (tanpa pivot harian) — untuk daftar unit dragflow.
+    """HM per unit untuk daftar unit dragflow — SELALU dari database penuh.
 
-    Membaca pembacaan HM TERAKHIR milik unit di seluruh periode (tanggal
-    terbesar), jadi begitu ada input/update HM bertanggal lebih baru, kolom
-    HM Last RFU, Date RFU, dan HM Tercatat ikut menampilkan yang terbaru.
+    Endpoint ini sengaja TIDAK memakai filter bulan/tahun: HM Last RFU,
+    Date RFU, dan HM Tercatat adalah kondisi TERAKHIR unit (tanggal terbesar
+    di seluruh periode), karena angka itulah yang dipakai untuk mengukur
+    lifetime. Mengganti bulan/tahun di UI tidak boleh mengubah nilainya.
 
     - `hm_last`/`hm_at`/`hm_date` = pembacaan terakhir (tanggal terbesar).
-      Bila unit belum punya pembacaan harian sama sekali, jatuh ke `opening`
-      periode terpilih (Date RFU kosong — jujur, bukan tanggal karangan).
-    - `hm_recent7` = HM 7 hari terakhir: jumlah pemakaian (selisih antar
-      pembacaan berurutan, nilai negatif/turun diabaikan) pada 7 pembacaan
-      terakhir unit — pembacaan itu sendiri sebagai patokan.
+      Fallback ke `opening` terakhir (Open bulan terbesar) hanya bila unit
+      belum pernah punya pembacaan harian; Date RFU dibiarkan kosong.
+    - `hm_recent7` = jumlah pemakaian (selisih antar pembacaan berurutan,
+      penurunan diabaikan) pada 7 pembacaan terakhir.
     - `lifetime`   = HM terbesar pada 7 pembacaan terakhir − HM Last RFU.
     """
-    today = date.today()
-    year = year or today.year
-    month = month or today.month
-    period = f"{year}-{month:02d}"
-
+    # Daftar CN = semua unit yang pernah muncul (opening ATAU pembacaan harian),
+    # sehingga unit tidak hilang hanya karena periode yang dipilih berbeda.
     rows = (await db.execute(text("""
-        WITH lastp AS (
-          SELECT cn, MAX(period) AS period
-          FROM hourmeter_daily GROUP BY cn
+        WITH cns AS (
+          SELECT cn FROM hourmeter_opening
+          UNION
+          SELECT cn FROM hourmeter_daily
         ),
-        last AS (
-          SELECT d.cn, MAX(d.day) AS day
-          FROM hourmeter_daily d JOIN lastp p ON p.cn = d.cn AND p.period = d.period
-          GROUP BY d.cn
+        op_last AS (
+          SELECT cn, opening,
+                 ROW_NUMBER() OVER (PARTITION BY cn
+                     ORDER BY period DESC) AS rn
+          FROM hourmeter_opening
+          WHERE opening IS NOT NULL
         ),
-        last_read AS (
-          SELECT d.cn, d.period, d.day, d.hm, d.updated_at
-          FROM hourmeter_daily d JOIN last ON last.cn = d.cn AND last.day = d.day
-          JOIN lastp p ON p.cn = d.cn AND p.period = d.period
+        base AS (
+          SELECT c.cn,
+                 (SELECT egi FROM hourmeter_opening e
+                   WHERE e.cn = c.cn AND e.egi IS NOT NULL
+                   ORDER BY e.period DESC LIMIT 1) AS egi,
+                 (SELECT opening FROM op_last x
+                   WHERE x.cn = c.cn AND x.rn = 1) AS opening
+          FROM cns c
         ),
         rank AS (
-          SELECT cn, period, day, hm,
+          SELECT cn, period, day, hm, updated_at,
                  ROW_NUMBER() OVER (PARTITION BY cn
                      ORDER BY period DESC, day DESC) AS rn
           FROM hourmeter_daily
         ),
-        -- Urutkan 7 pembacaan TERAKHIR dari yang terlama ke terbaru, lalu
-        -- LAG() memberi pembacaan sebelumnya (lebih kecil walau HM menurun
-        -- setelah reset/koreksi ditangani dengan CASE).
-        seq AS (
-          SELECT cn, period, day, hm,
-                 ROW_NUMBER() OVER (PARTITION BY cn
-                     ORDER BY period ASC, day ASC) AS rn_old
-          FROM rank WHERE rn <= 7
-        ),
+        -- 7 pembacaan terakhir, diurutkan dari terlama ke terbaru agar LAG()
+        -- memberi pembacaan sebelumnya (penurunan/reset diabaikan via CASE).
         prev7 AS (
-          SELECT cn, period, day, hm,
+          SELECT cn, period, day, hm, updated_at,
                  LAG(hm) OVER (PARTITION BY cn
                      ORDER BY period ASC, day ASC) AS prev_hm
-          FROM seq
+          FROM rank WHERE rn <= 7
         ),
         r7 AS (
           SELECT cn,
                  SUM(CASE WHEN hm > prev_hm THEN hm - prev_hm ELSE 0 END) AS recent7,
                  MAX(hm) AS max7
           FROM prev7 GROUP BY cn
+        ),
+        last_read AS (
+          SELECT r.cn, r.hm, r.updated_at, r.period, r.day
+          FROM rank r WHERE r.rn = 1
         )
-        SELECT o.cn, o.egi, o.opening,
+        SELECT b.cn, b.egi, b.opening,
                l.hm         AS last_hm,
                l.updated_at AS last_at,
                l.period     AS last_period,
                l.day        AS last_day,
                r.recent7    AS recent7,
                r.max7       AS max7
-        FROM hourmeter_opening o
-        LEFT JOIN last_read l ON l.cn = o.cn
-        LEFT JOIN r7        r ON r.cn = o.cn
-        WHERE o.period = :p
-        ORDER BY o.cn
-    """), {"p": period})).mappings().all()
+        FROM base b
+        LEFT JOIN last_read l ON l.cn = b.cn
+        LEFT JOIN r7        r ON r.cn = b.cn
+        ORDER BY b.cn
+    """))).mappings().all()
 
     units = []
     for r in rows:
         last_hm = r["last_hm"] if r["last_hm"] is not None else r["opening"]
-        last_period = r["last_period"] or period
+        last_period = r["last_period"]
         last_day = r["last_day"]
         units.append({
             "cn": r["cn"],
             "egi": r["egi"],
-            # Pembacaan terakhir lintas periode (fallback opening periode ini).
+            # Pembacaan terakhir lintas periode (fallback opening terakhir).
             "hm_last": last_hm,
             "hm_at": r["last_at"].isoformat() if r["last_at"] else None,
             # Tanggal pembacaan terakhir (YYYY-MM-DD) — null bila hanya opening.
             "hm_date": (f"{last_period}-{int(last_day):02d}"
-                        if last_day is not None else None),
+                        if (last_period and last_day is not None) else None),
             # HM 7 hari terakhir & Lifetime (terbesar 7 pembacaan − HM Last RFU).
             "hm_recent7": r["recent7"],
             "lifetime": ((r["max7"] - last_hm)
                          if (r["max7"] is not None and last_hm is not None) else None),
         })
 
-    return {"period": period, "units": units}
+    return {"units": units}
 
 
 # ─── Input cepat HM (tempel teks "CN hm.NNNNN") ───────────────────────────

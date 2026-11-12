@@ -1093,8 +1093,9 @@ export type HourmeterSummary = {
   period: string
   units: HourmeterSummaryUnit[]
 }
-export async function fetchHourmeterSummary(year?: number, month?: number): Promise<HourmeterSummary> {
-  const r = await api.get(`/v1/hourmeter/summary`, { params: { year, month } })
+export async function fetchHourmeterSummary(): Promise<HourmeterSummary> {
+  // Tanpa parameter bulan/tahun: ringkasan selalu kondisi terakhir dari DB.
+  const r = await api.get(`/v1/hourmeter/summary`)
   return r.data
 }
 

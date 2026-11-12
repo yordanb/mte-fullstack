@@ -107,11 +107,13 @@ export default function HourmeterPage() {
     return () => { ro.disconnect(); window.removeEventListener('resize', update) }
   }, [loading, pivot, summary, stats, msg, tab])
 
-  const loadDragflow = async (y?: number, m?: number) => {
+  const loadDragflow = async () => {
     setLoadingDf(true)
     try {
+      // Tanpa parameter bulan/tahun: HM Last RFU & Date RFU adalah kondisi
+      // terakhir unit dari database, tidak terpengaruh filter periode.
       const [s, st] = await Promise.all([
-        fetchHourmeterSummary(y ?? year, m ?? month),
+        fetchHourmeterSummary(),
         fetchHourmeterStats(),
       ])
       setSummary(s)
@@ -132,7 +134,10 @@ export default function HourmeterPage() {
     setLoading(false)
   }
   useEffect(() => { if (tab === 'grid') load() }, [year, month, tab]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (tab === 'dragflow') loadDragflow() }, [year, month, tab]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Tab HM Dragflow TIDAK ikut filter periode — cukup dimuat sekali saat dibuka.
+  // Perubahan data tetap memicu muat ulang eksplisit (loadDragflow) setelah
+  // simpan/hapus.
+  useEffect(() => { if (tab === 'dragflow') loadDragflow() }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const doUpload = async (file: File) => {
     setUploading(true); setMsg('mengupload & membaca file...'); setMsgErr(false)
@@ -174,12 +179,12 @@ export default function HourmeterPage() {
   const [rfMsg, setRfMsg] = useState('')
   const [rfErr, setRfErr] = useState(false)
 
-  const openRfForm = (cn: string, ex: string) => {
+  const openRfForm = (cn: string, ex: string, date?: string | null) => {
     setRfEdit({ cn, ex })
     setRfHm('')           // kosong = pakai HM Last RFU yang tampil
-    // Default tanggal = hari ini. Saat mengubah data yang sudah ada, tanggal
-    // pembacaan terakhir dibiarkan apa adanya (pilih ulang bila perlu diubah).
-    setRfDate(todayLocal())
+    // Saat mengubah data yang sudah ada, tanggal diisi dari Date RFU unit itu
+    // supaya perubahan mengenai baris yang tepat. Bisa diganti lewat kalender.
+    setRfDate(date ?? todayLocal())
     setRfMsg(''); setRfErr(false)
   }
 
@@ -201,9 +206,9 @@ export default function HourmeterPage() {
           (it.warning ? ` Catatan: ${it.warning}.` : ''))
         setRfErr(false)
         setRfEdit(null)      // tutup form, tabel langsung diperbarui
-        const [gy, gm] = r.period.split('-')
-        setYear(Number(gy)); setMonth(Number(gm))
-        await loadDragflow(Number(gy), Number(gm))
+        // Filter periode tidak diubah: tabel selalu menampilkan kondisi
+        // terakhir dari database.
+        await loadDragflow()
       } else {
         setRfMsg(it?.warning ?? 'HM gagal disimpan.'); setRfErr(true)
       }
@@ -226,9 +231,8 @@ export default function HourmeterPage() {
         : `Tidak ada pembacaan ${cn} pada ${r.date} (mungkin sudah dihapus).`)
       setRfErr(false)
       setRfEdit(null)
-      const [gy, gm] = r.period.split('-')
-      setYear(Number(gy)); setMonth(Number(gm))
-      await loadDragflow(Number(gy), Number(gm))
+      // Filter periode tidak diubah — cukup muat ulang tabel dari database.
+      await loadDragflow()
     } catch (e) { setRfMsg(`gagal menghapus: ${errMsg(e)}`); setRfErr(true) }
     setRfSaving(false)
   }
@@ -372,17 +376,12 @@ export default function HourmeterPage() {
         </>
       ) : tab === 'dragflow' ? (
         <DragflowTab
-          year={year}
-          month={month}
-          now={now}
           loading={loadingDf}
           summary={summary}
           msg={msg}
           msgErr={msgErr}
           tableH={tableH}
           tableWrapRef={tableWrapRef}
-          onMonth={setMonth}
-          onYear={setYear}
           canFill={canUpload}
           rfEdit={rfEdit}
           rfHm={rfHm}
@@ -454,21 +453,16 @@ const fmtDateOnly = (v?: string | null) => {
 }
 
 function DragflowTab({
-  year, month, now, loading, summary, msg, msgErr, tableH, tableWrapRef, onMonth, onYear,
+  loading, summary, msg, msgErr, tableH, tableWrapRef,
   canFill, rfEdit, rfHm, setRfHm, rfDate, setRfDate, rfSaving, rfMsg, rfErr,
   onOpenRf, onSaveRf, onDeleteRf, onCancelRf,
 }: {
-  year: number
-  month: number
-  now: Date
   loading: boolean
   summary: HourmeterSummary | null
   msg: string
   msgErr: boolean
   tableH: number
   tableWrapRef: { current: HTMLDivElement | null }
-  onMonth: (m: number) => void
-  onYear: (y: number) => void
   canFill: boolean
   rfEdit: { cn: string; ex: string } | null
   rfHm: string
@@ -478,7 +472,7 @@ function DragflowTab({
   rfSaving: boolean
   rfMsg: string
   rfErr: boolean
-  onOpenRf: (cn: string, ex: string) => void
+  onOpenRf: (cn: string, ex: string, date?: string | null) => void
   onSaveRf: () => void
   onDeleteRf: (cn: string, date: string) => void
   onCancelRf: () => void
@@ -491,23 +485,14 @@ function DragflowTab({
 
   return (
     <>
-      {/* Filter periode — sama dengan tab Grid HM */}
-      <div className="mb-3 flex flex-wrap items-end gap-3">
-        <div>
-          <label className="block text-theme-xs text-gray-500">Bulan</label>
-          <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={month} onChange={e => onMonth(+e.target.value)}>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{MONTHS[m - 1]}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-theme-xs text-gray-500">Tahun</label>
-          <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={year} onChange={e => onYear(+e.target.value)}>
-            {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1">
         <p className="text-theme-xs text-gray-400">
           Unit mengikuti pasangan <span className="font-medium text-gray-500 dark:text-gray-400">Activity → tab DC Dragflow</span>
-          {' '}({DRAGFLOW_UNITS.length} pasangan EX–WP). HM dirujuk dari pembacaan hourmeter unit WP.
+          {' '}({DRAGFLOW_UNITS.length} pasangan EX–WP).
+        </p>
+        <p className="text-theme-xs text-gray-400">
+          Nilai diambil dari database sebagai <span className="font-medium text-gray-500 dark:text-gray-400">kondisi terakhir</span> tiap unit —
+          tidak terpengaruh filter <span className="font-medium text-gray-500 dark:text-gray-400">Bulan/Tahun</span> (filter itu hanya untuk tab Grid HM).
         </p>
       </div>
 
@@ -584,7 +569,7 @@ function DragflowTab({
                           <div className="flex items-center justify-center gap-1">
                             <button
                               className="rounded-md border border-brand-300 px-2 py-0.5 text-theme-xs font-medium text-brand-600 hover:bg-brand-50 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/10"
-                              onClick={() => (editing ? onCancelRf() : onOpenRf(p.wp, p.ex))}
+                              onClick={() => (editing ? onCancelRf() : onOpenRf(p.wp, p.ex, u?.hm_date))}
                             >
                               {editing ? 'Batal' : (u?.hm_date ? 'Ubah RFU' : 'Isi RFU')}
                             </button>
@@ -659,8 +644,8 @@ function DragflowTab({
       )}
 
       <p className="mt-2 text-theme-xs text-gray-400">
-        HM Last RFU = pembacaan HM terakhir unit WP (tanggal paling baru, lintas periode; fallback Opening periode
-        {' '}{MONTHS[month - 1]} {year} bila belum ada pembacaan harian). Date RFU = tanggal pembacaan itu.
+        HM Last RFU = pembacaan HM terakhir unit WP dari database (tanggal paling baru, lintas periode;
+        {' '}fallback Opening terakhir bila belum ada pembacaan harian). Date RFU = tanggal pembacaan itu.
         HM 7 Hari Terakhir = jumlah pemakaian (Selisih) pada 7 pembacaan terakhir.
         Lifetime Now = HM terbesar pada 7 pembacaan terakhir − HM Last RFU.
         HM Tercatat = waktu nilai itu tersimpan di database (upload Excel HM atau Input Cepat HM).
