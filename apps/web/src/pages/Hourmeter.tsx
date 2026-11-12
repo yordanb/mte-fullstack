@@ -179,8 +179,11 @@ export default function HourmeterPage() {
   const [rfMsg, setRfMsg] = useState('')
   const [rfErr, setRfErr] = useState(false)
 
-  // ── Tab HM Dragflow: "+ HM RFU" (riwayat pembacaan per unit) ─────
+  // ── Tab HM Dragflow: riwayat pembacaan per unit ──────────────────
+  // histMode: 'list' = dibuka dari ikon mata (daftar riwayat saja),
+  //           'add'  = dibuka dari tombol "+ HM RFU" (riwayat + form tambah).
   const [histCn, setHistCn] = useState<{ cn: string; ex: string } | null>(null)
+  const [histMode, setHistMode] = useState<'list' | 'add'>('list')
   const [hist, setHist] = useState<HourmeterHistoryReading[]>([])
   const [histLoading, setHistLoading] = useState(false)
   const [histMsg, setHistMsg] = useState('')
@@ -196,11 +199,11 @@ export default function HourmeterPage() {
     setHistLoading(false)
   }
 
-  const openHistory = (cn: string, ex: string) => {
+  const openHistory = (cn: string, ex: string, mode: 'list' | 'add' = 'list') => {
     setHistCn({ cn, ex })
+    setHistMode(mode)
     setHist([])
-    // Form "+ HM RFU baru" ikut disiapkan dengan tanggal hari ini.
-    setRfDate(todayLocal()); setRfHm('')
+    if (mode === 'add') setRfDate(todayLocal())
     void loadHistory(cn)
   }
 
@@ -264,7 +267,7 @@ export default function HourmeterPage() {
     setRfSaving(false)
   }
 
-  // Tambah pembacaan HM RFU baru dari menu riwayat (+ HM RFU).
+  // Tambah pembacaan HM RFU baru (form di panel "+ HM RFU").
   // Tanggal baru = baris baru; pembacaan lama tidak dihapus.
   const addRfFromHistory = async () => {
     if (!histCn) return
@@ -468,6 +471,7 @@ export default function HourmeterPage() {
           onDeleteRf={deleteRf}
           onCancelRf={() => { setRfEdit(null); setRfMsg(''); setRfErr(false) }}
           histCn={histCn}
+          histMode={histMode}
           hist={hist}
           histLoading={histLoading}
           histMsg={histMsg}
@@ -512,10 +516,12 @@ export default function HourmeterPage() {
 //   Lifetime Now   = HM Daily Check terbaru − pembacaan HM RFU terakhir.
 // Tombol "Isi/Ubah RFU" menulis pembacaan pada tanggal yang dipilih lewat
 // endpoint input cepat; "Hapus" membatalkan input yang salah.
-// Tombol "+ HM RFU" membuka riwayat seluruh pembacaan unit tersebut (terbaru
-// lebih dulu) dan form tambah pembacaan baru — pembacaan baru disimpan pada
-// tanggalnya sendiri, pembacaan lama tidak tertimpa. Ikon mata di kolom
-// Lifetime Now membuka/menutup panel riwayat yang sama.
+// Tombol "+ HM RFU" di kolom Aksi membuka riwayat seluruh pembacaan unit
+// tersebut (terbaru lebih dulu) sekaligus form tambah pembacaan baru — jadi
+// pembacaan baru disimpan pada tanggalnya sendiri, pembacaan lama tidak
+// tertimpa. Ikon mata di kolom Lifetime Now membuka riwayat yang SAMA, hanya
+// daftarnya (tanpa form tambah). Kolom Lifetime pada riwayat = HM RFU baris
+// itu − HM RFU pembacaan sebelumnya (pemakaian sejak pembacaan terakhir).
 
 /** Ikon mata — buka riwayat HM RFU unit. */
 function EyeIcon() {
@@ -566,7 +572,7 @@ function DragflowTab({
   loading, summary, msg, msgErr, tableH, tableWrapRef,
   canFill, rfEdit, rfHm, setRfHm, rfDate, setRfDate, rfSaving, rfMsg, rfErr,
   onOpenRf, onSaveRf, onDeleteRf, onCancelRf,
-  histCn, hist, histLoading, histMsg, histErr,
+  histCn, histMode, hist, histLoading, histMsg, histErr,
   onOpenHistory, onCloseHistory, onAddRfFromHistory, onDeleteRfFromHistory,
 }: {
   loading: boolean
@@ -589,11 +595,12 @@ function DragflowTab({
   onDeleteRf: (cn: string, date: string) => void
   onCancelRf: () => void
   histCn: { cn: string; ex: string } | null
+  histMode: 'list' | 'add'
   hist: HourmeterHistoryReading[]
   histLoading: boolean
   histMsg: string
   histErr: boolean
-  onOpenHistory: (cn: string, ex: string) => void
+  onOpenHistory: (cn: string, ex: string, mode?: 'list' | 'add') => void
   onCloseHistory: () => void
   onAddRfFromHistory: () => void
   onDeleteRfFromHistory: (date: string) => void
@@ -682,21 +689,19 @@ function DragflowTab({
                       <td className="min-w-[120px] px-2 py-1.5 text-right tabular-nums text-brand-600 dark:text-brand-300">
                         <span className="inline-flex items-center justify-end gap-1.5">
                           <span>{u ? fmtHmVal(u.lifetime) : '·'}</span>
-                          {canFill && (
-                            <button
-                              className={`shrink-0 rounded p-0.5 align-middle transition ${
-                                histCn?.cn === p.wp
-                                  ? 'text-brand-600 dark:text-brand-300'
-                                  : 'text-gray-400 hover:text-brand-600 dark:text-gray-500 dark:hover:text-brand-300'
-                              }`}
-                              title="Lihat riwayat HM RFU unit ini"
-                              aria-label={`Riwayat HM RFU ${p.wp}`}
-                              aria-expanded={histCn?.cn === p.wp}
-                              onClick={() => (histCn?.cn === p.wp ? onCloseHistory() : onOpenHistory(p.wp, p.ex))}
-                            >
-                              {histCn?.cn === p.wp ? <EyeOffIcon /> : <EyeIcon />}
-                            </button>
-                          )}
+                          <button
+                            className={`shrink-0 rounded p-0.5 align-middle transition ${
+                              histCn?.cn === p.wp
+                                ? 'text-brand-600 dark:text-brand-300'
+                                : 'text-gray-400 hover:text-brand-600 dark:text-gray-500 dark:hover:text-brand-300'
+                            }`}
+                            title="Lihat riwayat HM RFU unit ini"
+                            aria-label={`Riwayat HM RFU ${p.wp}`}
+                            aria-expanded={histCn?.cn === p.wp}
+                            onClick={() => (histCn?.cn === p.wp ? onCloseHistory() : onOpenHistory(p.wp, p.ex, 'list'))}
+                          >
+                            {histCn?.cn === p.wp ? <EyeOffIcon /> : <EyeIcon />}
+                          </button>
                         </span>
                       </td>
                       <td className="min-w-[140px] px-2 py-1.5 text-right tabular-nums text-gray-600 dark:text-gray-400">
@@ -722,7 +727,7 @@ function DragflowTab({
                             <button
                               className="rounded-md border border-emerald-300 px-2 py-0.5 text-theme-xs font-medium text-emerald-700 hover:bg-emerald-50 dark:border-emerald-500/40 dark:text-emerald-300 dark:hover:bg-emerald-500/10"
                               title="Riwayat HM RFU unit ini + tambah pembacaan baru"
-                              onClick={() => (histCn?.cn === p.wp ? onCloseHistory() : onOpenHistory(p.wp, p.ex))}
+                              onClick={() => (histCn?.cn === p.wp ? onCloseHistory() : onOpenHistory(p.wp, p.ex, 'add'))}
                             >
                               {histCn?.cn === p.wp ? 'Tutup' : '+ HM RFU'}
                             </button>
@@ -802,33 +807,35 @@ function DragflowTab({
                               >Tutup</button>
                             </div>
 
-                            {/* Form tambah pembacaan baru (baris baru, tidak menimpa) */}
-                            <div className="mb-3 flex flex-wrap items-end gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2 dark:border-emerald-500/20 dark:bg-emerald-500/5">
-                              <div>
-                                <label className="block text-theme-xs text-gray-500">HM RFU baru (opsional)</label>
-                                <input
-                                  className="w-32 rounded-lg border px-2 py-1 text-theme-sm tabular-nums"
-                                  inputMode="numeric"
-                                  placeholder={u ? fmtHmVal(u.hm_last) : 'angka HM'}
-                                  value={rfHm}
-                                  onChange={(e) => setRfHm(e.target.value.replace(/[^\d]/g, ''))}
-                                />
+                            {/* Form tambah pembacaan baru hanya saat dibuka dari "+ HM RFU". */}
+                            {histMode === 'add' && (
+                              <div className="mb-3 flex flex-wrap items-end gap-3 rounded-lg border border-emerald-100 bg-emerald-50/50 px-3 py-2 dark:border-emerald-500/20 dark:bg-emerald-500/5">
+                                <div>
+                                  <label className="block text-theme-xs text-gray-500">HM RFU baru (opsional)</label>
+                                  <input
+                                    className="w-32 rounded-lg border px-2 py-1 text-theme-sm tabular-nums"
+                                    inputMode="numeric"
+                                    placeholder={u ? fmtHmVal(u.hm_last) : 'angka HM'}
+                                    value={rfHm}
+                                    onChange={(e) => setRfHm(e.target.value.replace(/[^\d]/g, ''))}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-theme-xs text-gray-500">Tanggal RFU</label>
+                                  <DatePicker value={rfDate} onChange={setRfDate} />
+                                </div>
+                                <button
+                                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-theme-sm font-medium text-white disabled:opacity-50"
+                                  disabled={rfSaving}
+                                  onClick={onAddRfFromHistory}
+                                >
+                                  {rfSaving ? 'Menyimpan…' : '+ HM RFU'}
+                                </button>
+                                <p className="text-theme-xs text-gray-400">
+                                  Pembacaan disimpan pada tanggalnya sendiri — riwayat lama tetap utuh.
+                                </p>
                               </div>
-                              <div>
-                                <label className="block text-theme-xs text-gray-500">Tanggal RFU</label>
-                                <DatePicker value={rfDate} onChange={setRfDate} />
-                              </div>
-                              <button
-                                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-theme-sm font-medium text-white disabled:opacity-50"
-                                disabled={rfSaving}
-                                onClick={onAddRfFromHistory}
-                              >
-                                {rfSaving ? 'Menyimpan…' : '+ HM RFU'}
-                              </button>
-                              <p className="text-theme-xs text-gray-400">
-                                Pembacaan disimpan pada tanggalnya sendiri — riwayat lama tetap utuh.
-                              </p>
-                            </div>
+                            )}
 
                             {histMsg && (
                               <p className={`mb-2 text-theme-xs ${histErr ? 'text-red-600' : 'text-emerald-700 dark:text-emerald-400'}`}>{histMsg}</p>
@@ -845,32 +852,48 @@ function DragflowTab({
                                     <tr className="border-b">
                                       <th className="px-3 py-1.5 text-left font-semibold">Tanggal</th>
                                       <th className="px-3 py-1.5 text-right font-semibold">HM RFU</th>
+                                      <th className="px-3 py-1.5 text-right font-semibold"
+                                        title="HM RFU pada baris ini − HM RFU pembacaan sebelumnya (pemakaian sejak pembacaan terakhir)">Lifetime</th>
                                       <th className="px-3 py-1.5 text-left font-semibold">HM Tercatat</th>
-                                      <th className="px-3 py-1.5 text-center font-semibold">Aksi</th>
+                                      {canFill && <th className="px-3 py-1.5 text-center font-semibold">Aksi</th>}
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {hist.map((h) => (
-                                      <tr key={`${h.period}-${h.day}`} className="border-b last:border-0">
-                                        <td className="px-3 py-1.5 tabular-nums">
-                                          {fmtDateOnly(h.date) ?? `${h.period}-${String(h.day).padStart(2, '0')}`}
-                                        </td>
-                                        <td className="px-3 py-1.5 text-right font-semibold tabular-nums text-gray-700 dark:text-gray-300">
-                                          {fmtHmVal(h.hm)}
-                                        </td>
-                                        <td className="px-3 py-1.5 tabular-nums text-gray-500 dark:text-gray-400">
-                                          {fmtStamp(h.hm_at) ?? '·'}
-                                        </td>
-                                        <td className="px-3 py-1.5 text-center">
-                                          <button
-                                            className="rounded-md border border-red-300 px-2 py-0.5 text-theme-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10"
-                                            disabled={rfSaving || !h.date}
-                                            title="Hapus pembacaan pada tanggal ini"
-                                            onClick={() => h.date && onDeleteRfFromHistory(h.date)}
-                                          >Hapus</button>
-                                        </td>
-                                      </tr>
-                                    ))}
+                                    {hist.map((h, hi) => {
+                                      // Riwayat terbaru lebih dulu, jadi pembacaan
+                                      // sebelumnya (lebih lama) = item berikutnya.
+                                      const prev = hist[hi + 1]
+                                      const lifetime = (h.hm != null && prev?.hm != null)
+                                        ? Number(h.hm) - Number(prev.hm)
+                                        : null
+                                      return (
+                                        <tr key={`${h.period}-${h.day}`} className="border-b last:border-0">
+                                          <td className="px-3 py-1.5 tabular-nums">
+                                            {fmtDateOnly(h.date) ?? `${h.period}-${String(h.day).padStart(2, '0')}`}
+                                          </td>
+                                          <td className="px-3 py-1.5 text-right font-semibold tabular-nums text-gray-700 dark:text-gray-300">
+                                            {fmtHmVal(h.hm)}
+                                          </td>
+                                          <td className="px-3 py-1.5 text-right tabular-nums text-brand-600 dark:text-brand-300"
+                                            title={prev?.date ? `Sejak ${fmtDateOnly(prev.date) ?? prev.date}` : undefined}>
+                                            {lifetime == null ? <span className="text-gray-300">·</span> : fmtHmVal(lifetime)}
+                                          </td>
+                                          <td className="px-3 py-1.5 tabular-nums text-gray-500 dark:text-gray-400">
+                                            {fmtStamp(h.hm_at) ?? '·'}
+                                          </td>
+                                          {canFill && (
+                                            <td className="px-3 py-1.5 text-center">
+                                              <button
+                                                className="rounded-md border border-red-300 px-2 py-0.5 text-theme-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10"
+                                                disabled={rfSaving || !h.date}
+                                                title="Hapus pembacaan pada tanggal ini"
+                                                onClick={() => h.date && onDeleteRfFromHistory(h.date)}
+                                              >Hapus</button>
+                                            </td>
+                                          )}
+                                        </tr>
+                                      )
+                                    })}
                                   </tbody>
                                 </table>
                               </div>
@@ -896,7 +919,9 @@ function DragflowTab({
         Lifetime Now = HM Daily Check terbaru − pembacaan HM RFU terakhir.
         HM Tercatat = waktu nilai itu tersimpan di database (upload Excel HM atau Input Cepat HM).
         {canFill && ' Tombol "Isi/Ubah RFU" menyimpan HM RFU beserta tanggalnya; "Hapus" membatalkan input yang salah.'}
-        {canFill && ' Tombol "+ HM RFU" (atau ikon mata di kolom Lifetime Now) membuka riwayat seluruh pembacaan unit dan menambah pembacaan baru tanpa menghapus yang lama.'}
+        {' Ikon mata di kolom Lifetime Now menampilkan riwayat HM RFU unit itu.'}
+        {canFill && ' Tombol "+ HM RFU" membuka riwayat yang sama + form tambah pembacaan baru.'}
+        {' Pada riwayat, Lifetime = HM RFU baris itu − HM RFU pembacaan sebelumnya.'}
       </p>
     </>
   )
