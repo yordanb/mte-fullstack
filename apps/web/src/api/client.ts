@@ -1078,14 +1078,16 @@ export async function fetchHourmeterPivot(year?: number, month?: number): Promis
 export type HourmeterSummaryUnit = {
   cn: string
   egi: string | null
-  /** HM periode terpilih (pembacaan harian terakhir, fallback opening). */
+  /** Pembacaan HM terakhir lintas periode (fallback opening periode terpilih). */
   hm_last: number | null
-  /** HM terbaru lintas periode (umur unit berjalan). */
-  hm_lifetime: number | null
-  /** Waktu pembacaan tercatat di DB (ISO) — null bila belum ada pembacaan. */
+  /** Waktu pembacaan tercatat di DB (ISO) — null bila hanya opening. */
   hm_at: string | null
-  /** Tanggal pembacaan terakhir periode ini (YYYY-MM-DD) — null bila belum ada. */
+  /** Tanggal pembacaan terakhir (YYYY-MM-DD) — null bila hanya opening. */
   hm_date: string | null
+  /** HM 7 hari terakhir: total pemakaian pada 7 pembacaan terakhir. */
+  hm_recent7: number | null
+  /** Lifetime: HM terbesar pada 7 pembacaan terakhir − HM Last RFU. */
+  lifetime: number | null
 }
 export type HourmeterSummary = {
   period: string

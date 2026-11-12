@@ -176,7 +176,9 @@ export default function HourmeterPage() {
 
   const openRfForm = (cn: string, ex: string) => {
     setRfEdit({ cn, ex })
-    setRfHm('')           // kosong = ambil nilai HM terakhir yang tampil
+    setRfHm('')           // kosong = pakai HM Last RFU yang tampil
+    // Default tanggal = hari ini. Saat mengubah data yang sudah ada, tanggal
+    // pembacaan terakhir dibiarkan apa adanya (pilih ulang bila perlu diubah).
     setRfDate(todayLocal())
     setRfMsg(''); setRfErr(false)
   }
@@ -186,7 +188,7 @@ export default function HourmeterPage() {
     const u = summary?.units.find((x) => x.cn === rfEdit.cn)
     // Kosong = pakai HM terakhir (nilai yang tampil di baris), jadi operator
     // cukup memilih tanggal saat HM itu dibaca (RFU).
-    const hm = rfHm.trim() === '' ? (u?.hm_lifetime ?? u?.hm_last ?? null) : Number(rfHm)
+    const hm = rfHm.trim() === '' ? (u?.hm_last ?? null) : Number(rfHm)
     if (hm == null || Number.isNaN(hm)) {
       setRfMsg('HM belum ada di grid. Isi angka HM RFU secara manual.'); setRfErr(true); return
     }
@@ -420,11 +422,15 @@ export default function HourmeterPage() {
 //
 // Format tabel sama dengan "Grid HM" (unit baris, sticky CN Unit + EGI), tetapi
 // hanya unit dragflow (pasangan Activity → tab DC Dragflow) dan kolomnya:
-//   EX · Code Number · HM Last RFU · Date RFU · Lifetime Now · HM Tercatat · aksi
-// Sumber HM: pembacaan HM terakhir (daily/opening) per unit; "Date RFU"
-// = tanggal pembacaan HM terakhir itu; "HM Tercatat" = kapan nilai itu
-// tersimpan di database (`hourmeter_daily.updated_at`).
-// Tombol "Isi RFU" menulis HM RFU ke tanggal RFU lewat endpoint input cepat.
+//   EX · Code Number · HM Last RFU · Date RFU · Lifetime Now · HM 7 Hari
+//   Terakhir · HM Tercatat · aksi
+// Sumber HM: pembacaan HM TERAKHIR (tanggal paling baru) lintas periode.
+//   Date RFU       = tanggal pembacaan itu;
+//   HM Tercatat    = kapan nilai itu tersimpan di database (`updated_at`);
+//   HM 7 Hari Terakhir = jumlah pemakaian (Selisih) pada 7 pembacaan terakhir;
+//   Lifetime Now   = HM terbesar pada 7 pembacaan terakhir − HM Last RFU.
+// Tombol "Isi/Ubah RFU" menulis pembacaan pada tanggal yang dipilih lewat
+// endpoint input cepat; "Hapus" membatalkan input yang salah.
 
 const fmtHmVal = (v?: number | null) =>
   v == null ? '·' : new Intl.NumberFormat('id-ID').format(Math.round(Number(v)))
@@ -531,11 +537,13 @@ function DragflowTab({
                 <th className="sticky left-0 top-0 z-40 min-w-[64px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">EX</th>
                 <th className="sticky left-[64px] top-0 z-40 min-w-[96px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">Code Number</th>
                 <th className="top-0 z-40 min-w-[120px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
-                  title="Pembacaan HM terakhir unit WP pada periode terpilih (RFU)">HM Last RFU</th>
+                  title="Pembacaan HM terakhir unit WP (tanggal paling baru, lintas periode)">HM Last RFU</th>
                 <th className="top-0 z-40 min-w-[100px] bg-gray-50 px-2 py-2 text-center font-semibold dark:bg-gray-800"
                   title="Tanggal HM Last RFU dibaca / dicatat">Date RFU</th>
                 <th className="top-0 z-40 min-w-[120px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
-                  title="Pembacaan HM terbaru lintas periode (umur unit berjalan)">Lifetime Now</th>
+                  title="HM terbesar pada 7 pembacaan terakhir − HM Last RFU">Lifetime Now</th>
+                <th className="top-0 z-40 min-w-[140px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
+                  title="Jumlah pemakaian (Selisih) pada 7 pembacaan terakhir">HM 7 Hari Terakhir</th>
                 <th className="top-0 z-40 min-w-[150px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800"
                   title="Kapan nilai HM tersebut tercatat di database">HM Tercatat</th>
                 {canFill && <th className="top-0 z-40 min-w-[90px] bg-gray-50 px-2 py-2 text-center font-semibold dark:bg-gray-800">Aksi</th>}
@@ -545,12 +553,12 @@ function DragflowTab({
               {DRAGFLOW_UNITS.map((p, ri) => {
                 const u = byCn.get(p.wp)
                 const at = fmtStamp(u?.hm_at)
-                const rdate = fmtDateOnly(u?.hm_at)
+                const rdate = fmtDateOnly(u?.hm_date)
                 const editing = rfEdit?.cn === p.wp
                 const rowBg = editing
                   ? 'bg-brand-50/70 dark:bg-brand-500/10'
                   : ri % 2 ? 'bg-gray-50/50 dark:bg-gray-800/30' : 'bg-white dark:bg-gray-900'
-                const colSpan = canFill ? 7 : 6
+                const colSpan = canFill ? 8 : 7
                 return (
                   <Fragment key={p.wp}>
                     <tr className={rowBg}>
@@ -563,7 +571,10 @@ function DragflowTab({
                         {rdate ?? <span className="text-gray-300">·</span>}
                       </td>
                       <td className="min-w-[120px] px-2 py-1.5 text-right tabular-nums text-brand-600 dark:text-brand-300">
-                        {u ? fmtHmVal(u.hm_lifetime) : '·'}
+                        {u ? fmtHmVal(u.lifetime) : '·'}
+                      </td>
+                      <td className="min-w-[140px] px-2 py-1.5 text-right tabular-nums text-gray-600 dark:text-gray-400">
+                        {u ? fmtHmVal(u.hm_recent7) : '·'}
                       </td>
                       <td className={`min-w-[150px] whitespace-nowrap px-2 py-1.5 ${at ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300'}`}>
                         {at ?? (u ? 'belum ada pembacaan' : 'belum ada di grid')}
@@ -600,7 +611,7 @@ function DragflowTab({
                               <input
                                 className="w-32 rounded-lg border px-2 py-1 text-theme-sm tabular-nums"
                                 inputMode="numeric"
-                                placeholder={u ? fmtHmVal(u.hm_lifetime) : 'angka HM'}
+                                placeholder={u ? fmtHmVal(u.hm_last) : 'angka HM'}
                                 value={rfHm}
                                 onChange={(e) => setRfHm(e.target.value.replace(/[^\d]/g, ''))}
                               />
@@ -630,7 +641,7 @@ function DragflowTab({
                               >Hapus data RFU</button>
                             )}
                             <p className="text-theme-xs text-gray-400">
-                              HM dibiarkan kosong = pakai nilai <span className="font-medium text-gray-500 dark:text-gray-400">Lifetime Now</span> pada baris ini.
+                              HM dibiarkan kosong = pakai nilai <span className="font-medium text-gray-500 dark:text-gray-400">HM Last RFU</span> pada baris ini.
                             </p>
                             {rfMsg && (
                               <p className={`w-full text-theme-xs ${rfErr ? 'text-red-600' : 'text-emerald-700 dark:text-emerald-400'}`}>{rfMsg}</p>
@@ -648,10 +659,12 @@ function DragflowTab({
       )}
 
       <p className="mt-2 text-theme-xs text-gray-400">
-        HM Last RFU = pembacaan HM terakhir unit WP pada periode {MONTHS[month - 1]} {year} (fallback opening bila belum ada pembacaan harian).
-        Date RFU = tanggal pembacaan HM itu. Lifetime Now = pembacaan HM terbaru lintas periode.
+        HM Last RFU = pembacaan HM terakhir unit WP (tanggal paling baru, lintas periode; fallback Opening periode
+        {' '}{MONTHS[month - 1]} {year} bila belum ada pembacaan harian). Date RFU = tanggal pembacaan itu.
+        HM 7 Hari Terakhir = jumlah pemakaian (Selisih) pada 7 pembacaan terakhir.
+        Lifetime Now = HM terbesar pada 7 pembacaan terakhir − HM Last RFU.
         HM Tercatat = waktu nilai itu tersimpan di database (upload Excel HM atau Input Cepat HM).
-        {canFill && ' Tombol "Isi/Ubah RFU" menyimpan HM RFU beserta tanggalnya ke grid HM periode tanggal tersebut; "Hapus" membatalkan input yang salah.'}
+        {canFill && ' Tombol "Isi/Ubah RFU" menyimpan HM RFU beserta tanggalnya; "Hapus" membatalkan input yang salah.'}
       </p>
     </>
   )
