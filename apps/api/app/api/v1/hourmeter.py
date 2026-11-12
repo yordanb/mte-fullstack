@@ -330,13 +330,35 @@ async def summary(
       "HM (Daily Check)" pada rumus Lifetime.
     - `lifetime`   = HM Daily Check terbaru − pembacaan HM RFU terakhir.
     """
-    # Daftar CN = semua unit yang pernah muncul (opening ATAU pembacaan harian),
-    # sehingga unit tidak hilang hanya karena periode yang dipilih berbeda.
+    # Daftar CN = semua unit yang pernah muncul (opening, pembacaan harian,
+    # ATAU aktivitas DC Dragflow), sehingga unit tidak hilang hanya karena
+    # periode berbeda atau karena HM-nya baru dicatat lewat Daily Check.
     rows = (await db.execute(text("""
-        WITH cns AS (
+        WITH dc_rank AS (
+          -- HM DC: aktivitas kategori "Daily Check Dragflow" (halaman Activity
+          -- → tab DC Dragflow), dicocokkan lewat kode WP pada `activities.cn`.
+          -- Pencocokan kategori WAJIB sama dengan tab DC Dragflow di Activity
+          -- (ILIKE '%Daily Check Dragflow%'), sebab teksnya bisa berbeda
+          -- spasi/huruf besar-kecil/ada kata tambahan. Satu tanggal bisa punya
+          -- dua shift; dipakai pembacaan terakhir (shift terbesar).
+          SELECT cn, hm, date,
+                 ROW_NUMBER() OVER (PARTITION BY cn
+                     ORDER BY date DESC, shift DESC NULLS LAST,
+                              created_at DESC) AS rn
+          FROM activities
+          WHERE hm IS NOT NULL
+            AND cn IS NOT NULL
+            AND category ILIKE '%Daily Check Dragflow%'
+        ),
+        dc AS (
+          SELECT cn, hm, date FROM dc_rank WHERE rn = 1
+        ),
+        cns AS (
           SELECT cn FROM hourmeter_opening
           UNION
           SELECT cn FROM hourmeter_daily
+          UNION
+          SELECT cn FROM dc
         ),
         op_last AS (
           SELECT cn, opening,
@@ -363,23 +385,6 @@ async def summary(
         last_read AS (
           SELECT r.cn, r.hm, r.updated_at, r.period, r.day
           FROM rank r WHERE r.rn = 1
-        ),
-        -- HM DC: pembacaan terbaru dari aktivitas kategori "Daily Check
-        -- Dragflow" (halaman Activity → tab DC Dragflow), dicocokkan lewat
-        -- kode WP pada kolom `activities.cn`. Satu tanggal bisa punya dua
-        -- shift; yang dipakai pembacaan terakhir (shift terbesar).
-        dc_rank AS (
-          SELECT cn, hm, date,
-                 ROW_NUMBER() OVER (PARTITION BY cn
-                     ORDER BY date DESC, shift DESC NULLS LAST,
-                              created_at DESC) AS rn
-          FROM activities
-          WHERE hm IS NOT NULL
-            AND cn IS NOT NULL
-            AND category = 'Daily Check Dragflow'
-        ),
-        dc AS (
-          SELECT cn, hm, date FROM dc_rank WHERE rn = 1
         )
         SELECT b.cn, b.egi, b.opening,
                l.hm         AS last_hm,

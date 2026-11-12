@@ -569,7 +569,9 @@ function DragflowTab({
                         {dcDate ?? <span className="text-gray-300">·</span>}
                       </td>
                       <td className={`min-w-[150px] whitespace-nowrap px-2 py-1.5 ${at ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300'}`}>
-                        {at ?? (u ? 'belum ada pembacaan' : 'belum ada di grid')}
+                        {at ?? (u?.dc_hm != null
+                          ? 'belum ada HM RFU'
+                          : u ? 'belum ada pembacaan' : 'belum ada di grid')}
                       </td>
                       {canFill && (
                         <td className="min-w-[90px] px-2 py-1.5 text-center">
@@ -654,6 +656,8 @@ function DragflowTab({
         HM Last RFU = pembacaan HM terakhir unit WP dari database (tanggal paling baru, lintas periode;
         {' '}fallback Opening terakhir bila belum ada pembacaan harian). Date RFU = tanggal pembacaan itu.
         Last HM DC = HM Daily Check terbaru dari Activity → tab DC Dragflow; Last Date DC = tanggalnya.
+        {' '}Unit dicocokkan lewat kode WP dan kategori dicari seperti tab DC Dragflow (mengandung "Daily Check Dragflow"),
+        {' '}jadi unit yang di Activity muncul juga ikut tampil di sini.
         Lifetime Now = HM Daily Check terbaru − pembacaan HM RFU terakhir.
         HM Tercatat = waktu nilai itu tersimpan di database (upload Excel HM atau Input Cepat HM).
         {canFill && ' Tombol "Isi/Ubah RFU" menyimpan HM RFU beserta tanggalnya; "Hapus" membatalkan input yang salah.'}
