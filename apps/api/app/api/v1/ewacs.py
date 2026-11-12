@@ -29,14 +29,49 @@ def _parse_tanggal(raw: str) -> date | None:
 
 
 def _parse_numeric(raw: str) -> float:
-    """Parse angka dengan comma thousand separator, mis. '12,705.00' → 12705.00."""
-    s = (raw or '').strip().replace(',', '')
+    """Parse angka yang bisa memakai format Inggris atau Indonesia.
+
+    Contoh: '12,705.00' (Inggris) dan '12.705,00' (Indonesia) sama-sama
+    menjadi 12705.0. Desimal koma tanpa ribuan ('12705,5' → 12705.5) juga
+    ditangani, supaya nilai HM tidak terbaca 1000x/10x lebih kecil.
+    """
+    s = (raw or '').strip()
     if not s:
         return 0
+    has_dot, has_comma = '.' in s, ',' in s
+    if has_dot and has_comma:
+        # Pemisah terakhir yang muncul adalah pemisah desimal.
+        if s.rfind('.') > s.rfind(','):
+            s = s.replace(',', '')            # Inggris: 12,705.00
+        else:
+            s = s.replace('.', '').replace(',', '.')  # Indonesia: 12.705,00
+    elif has_comma:
+        # Hanya koma. Bila dipakai sebagai desimal ('12705,5'), ubah ke titik;
+        # bila sebagai ribuan ('12,705'), buang.
+        s = s.replace(',', '.') if _is_decimal_sep(s, ',') else s.replace(',', '')
+    elif s.count('.') > 1:
+        s = s.replace('.', '')                # '12.705.000' gaya ribuan
+    elif s.count('.') == 1:
+        # Satu titik: ribuan ('12.705') atau desimal ('12705.5'). Pakai aturan
+        # yang sama dengan koma: tiga digit di belakang = ribuan.
+        if not _is_decimal_sep(s, '.'):
+            s = s.replace('.', '')
     try:
         return float(s)
     except ValueError:
         return 0
+
+
+def _is_decimal_sep(s: str, sep: str) -> bool:
+    """True bila `sep` tampak sebagai pemisah desimal, bukan ribuan.
+
+    Anggap ribuan bila mengelompokkan tepat tiga digit ('12,705' /
+    '12.705'); selain itu desimal ('12705,5' / '12705.5').
+    """
+    head, _, tail = s.rpartition(sep)
+    if len(tail) != 3:
+        return True
+    return not head.replace(sep, '').isdigit()
 
 
 def _parse_time(raw: str) -> str:

@@ -8,6 +8,9 @@ import {
   type EwacsKpi, type EwacsTrend, type EwacsDetail, type EwacsFilters,
 } from '../api/client'
 
+/** HM seperti di Grid HM: bulat, pemisah ribuan gaya Indonesia. */
+const fmtHm = (v: number) => new Intl.NumberFormat('id-ID').format(Math.round(Number(v)))
+
 export default function EwacsPage() {
   const today = new Date().toISOString().slice(0, 10)
   // Default "Dari" = awal bulan berjalan (tanggal 1), "Sampai" = hari ini.
@@ -234,7 +237,7 @@ export default function EwacsPage() {
           <table className="border-collapse text-theme-xs whitespace-nowrap" style={{ width: 'max-content' }}>
             <thead className="sticky top-0 z-30 bg-gray-50 dark:bg-gray-800">
               <tr className="border-b">
-                {['Tanggal', 'Unit', 'EGI', 'Kode', 'Durasi', 'Shift', 'Crew', 'Start BD', 'RFU', 'Trouble', 'Mekanik', 'Action'].map(h => (
+                {['Tanggal', 'Unit', 'EGI', 'Kode', 'Durasi', 'Shift', 'Crew', 'Start BD', 'HM Start', 'RFU', 'Trouble', 'Mekanik', 'Action'].map(h => (
                   <th key={h} className="px-2 py-2 text-left font-semibold">{h}</th>
                 ))}
               </tr>
@@ -250,6 +253,7 @@ export default function EwacsPage() {
                   <td className="px-2 py-1.5">{r.shift ?? '-'}</td>
                   <td className="px-2 py-1.5">{r.crew ?? '-'}</td>
                   <td className="px-2 py-1.5 tabular-nums">{r.start_bd ?? '-'}</td>
+                  <td className="px-2 py-1.5 tabular-nums">{r.hm_start == null ? '-' : fmtHm(r.hm_start)}</td>
                   <td className="px-2 py-1.5 tabular-nums">{r.rfu ?? '-'}</td>
                   <td className="px-2 py-1.5 max-w-[200px] truncate" title={r.trouble_desc ?? ''}>{r.trouble_desc ?? '-'}</td>
                   <td className="px-2 py-1.5">{r.mekanik ?? '-'}</td>
