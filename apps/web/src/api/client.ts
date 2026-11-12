@@ -1084,6 +1084,8 @@ export type HourmeterSummaryUnit = {
   hm_lifetime: number | null
   /** Waktu pembacaan tercatat di DB (ISO) — null bila belum ada pembacaan. */
   hm_at: string | null
+  /** Tanggal pembacaan terakhir periode ini (YYYY-MM-DD) — null bila belum ada. */
+  hm_date: string | null
 }
 export type HourmeterSummary = {
   period: string
@@ -1113,6 +1115,19 @@ export type HourmeterQuickResult = {
 }
 export async function saveHourmeterQuick(date: string, rows: HourmeterQuickRow[]): Promise<HourmeterQuickResult> {
   const r = await api.post(`/v1/hourmeter/quick-input`, { date, rows })
+  return r.data
+}
+
+/** Hapus satu pembacaan HM (koreksi salah input RFU): cn + tanggal pembacaan. */
+export type HourmeterDeleteResult = {
+  ok: boolean
+  cn: string
+  period: string
+  date: string
+  deleted: number
+}
+export async function deleteHourmeterReading(cn: string, date: string): Promise<HourmeterDeleteResult> {
+  const r = await api.post(`/v1/hourmeter/delete-reading`, { cn, date })
   return r.data
 }
 

@@ -6,7 +6,7 @@ import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { DatePicker } from '../components/DatePicker'
 import {
   can, errMsg, todayLocal, fetchHourmeterPivot, fetchHourmeterStats, uploadHourmeter,
-  saveHourmeterQuick, fetchHourmeterSummary,
+  saveHourmeterQuick, fetchHourmeterSummary, deleteHourmeterReading,
   type HourmeterPivot, type HourmeterStats, type HourmeterQuickItem, type HourmeterQuickRow,
   type HourmeterSummary,
 } from '../api/client'
@@ -209,6 +209,28 @@ export default function HourmeterPage() {
     setRfSaving(false)
   }
 
+  // Hapus pembacaan RFU yang salah (baris daily pada tanggal pembacaan itu).
+  const deleteRf = async (cn: string, date: string) => {
+    const ok = window.confirm(
+      `Hapus HM RFU ${cn} pada ${date.split('-').reverse().join('/')}?\n\n` +
+      'Nilai HM RFU dan Date RFU unit ini akan hilang dari grid. ' +
+      'Anda bisa mengisi ulang lewat tombol "Isi RFU".')
+    if (!ok) return
+    setRfSaving(true); setRfMsg(''); setRfErr(false)
+    try {
+      const r = await deleteHourmeterReading(cn, date)
+      setRfMsg(r.deleted > 0
+        ? `HM RFU ${cn} pada ${r.date} dihapus. Isi ulang bila perlu dikoreksi.`
+        : `Tidak ada pembacaan ${cn} pada ${r.date} (mungkin sudah dihapus).`)
+      setRfErr(false)
+      setRfEdit(null)
+      const [gy, gm] = r.period.split('-')
+      setYear(Number(gy)); setMonth(Number(gm))
+      await loadDragflow(Number(gy), Number(gm))
+    } catch (e) { setRfMsg(`gagal menghapus: ${errMsg(e)}`); setRfErr(true) }
+    setRfSaving(false)
+  }
+
   const isAdmin = localStorage.getItem('mte_role') === 'admin'
   const canUpload = isAdmin || can('hourmeter', 'add')
   const curPeriod = (stats?.periods || []).filter((p) => p.period === `${year}-${String(month).padStart(2, '0')}`)[0]
@@ -370,6 +392,7 @@ export default function HourmeterPage() {
           rfErr={rfErr}
           onOpenRf={openRfForm}
           onSaveRf={saveRf}
+          onDeleteRf={deleteRf}
           onCancelRf={() => { setRfEdit(null); setRfMsg(''); setRfErr(false) }}
         />
       ) : (
@@ -427,7 +450,7 @@ const fmtDateOnly = (v?: string | null) => {
 function DragflowTab({
   year, month, now, loading, summary, msg, msgErr, tableH, tableWrapRef, onMonth, onYear,
   canFill, rfEdit, rfHm, setRfHm, rfDate, setRfDate, rfSaving, rfMsg, rfErr,
-  onOpenRf, onSaveRf, onCancelRf,
+  onOpenRf, onSaveRf, onDeleteRf, onCancelRf,
 }: {
   year: number
   month: number
@@ -451,6 +474,7 @@ function DragflowTab({
   rfErr: boolean
   onOpenRf: (cn: string, ex: string) => void
   onSaveRf: () => void
+  onDeleteRf: (cn: string, date: string) => void
   onCancelRf: () => void
 }) {
   const byCn = useMemo(() => {
@@ -484,6 +508,12 @@ function DragflowTab({
       {msg && (
         <div className={`mb-3 rounded-lg border px-4 py-2 text-theme-sm ${msgErr ? 'border-red-200 bg-red-50 text-red-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
           {msg}
+        </div>
+      )}
+
+      {rfMsg && !rfEdit && (
+        <div className={`mb-3 rounded-lg border px-4 py-2 text-theme-sm ${rfErr ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'}`}>
+          {rfMsg}
         </div>
       )}
 
@@ -540,12 +570,24 @@ function DragflowTab({
                       </td>
                       {canFill && (
                         <td className="min-w-[90px] px-2 py-1.5 text-center">
-                          <button
-                            className="rounded-md border border-brand-300 px-2 py-0.5 text-theme-xs font-medium text-brand-600 hover:bg-brand-50 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/10"
-                            onClick={() => (editing ? onCancelRf() : onOpenRf(p.wp, p.ex))}
-                          >
-                            {editing ? 'Batal' : (u ? 'Ubah RFU' : 'Isi RFU')}
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              className="rounded-md border border-brand-300 px-2 py-0.5 text-theme-xs font-medium text-brand-600 hover:bg-brand-50 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/10"
+                              onClick={() => (editing ? onCancelRf() : onOpenRf(p.wp, p.ex))}
+                            >
+                              {editing ? 'Batal' : (u?.hm_date ? 'Ubah RFU' : 'Isi RFU')}
+                            </button>
+                            {u?.hm_date && (
+                              <button
+                                className="rounded-md border border-red-300 px-2 py-0.5 text-theme-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10"
+                                title="Hapus HM RFU yang salah input"
+                                disabled={rfSaving}
+                                onClick={() => onDeleteRf(p.wp, u.hm_date as string)}
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </div>
                         </td>
                       )}
                     </tr>
@@ -579,6 +621,14 @@ function DragflowTab({
                               disabled={rfSaving}
                               onClick={onCancelRf}
                             >Batal</button>
+                            {u?.hm_date && (
+                              <button
+                                className="rounded-lg border border-red-300 px-3 py-1.5 text-theme-sm text-red-600 disabled:opacity-50 dark:border-red-500/40 dark:text-red-400"
+                                disabled={rfSaving}
+                                title="Hapus pembacaan HM RFU yang salah"
+                                onClick={() => onDeleteRf(p.wp, u.hm_date as string)}
+                              >Hapus data RFU</button>
+                            )}
                             <p className="text-theme-xs text-gray-400">
                               HM dibiarkan kosong = pakai nilai <span className="font-medium text-gray-500 dark:text-gray-400">Lifetime Now</span> pada baris ini.
                             </p>
@@ -601,7 +651,7 @@ function DragflowTab({
         HM Last RFU = pembacaan HM terakhir unit WP pada periode {MONTHS[month - 1]} {year} (fallback opening bila belum ada pembacaan harian).
         Date RFU = tanggal pembacaan HM itu. Lifetime Now = pembacaan HM terbaru lintas periode.
         HM Tercatat = waktu nilai itu tersimpan di database (upload Excel HM atau Input Cepat HM).
-        {canFill && ' Tombol "Isi/Ubah RFU" menyimpan HM RFU beserta tanggalnya ke grid HM periode tanggal tersebut.'}
+        {canFill && ' Tombol "Isi/Ubah RFU" menyimpan HM RFU beserta tanggalnya ke grid HM periode tanggal tersebut; "Hapus" membatalkan input yang salah.'}
       </p>
     </>
   )

@@ -339,7 +339,8 @@ async def summary(
           GROUP BY cn
         ),
         cur_hm AS (
-          SELECT d.cn, MAX(d.hm) AS hm, MAX(d.updated_at) AS updated_at
+          SELECT d.cn, MAX(d.hm) AS hm, MAX(d.updated_at) AS updated_at,
+                 MAX(cur.last_day) AS last_day
           FROM hourmeter_daily d JOIN cur ON cur.cn = d.cn
           WHERE d.period = :p AND d.day = cur.last_day
           GROUP BY d.cn
@@ -360,6 +361,7 @@ async def summary(
         SELECT o.cn, o.egi, o.opening,
                c.hm         AS last_hm,
                c.updated_at AS last_at,
+               c.last_day   AS last_day,
                l.hm         AS lifetime_hm
         FROM hourmeter_opening o
         LEFT JOIN cur_hm  c ON c.cn = o.cn
@@ -376,6 +378,9 @@ async def summary(
         # Lifetime = pembacaan terbaru lintas periode (umur unit berjalan).
         "hm_lifetime": r["lifetime_hm"] if r["lifetime_hm"] is not None else r["opening"],
         "hm_at": r["last_at"].isoformat() if r["last_at"] else None,
+        # Tanggal pembacaan terakhir pada periode ini (null bila belum ada
+        # pembacaan harian) — dipakai tombol hapus untuk koreksi salah input.
+        "hm_date": (f"{period}-{int(r['last_day']):02d}" if r["last_day"] else None),
     } for r in rows]
 
     return {"period": period, "units": units}
@@ -455,3 +460,50 @@ async def quick_input(
         "ok": True, "period": period, "date": d.isoformat(), "day": day,
         "saved": saved, "warned": warned, "results": results,
     }
+
+
+@router.post("/delete-reading", dependencies=[Depends(require_menu("hourmeter", "delete"))])
+async def delete_reading(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Hapus SATU pembacaan HM hasil input cepat (koreksi salah input).
+
+    Body: {"cn": "WP792", "date": "YYYY-MM-DD"}
+    Menghapus baris `hourmeter_daily` pada periode+tanggal tersebut, sehingga
+    nilai HM RFU (beserta Date RFU) hilang dari grid. Baris `opening` periode
+    itu DIBIARKAN supaya unit tetap tampil di grid; bila HM balik ke nilai
+    yang salah, isi ulang lewat tombol "Isi RFU".
+    """
+    cn = str((body or {}).get("cn") or "").strip().upper().replace(" ", "")
+    if not cn:
+        raise HTTPException(400, "CN tidak boleh kosong")
+
+    raw_date = (body or {}).get("date")
+    try:
+        d = datetime.strptime(str(raw_date)[:10], "%Y-%m-%d").date()
+    except (ValueError, TypeError):
+        raise HTTPException(400, "Tanggal tidak valid (format YYYY-MM-DD)")
+    period = f"{d.year}-{d.month:02d}"
+
+    res = await db.execute(text("""
+        DELETE FROM hourmeter_daily
+        WHERE period = :p AND cn = :cn AND day = :day
+    """), {"p": period, "cn": cn, "day": d.day})
+    deleted = res.rowcount or 0
+
+    try:
+        await db.execute(text("""
+            INSERT INTO hourmeter_upload_log(period, filename, rows_units, rows_values, status, uploaded_by)
+            VALUES (:p, :f, :n, :n, 'success', :who)
+        """), {"p": period, "f": f"hapus-rfu {cn} {d.isoformat()}",
+               "n": -deleted, "who": user["username"]})
+        await db.commit()
+    except Exception:  # noqa: BLE001
+        await db.rollback()
+        log.exception("gagal hapus pembacaan hourmeter")
+        raise HTTPException(500, "gagal menghapus pembacaan")
+
+    return {"ok": True, "cn": cn, "period": period, "date": d.isoformat(),
+            "deleted": deleted}
