@@ -550,3 +550,47 @@ async def delete_reading(
 
     return {"ok": True, "cn": cn, "period": period, "date": d.isoformat(),
             "deleted": deleted}
+
+
+@router.get("/history")
+async def history(
+    cn: str = Query(..., min_length=1),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db), _user=Depends(get_current_user),
+):
+    """Riwayat pembacaan HM RFU satu unit (untuk menu "+ HM RFU").
+
+    Mengembalikan pembacaan `hourmeter_daily` unit tersebut dari SELURUH
+    periode, terbaru lebih dulu. Satu tanggal = satu pembacaan (menambah
+    pembacaan baru di tanggal lain berarti menambah baris baru, bukan
+    menimpa yang lama), jadi daftar ini adalah riwayat aslinya.
+    """
+    cn = str(cn).strip().upper().replace(" ", "")
+    rows = (await db.execute(text("""
+        SELECT cn, period, day,
+               hm,
+               updated_at,
+               MAKE_DATE(
+                 CAST(SUBSTR(period, 1, 4) AS INTEGER),
+                 CAST(SUBSTR(period, 6, 2) AS INTEGER),
+                 day
+               ) AS reading_date
+        FROM hourmeter_daily
+        WHERE cn = :cn AND day IS NOT NULL
+        ORDER BY period DESC, day DESC
+        LIMIT :lim
+    """), {"cn": cn, "lim": limit})).mappings().all()
+
+    out = []
+    for r in rows:
+        out.append({
+            "cn": r["cn"],
+            "date": str(r["reading_date"])[:10] if r["reading_date"] else None,
+            "period": r["period"],
+            "day": int(r["day"]),
+            "hm": r["hm"],
+            "hm_at": (r["updated_at"].isoformat()
+                      if hasattr(r["updated_at"], "isoformat")
+                      else (str(r["updated_at"]) if r["updated_at"] else None)),
+        })
+    return {"cn": cn, "readings": out, "count": len(out)}

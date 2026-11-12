@@ -1135,6 +1135,27 @@ export async function deleteHourmeterReading(cn: string, date: string): Promise<
   return r.data
 }
 
+/** Riwayat pembacaan HM RFU satu unit (menu "+ HM RFU"), terbaru lebih dulu. */
+export type HourmeterHistoryReading = {
+  cn: string
+  /** Tanggal pembacaan (YYYY-MM-DD). */
+  date: string | null
+  period: string
+  day: number
+  hm: number | null
+  /** Waktu nilai itu tersimpan di database (ISO). */
+  hm_at: string | null
+}
+export type HourmeterHistory = {
+  cn: string
+  readings: HourmeterHistoryReading[]
+  count: number
+}
+export async function fetchHourmeterHistory(cn: string, limit = 50): Promise<HourmeterHistory> {
+  const r = await api.get(`/v1/hourmeter/history`, { params: { cn, limit } })
+  return r.data
+}
+
 // ─── Ewacs Performance ────────────────────────────
 export type EwacsKpi = {
   pa: number; scm_dur: number; usm_dur: number; scm_pct: number; usm_pct: number
