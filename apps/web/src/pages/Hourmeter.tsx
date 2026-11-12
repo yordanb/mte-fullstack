@@ -427,7 +427,7 @@ export default function HourmeterPage() {
 //   Date RFU       = tanggal pembacaan itu;
 //   HM Tercatat    = kapan nilai itu tersimpan di database (`updated_at`);
 //   HM 7 Hari Terakhir = jumlah pemakaian (Selisih) pada 7 pembacaan terakhir;
-//   Lifetime Now   = HM terbesar pada 7 pembacaan terakhir − HM Last RFU.
+//   Lifetime Now   = HM terbesar yang pernah tercatat − pembacaan HM RFU terakhir.
 // Tombol "Isi/Ubah RFU" menulis pembacaan pada tanggal yang dipilih lewat
 // endpoint input cepat; "Hapus" membatalkan input yang salah.
 
@@ -526,7 +526,7 @@ function DragflowTab({
                 <th className="top-0 z-40 min-w-[100px] bg-gray-50 px-2 py-2 text-center font-semibold dark:bg-gray-800"
                   title="Tanggal HM Last RFU dibaca / dicatat">Date RFU</th>
                 <th className="top-0 z-40 min-w-[120px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
-                  title="HM terbesar pada 7 pembacaan terakhir − HM Last RFU">Lifetime Now</th>
+                  title="HM terbesar yang pernah tercatat − pembacaan HM RFU terakhir">Lifetime Now</th>
                 <th className="top-0 z-40 min-w-[140px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
                   title="Jumlah pemakaian (Selisih) pada 7 pembacaan terakhir">HM 7 Hari Terakhir</th>
                 <th className="top-0 z-40 min-w-[150px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800"
@@ -647,7 +647,7 @@ function DragflowTab({
         HM Last RFU = pembacaan HM terakhir unit WP dari database (tanggal paling baru, lintas periode;
         {' '}fallback Opening terakhir bila belum ada pembacaan harian). Date RFU = tanggal pembacaan itu.
         HM 7 Hari Terakhir = jumlah pemakaian (Selisih) pada 7 pembacaan terakhir.
-        Lifetime Now = HM terbesar pada 7 pembacaan terakhir − HM Last RFU.
+        Lifetime Now = HM terbesar yang pernah tercatat − pembacaan HM RFU terakhir.
         HM Tercatat = waktu nilai itu tersimpan di database (upload Excel HM atau Input Cepat HM).
         {canFill && ' Tombol "Isi/Ubah RFU" menyimpan HM RFU beserta tanggalnya; "Hapus" membatalkan input yang salah.'}
       </p>

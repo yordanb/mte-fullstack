@@ -326,7 +326,8 @@ async def summary(
       belum pernah punya pembacaan harian; Date RFU dibiarkan kosong.
     - `hm_recent7` = jumlah pemakaian (selisih antar pembacaan berurutan,
       penurunan diabaikan) pada 7 pembacaan terakhir.
-    - `lifetime`   = HM terbesar pada 7 pembacaan terakhir − HM Last RFU.
+    - `lifetime`   = HM terbesar yang pernah tercatat untuk unit − pembacaan
+      HM RFU terakhir (HM Last RFU).
     """
     # Daftar CN = semua unit yang pernah muncul (opening ATAU pembacaan harian),
     # sehingga unit tidak hilang hanya karena periode yang dipilih berbeda.
@@ -382,7 +383,8 @@ async def summary(
                l.period     AS last_period,
                l.day        AS last_day,
                r.recent7    AS recent7,
-               r.max7       AS max7
+               (SELECT MAX(hm) FROM hourmeter_daily z
+                 WHERE z.cn = b.cn) AS max_hm
         FROM base b
         LEFT JOIN last_read l ON l.cn = b.cn
         LEFT JOIN r7        r ON r.cn = b.cn
@@ -403,10 +405,10 @@ async def summary(
             # Tanggal pembacaan terakhir (YYYY-MM-DD) — null bila hanya opening.
             "hm_date": (f"{last_period}-{int(last_day):02d}"
                         if (last_period and last_day is not None) else None),
-            # HM 7 hari terakhir & Lifetime (terbesar 7 pembacaan − HM Last RFU).
+            # HM 7 hari terakhir & Lifetime (HM terbesar − pembacaan HM RFU terakhir).
             "hm_recent7": r["recent7"],
-            "lifetime": ((r["max7"] - last_hm)
-                         if (r["max7"] is not None and last_hm is not None) else None),
+            "lifetime": ((r["max_hm"] - last_hm)
+                         if (r["max_hm"] is not None and last_hm is not None) else None),
         })
 
     return {"units": units}
