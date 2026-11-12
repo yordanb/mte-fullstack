@@ -349,26 +349,6 @@ export default function ProkerPage() {
           className="rounded-lg border px-3 py-1.5 text-theme-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
           Reset
         </button>
-        {can('proker', 'add') && (
-          <>
-            <input ref={fileRef} type="file" accept=".xlsx,.xlsm" multiple className="hidden"
-              onChange={(e) => {
-                const fs = Array.from(e.target.files ?? [])
-                handleFiles(fs)
-                e.target.value = ''
-              }} />
-            <button onClick={() => fileRef.current?.click()} disabled={importing}
-              className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-              title="Upload file proker (.xlsx) format GMC POMPA PRIMER (2.000 HOURS). Data diperbarui per C/N + periode; hanya unit ber-engine CAT yang tampil.">
-              {importing ? 'Mengimpor…' : 'Import Excel'}
-            </button>
-            <button onClick={doRefreshHm} disabled={refreshing}
-              className="rounded-lg border px-3 py-1.5 text-theme-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/5"
-              title="Ambil HM terbaru per C/N dari halaman Hourmeter & Yazu Lighting Daily Check. Yazu DC (harian) diprioritaskan; unit yang tidak ada di sumber data dibiarkan.">
-              {refreshing ? 'Refresh…' : 'Refresh HM'}
-            </button>
-          </>
-        )}
         {(loadingUnits || loadingDetail) && <span className="text-theme-xs text-gray-500">Memuat…</span>}
       </div>
 
@@ -407,38 +387,60 @@ export default function ProkerPage() {
           Program kerja <span className="font-semibold text-gray-600 dark:text-gray-300">GMC Engine Pompa Primer (2.000 jam)</span> —
           hanya unit ber-engine CAT yang ditampilkan.
         </p>
-        <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-            <p className="text-theme-xs text-gray-500">Sudah tereksekusi</p>
-            <p className="text-theme-2xl font-bold text-green-600">
-              {fmtNum(stats.unit_done)}
-              <span className="text-theme-sm font-normal text-gray-400"> / {fmtNum(stats.units)} unit</span>
-            </p>
-            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
-              title={`${donePct}% unit CAT sudah pernah proker`}>
-              <div className="h-full rounded-full bg-green-500" style={{ width: `${donePct}%` }} />
+        <div className="mb-3 flex flex-wrap items-stretch gap-3">
+          <div className="grid min-w-0 flex-1 grid-cols-4 gap-3">
+            <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500">Sudah tereksekusi</p>
+              <p className="text-xl font-bold text-green-600">
+                {fmtNum(stats.unit_done)}
+                <span className="text-theme-xs font-normal text-gray-400"> / {fmtNum(stats.units)}</span>
+              </p>
+              <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+                title={`${donePct}% unit CAT sudah pernah proker`}>
+                <div className="h-full rounded-full bg-green-500" style={{ width: `${donePct}%` }} />
+              </div>
+              <p className="mt-0.5 truncate text-theme-xs text-gray-400" title={`${fmtNum(Math.max(0, stats.units - stats.unit_done))} unit belum pernah proker`}>
+                {fmtNum(Math.max(0, stats.units - stats.unit_done))} belum · {donePct}%
+              </p>
             </div>
-            <p className="mt-1 text-theme-xs text-gray-400">
-              {fmtNum(Math.max(0, stats.units - stats.unit_done))} unit belum pernah proker · {donePct}%
-            </p>
+            <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500">Total eksekusi</p>
+              <p className="text-xl font-bold text-gray-700 dark:text-gray-200">{fmtNum(stats.total)}</p>
+              <p className="truncate text-theme-xs text-gray-400">{fmtNum(stats.done)} selesai</p>
+            </div>
+            <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500">Tahun {stats.year}</p>
+              <p className="text-xl font-bold text-green-600">{fmtNum(stats.this_year)}</p>
+              <p className="truncate text-theme-xs text-gray-400">eksekusi selesai</p>
+            </div>
+            <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500">Rencana / terlewat</p>
+              <p className="text-xl font-bold text-amber-600">
+                {fmtNum(stats.plan)} <span className="text-theme-xs font-normal text-gray-400">/ {fmtNum(stats.missed)}</span>
+              </p>
+              <p className="truncate text-theme-xs text-gray-400" title={`terakhir: ${fmtDate(stats.last_date)}`}>terakhir: {fmtDate(stats.last_date)}</p>
+            </div>
           </div>
-          <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-            <p className="text-theme-xs text-gray-500">Total eksekusi</p>
-            <p className="text-theme-2xl font-bold text-gray-700 dark:text-gray-200">{fmtNum(stats.total)}</p>
-            <p className="text-theme-xs text-gray-400">{fmtNum(stats.done)} selesai</p>
-          </div>
-          <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-            <p className="text-theme-xs text-gray-500">Tahun {stats.year}</p>
-            <p className="text-theme-2xl font-bold text-green-600">{fmtNum(stats.this_year)}</p>
-            <p className="text-theme-xs text-gray-400">eksekusi selesai</p>
-          </div>
-          <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-            <p className="text-theme-xs text-gray-500">Rencana / terlewat</p>
-            <p className="text-theme-2xl font-bold text-amber-600">
-              {fmtNum(stats.plan)} <span className="text-theme-sm font-normal text-gray-400">/ {fmtNum(stats.missed)}</span>
-            </p>
-            <p className="text-theme-xs text-gray-400">terakhir: {fmtDate(stats.last_date)}</p>
-          </div>
+          {can('proker', 'add') && (
+            <div className="flex flex-wrap items-center gap-2">
+              <input ref={fileRef} type="file" accept=".xlsx,.xlsm" multiple className="hidden"
+                onChange={(e) => {
+                  const fs = Array.from(e.target.files ?? [])
+                  handleFiles(fs)
+                  e.target.value = ''
+                }} />
+              <button onClick={() => fileRef.current?.click()} disabled={importing}
+                className="h-full rounded-lg bg-brand-500 px-3 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                title="Upload file proker (.xlsx) format GMC POMPA PRIMER (2.000 HOURS). Data diperbarui per C/N + periode; hanya unit ber-engine CAT yang tampil.">
+                {importing ? 'Mengimpor…' : 'Import Excel'}
+              </button>
+              <button onClick={doRefreshHm} disabled={refreshing}
+                className="h-full rounded-lg border px-3 text-theme-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/5"
+                title="Ambil HM terbaru per C/N dari halaman Hourmeter & Yazu Lighting Daily Check. Yazu DC (harian) diprioritaskan; unit yang tidak ada di sumber data dibiarkan.">
+                {refreshing ? 'Refresh…' : 'Refresh HM'}
+              </button>
+            </div>
+          )}
         </div>
         </>
       )}

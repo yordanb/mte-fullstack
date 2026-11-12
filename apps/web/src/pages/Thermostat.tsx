@@ -300,26 +300,6 @@ export default function ProkerThermostatPage() {
           className="rounded-lg border px-3 py-1.5 text-theme-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
           Reset
         </button>
-        {can('prokerthermo', 'add') && (
-          <>
-            <input ref={fileRef} type="file" accept=".xlsx,.xlsm" multiple className="hidden"
-              onChange={(e) => {
-                const fs = Array.from(e.target.files ?? [])
-                handleFiles(fs)
-                e.target.value = ''
-              }} />
-            <button onClick={() => fileRef.current?.click()} disabled={importing}
-              className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-              title="Upload file thermostat (.xlsx) format '05. MIDLIFE COOLING SISTEM'. Data diperbarui per C/N.">
-              {importing ? 'Mengimpor…' : 'Import Excel'}
-            </button>
-            <button onClick={doRefreshHm} disabled={refreshing}
-              className="rounded-lg border px-3 py-1.5 text-theme-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/5"
-              title="Ambil HM terbaru per C/N dari halaman Hourmeter & Yazu Lighting Daily Check. Yazu DC (harian) diprioritaskan; unit yang tidak ada di sumber data dibiarkan.">
-              {refreshing ? 'Refresh…' : 'Refresh HM'}
-            </button>
-          </>
-        )}
         {loadingUnits && <span className="text-theme-xs text-gray-500">Memuat…</span>}
       </div>
 
@@ -357,38 +337,60 @@ export default function ProkerThermostatPage() {
             Program kerja <span className="font-semibold text-gray-600 dark:text-gray-300">Replace Thermostat Engine Caterpillar</span> —
             interval {intervalLabel} jam, modifikasi 74°C dan radiator check by therma.
           </p>
-          <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-              <p className="text-theme-xs text-gray-500">Sudah tereksekusi</p>
-              <p className="text-theme-2xl font-bold text-green-600">
-                {fmtNum(kpi.done)}
-                <span className="text-theme-sm font-normal text-gray-400"> / {fmtNum(kpi.units)} unit</span>
-              </p>
-              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
-                title={`${donePct}% unit sudah modif 74°C`}>
-                <div className="h-full rounded-full bg-green-500" style={{ width: `${donePct}%` }} />
+          <div className="mb-3 flex flex-wrap items-stretch gap-3">
+            <div className="grid min-w-0 flex-1 grid-cols-4 gap-3">
+              <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
+                <p className="truncate text-theme-xs text-gray-500">Sudah tereksekusi</p>
+                <p className="text-xl font-bold text-green-600">
+                  {fmtNum(kpi.done)}
+                  <span className="text-theme-xs font-normal text-gray-400"> / {fmtNum(kpi.units)}</span>
+                </p>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+                  title={`${donePct}% unit sudah modif 74°C`}>
+                  <div className="h-full rounded-full bg-green-500" style={{ width: `${donePct}%` }} />
+                </div>
+                <p className="mt-0.5 truncate text-theme-xs text-gray-400" title={`${fmtNum(Math.max(0, kpi.units - kpi.done))} unit belum pernah proker`}>
+                  {fmtNum(Math.max(0, kpi.units - kpi.done))} belum · {donePct}%
+                </p>
               </div>
-              <p className="mt-1 text-theme-xs text-gray-400">
-                {fmtNum(Math.max(0, kpi.units - kpi.done))} unit belum pernah proker · {donePct}%
-              </p>
+              <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
+                <p className="truncate text-theme-xs text-gray-500">Belum modif 74°C</p>
+                <p className="text-xl font-bold text-amber-600">{fmtNum(kpi.not_yet)}</p>
+                <p className="truncate text-theme-xs text-gray-400">NOT YET</p>
+              </div>
+              <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
+                <p className="truncate text-theme-xs text-gray-500">Jatuh tempo</p>
+                <p className={`text-xl font-bold ${kpi.due > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {fmtNum(kpi.due)}
+                </p>
+                <p className="truncate text-theme-xs text-gray-400">deviasi ≥ 0 jam</p>
+              </div>
+              <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
+                <p className="truncate text-theme-xs text-gray-500">Ganti terakhir</p>
+                <p className="text-xl font-bold text-gray-700 dark:text-gray-200">{fmtDate(kpi.last_date)}</p>
+                <p className="truncate text-theme-xs text-gray-400">dari data terakhir</p>
+              </div>
             </div>
-            <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-              <p className="text-theme-xs text-gray-500">Modif 74°C</p>
-              <p className="text-theme-2xl font-bold text-green-600">{fmtNum(kpi.done)}</p>
-              <p className="text-theme-xs text-gray-400">{fmtNum(kpi.not_yet)} NOT YET</p>
-            </div>
-            <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-              <p className="text-theme-xs text-gray-500">Jatuh tempo</p>
-              <p className={`text-theme-2xl font-bold ${kpi.due > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                {fmtNum(kpi.due)}
-              </p>
-              <p className="text-theme-xs text-gray-400">deviasi ≥ 0 jam</p>
-            </div>
-            <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-              <p className="text-theme-xs text-gray-500">Ganti thermostat terakhir</p>
-              <p className="text-theme-2xl font-bold text-gray-700 dark:text-gray-200">{fmtDate(kpi.last_date)}</p>
-              <p className="text-theme-xs text-gray-400">dari data terakhir</p>
-            </div>
+            {can('prokerthermo', 'add') && (
+              <div className="flex flex-wrap items-center gap-2">
+                <input ref={fileRef} type="file" accept=".xlsx,.xlsm" multiple className="hidden"
+                  onChange={(e) => {
+                    const fs = Array.from(e.target.files ?? [])
+                    handleFiles(fs)
+                    e.target.value = ''
+                  }} />
+                <button onClick={() => fileRef.current?.click()} disabled={importing}
+                  className="h-full rounded-lg bg-brand-500 px-3 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                  title="Upload file thermostat (.xlsx) format '05. MIDLIFE COOLING SISTEM'. Data diperbarui per C/N.">
+                  {importing ? 'Mengimpor…' : 'Import Excel'}
+                </button>
+                <button onClick={doRefreshHm} disabled={refreshing}
+                  className="h-full rounded-lg border px-3 text-theme-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/5"
+                  title="Ambil HM terbaru per C/N dari halaman Hourmeter & Yazu Lighting Daily Check. Yazu DC (harian) diprioritaskan; unit yang tidak ada di sumber data dibiarkan.">
+                  {refreshing ? 'Refresh…' : 'Refresh HM'}
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
