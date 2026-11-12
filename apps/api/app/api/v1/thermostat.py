@@ -469,6 +469,7 @@ async def list_units(
     done_expr = "COALESCE(modif_status, 'NOT YET') = 'DONE'"
     not_done_expr = "COALESCE(modif_status, 'NOT YET') <> 'DONE'"
     scope = {k: v for k, v in p.items() if k not in ("lim", "off")}
+    where = f"WHERE {' AND '.join(conds)}" if conds else ""
     cov = (await db.execute(text(f"""
         SELECT COUNT(*) FILTER (WHERE {done_expr}) AS executed,
                COUNT(*) FILTER (WHERE {not_done_expr}) AS not_executed
@@ -478,8 +479,7 @@ async def list_units(
         conds.append(done_expr)
     elif executed == "no":
         conds.append(not_done_expr)
-    if executed:
-        where = f"WHERE {' AND '.join(conds)}"
+    where = f"WHERE {' AND '.join(conds)}" if conds else ""
     col = _SORT.get(sort, "no")
     total = (await db.execute(text(
         f"SELECT COUNT(*) FROM thermo_unit {where}"), p)).scalar() or 0

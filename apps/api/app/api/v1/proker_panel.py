@@ -562,8 +562,7 @@ async def list_units(
         conds.append(done_exists)
     elif executed == "no":
         conds.append(f"NOT {done_exists}")
-    if executed:
-        where = f"WHERE {' AND '.join(conds)}"
+    where = f"WHERE {' AND '.join(conds)}" if conds else ""
     col = _SORT.get(sort, "u.cn")
     total = (await db.execute(text(f"SELECT COUNT(*) FROM proker_panel_unit u {where}"), p)).scalar() or 0
     rows = (await db.execute(text(f"""
