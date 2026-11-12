@@ -271,36 +271,97 @@ export default function ProkerThermostatPage() {
 
   return (
     <div className="w-full px-2">
-      {/* Filter */}
-      <div className="mb-3 flex flex-wrap items-end gap-3">
-        <div>
-          <label className="block text-theme-xs text-gray-500">Cari unit</label>
-          <input className={`${inp} w-52`} value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder="C/N / model / product / WR" />
+      {/* Baris atas: filter (kiri) + ringkasan KPI (kanan) */}
+      <div className="mb-3 flex flex-nowrap items-end gap-x-3 gap-y-2">
+        {/* Filter */}
+        <div className="flex flex-nowrap items-end gap-2 shrink-0">
+          <div>
+            <label className="block whitespace-nowrap text-theme-xs text-gray-500">Cari unit</label>
+            <input className={`${inp} w-28`} value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder="C/N / model" />
+          </div>
+          <div>
+            <label className="block whitespace-nowrap text-theme-xs text-gray-500">Product</label>
+            <select className={`${inp} max-w-[6.5rem]`} value={product} onChange={(e) => setProduct(e.target.value)}>
+              <option value="">Semua</option>
+              {(filters?.product ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block whitespace-nowrap text-theme-xs text-gray-500">Unit model</label>
+            <select className={`${inp} max-w-[6.5rem]`} value={model} onChange={(e) => setModel(e.target.value)}>
+              <option value="">Semua</option>
+              {(filters?.model ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <label className="flex items-center gap-1 whitespace-nowrap pb-1.5 text-theme-sm text-gray-600 dark:text-gray-300"
+            title="Hanya tampilkan unit yang sudah jatuh tempo">
+            <input type="checkbox" checked={dueOnly} onChange={(e) => setDueOnly(e.target.checked)} />
+            Jatuh tempo
+          </label>
+          <button onClick={resetFilter} title="Reset filter"
+            className="whitespace-nowrap rounded-lg border px-2 py-1.5 text-theme-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
+            Reset
+          </button>
+          {can('prokerthermo', 'add') && (
+            <>
+              <input ref={fileRef} type="file" accept=".xlsx,.xlsm" multiple className="hidden"
+                onChange={(e) => {
+                  const fs = Array.from(e.target.files ?? [])
+                  handleFiles(fs)
+                  e.target.value = ''
+                }} />
+              <button onClick={() => fileRef.current?.click()} disabled={importing}
+                className="whitespace-nowrap rounded-lg bg-brand-500 px-2 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                title="Upload file thermostat (.xlsx) format '05. MIDLIFE COOLING SISTEM'. Data diperbarui per C/N.">
+                {importing ? 'Mengimpor…' : 'Import'}
+              </button>
+              <button onClick={doRefreshHm} disabled={refreshing}
+                className="whitespace-nowrap rounded-lg border px-2 py-1.5 text-theme-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/5"
+                title="Ambil HM terbaru per C/N dari halaman Hourmeter & Yazu Lighting Daily Check. Yazu DC (harian) diprioritaskan; unit yang tidak ada di sumber data dibiarkan.">
+                {refreshing ? 'Refresh…' : 'Refresh HM'}
+              </button>
+            </>
+          )}
+          {loadingUnits && <span className="whitespace-nowrap text-theme-xs text-gray-500">Memuat…</span>}
         </div>
-        <div>
-          <label className="block text-theme-xs text-gray-500">Product</label>
-          <select className={inp} value={product} onChange={(e) => setProduct(e.target.value)}>
-            <option value="">Semua</option>
-            {(filters?.product ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="block text-theme-xs text-gray-500">Unit model</label>
-          <select className={inp} value={model} onChange={(e) => setModel(e.target.value)}>
-            <option value="">Semua</option>
-            {(filters?.model ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
-          </select>
-        </div>
-        <label className="flex items-center gap-2 pb-1 text-theme-sm text-gray-600 dark:text-gray-300">
-          <input type="checkbox" checked={dueOnly} onChange={(e) => setDueOnly(e.target.checked)} />
-          Hanya jatuh tempo
-        </label>
-        <button onClick={resetFilter}
-          className="rounded-lg border px-3 py-1.5 text-theme-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
-          Reset
-        </button>
-        {loadingUnits && <span className="text-theme-xs text-gray-500">Memuat…</span>}
+
+        {/* KPI */}
+        {kpi && (
+          <div className="grid min-w-0 flex-1 grid-cols-4 gap-2">
+            <div className="min-w-0 rounded-xl border bg-white p-2 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500" title="Sudah tereksekusi">Sudah tereksekusi</p>
+              <p className="text-lg font-bold leading-tight text-green-600">
+                {fmtNum(kpi.done)}
+                <span className="text-[10px] font-normal text-gray-400"> / {fmtNum(kpi.units)}</span>
+              </p>
+              <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+                title={`${donePct}% unit sudah modif 74°C`}>
+                <div className="h-full rounded-full bg-green-500" style={{ width: `${donePct}%` }} />
+              </div>
+              <p className="truncate text-[10px] text-gray-400" title={`${fmtNum(Math.max(0, kpi.units - kpi.done))} unit belum pernah proker`}>
+                {fmtNum(Math.max(0, kpi.units - kpi.done))} belum · {donePct}%
+              </p>
+            </div>
+            <div className="min-w-0 rounded-xl border bg-white p-2 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500" title="Belum modif 74°C">Belum modif 74°C</p>
+              <p className="text-lg font-bold leading-tight text-amber-600">{fmtNum(kpi.not_yet)}</p>
+              <p className="truncate text-[10px] text-gray-400">NOT YET</p>
+            </div>
+            <div className="min-w-0 rounded-xl border bg-white p-2 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500" title="Jatuh tempo">Jatuh tempo</p>
+              <p className={`text-lg font-bold leading-tight ${kpi.due > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {fmtNum(kpi.due)}
+              </p>
+              <p className="truncate text-[10px] text-gray-400">deviasi ≥ 0 jam</p>
+            </div>
+            <div className="min-w-0 rounded-xl border bg-white p-2 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500" title="Ganti terakhir">Ganti terakhir</p>
+              <p className="text-lg font-bold leading-tight text-gray-700 dark:text-gray-200">{fmtDate(kpi.last_date)}</p>
+              <p className="truncate text-[10px] text-gray-400">dari data terakhir</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {msg && (
@@ -332,67 +393,10 @@ export default function ProkerThermostatPage() {
 
       {/* KPI */}
       {kpi && (
-        <>
-          <p className="mb-2 text-theme-xs text-gray-500">
-            Program kerja <span className="font-semibold text-gray-600 dark:text-gray-300">Replace Thermostat Engine Caterpillar</span> —
-            interval {intervalLabel} jam, modifikasi 74°C dan radiator check by therma.
-          </p>
-          <div className="mb-3 flex flex-wrap items-stretch gap-3">
-            <div className="grid min-w-0 flex-1 grid-cols-4 gap-3">
-              <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
-                <p className="truncate text-theme-xs text-gray-500">Sudah tereksekusi</p>
-                <p className="text-xl font-bold text-green-600">
-                  {fmtNum(kpi.done)}
-                  <span className="text-theme-xs font-normal text-gray-400"> / {fmtNum(kpi.units)}</span>
-                </p>
-                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
-                  title={`${donePct}% unit sudah modif 74°C`}>
-                  <div className="h-full rounded-full bg-green-500" style={{ width: `${donePct}%` }} />
-                </div>
-                <p className="mt-0.5 truncate text-theme-xs text-gray-400" title={`${fmtNum(Math.max(0, kpi.units - kpi.done))} unit belum pernah proker`}>
-                  {fmtNum(Math.max(0, kpi.units - kpi.done))} belum · {donePct}%
-                </p>
-              </div>
-              <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
-                <p className="truncate text-theme-xs text-gray-500">Belum modif 74°C</p>
-                <p className="text-xl font-bold text-amber-600">{fmtNum(kpi.not_yet)}</p>
-                <p className="truncate text-theme-xs text-gray-400">NOT YET</p>
-              </div>
-              <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
-                <p className="truncate text-theme-xs text-gray-500">Jatuh tempo</p>
-                <p className={`text-xl font-bold ${kpi.due > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {fmtNum(kpi.due)}
-                </p>
-                <p className="truncate text-theme-xs text-gray-400">deviasi ≥ 0 jam</p>
-              </div>
-              <div className="rounded-2xl border bg-white p-3 dark:bg-gray-900">
-                <p className="truncate text-theme-xs text-gray-500">Ganti terakhir</p>
-                <p className="text-xl font-bold text-gray-700 dark:text-gray-200">{fmtDate(kpi.last_date)}</p>
-                <p className="truncate text-theme-xs text-gray-400">dari data terakhir</p>
-              </div>
-            </div>
-            {can('prokerthermo', 'add') && (
-              <div className="flex flex-wrap items-center gap-2">
-                <input ref={fileRef} type="file" accept=".xlsx,.xlsm" multiple className="hidden"
-                  onChange={(e) => {
-                    const fs = Array.from(e.target.files ?? [])
-                    handleFiles(fs)
-                    e.target.value = ''
-                  }} />
-                <button onClick={() => fileRef.current?.click()} disabled={importing}
-                  className="h-full rounded-lg bg-brand-500 px-3 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
-                  title="Upload file thermostat (.xlsx) format '05. MIDLIFE COOLING SISTEM'. Data diperbarui per C/N.">
-                  {importing ? 'Mengimpor…' : 'Import Excel'}
-                </button>
-                <button onClick={doRefreshHm} disabled={refreshing}
-                  className="h-full rounded-lg border px-3 text-theme-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/5"
-                  title="Ambil HM terbaru per C/N dari halaman Hourmeter & Yazu Lighting Daily Check. Yazu DC (harian) diprioritaskan; unit yang tidak ada di sumber data dibiarkan.">
-                  {refreshing ? 'Refresh…' : 'Refresh HM'}
-                </button>
-              </div>
-            )}
-          </div>
-        </>
+        <p className="mb-3 text-theme-xs text-gray-500">
+          Program kerja <span className="font-semibold text-gray-600 dark:text-gray-300">Replace Thermostat Engine Caterpillar</span> —
+          interval {intervalLabel} jam, modifikasi 74°C dan radiator check by therma.
+        </p>
       )}
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
