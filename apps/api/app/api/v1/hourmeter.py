@@ -302,20 +302,35 @@ async def pivot(
     # diambil yang terakhir: tanggal terbesar, lalu shift terbesar, lalu input
     # terbaru (created_at). Dibatasi ke bulan yang dipilih agar Grid HM
     # tidak menampilkan unit dari bulan lain saat filter diganti.
-    act_rows = (await db.execute(text("""
-        WITH act_rank AS (
-          SELECT cn, hm, date,
-                 ROW_NUMBER() OVER (PARTITION BY cn
-                     ORDER BY date DESC, shift DESC NULLS LAST,
-                              created_at DESC) AS rn
-          FROM activities
-          WHERE hm IS NOT NULL AND cn IS NOT NULL
-            AND date >= :start AND date <= :end
-        )
-        SELECT cn, hm, CAST(date AS TEXT) AS act_date
-        FROM act_rank WHERE rn = 1
-    """), {"start": f"{period}-01", "end": f"{period}-{days_in_month:02d}"})).mappings().all()
-    act: dict[str, tuple] = {r["cn"]: (r["hm"], r["act_date"]) for r in act_rows}
+    # Batas bulan memakai pola yang sama dengan /recap & /month (date_trunc +
+    # make_date) supaya parameter tetap integer dan tipe DATE aman di Postgres.
+    try:
+        act_rows = (await db.execute(text("""
+            WITH act_rank AS (
+              SELECT cn, hm, date,
+                     ROW_NUMBER() OVER (PARTITION BY cn
+                         ORDER BY date DESC, shift DESC NULLS LAST,
+                                  created_at DESC) AS rn
+              FROM activities
+              WHERE hm IS NOT NULL AND cn IS NOT NULL
+                AND date_trunc('month', date) = make_date(:y, :m, 1)
+            )
+            SELECT cn, hm, CAST(date AS TEXT) AS act_date
+            FROM act_rank WHERE rn = 1
+        """), {"y": year, "m": month})).mappings().all()
+    except Exception:
+        # HM Activity bersifat pelengkap: bila query ini gagal (mis. skema
+        # activity berbeda), Grid HM tetap tampil dari data Excel.
+        log.exception("grid HM: gagal membaca HM Activity")
+        await db.rollback()
+        act_rows = []
+    # Selisih tipe: activities.hm adalah NUMERIC(12,2) → Decimal, sedangkan
+    # opening/harian Excel adalah BIGINT. Dijadikan float di sini supaya
+    # perbandingan & JSON tidak bergantung pada tipe driver.
+    act: dict[str, tuple] = {
+        r["cn"]: (float(r["hm"]) if r["hm"] is not None else None, r["act_date"])
+        for r in act_rows
+    }
 
     cells: dict[str, dict[int, int]] = {}
     for r in val_rows:
