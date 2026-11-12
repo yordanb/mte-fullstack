@@ -431,7 +431,8 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
         SELECT COUNT(*) AS total,
                COUNT(*) FILTER (WHERE status = 'DONE') AS done,
                COUNT(*) FILTER (WHERE status = 'PLAN') AS plan,
-               COUNT(DISTINCT cn) AS unit_with_repl
+               COUNT(DISTINCT cn) AS unit_with_repl,
+               COUNT(DISTINCT cn) FILTER (WHERE status = 'DONE') AS unit_done
         FROM injector_replacement
     """))).mappings().first()
     due = (await db.execute(text(f"""
@@ -442,7 +443,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     """))).scalar() or 0
     return {
         "units": units, "total": agg["total"], "done": agg["done"], "plan": agg["plan"],
-        "unit_with_repl": agg["unit_with_repl"], "due": due,
+        "unit_with_repl": agg["unit_with_repl"], "unit_done": agg["unit_done"], "due": due,
         "interval": DEFAULT_INTERVAL, "positions": POSITIONS,
     }
 
@@ -453,6 +454,7 @@ async def list_units(
     product: str | None = None,
     model: str | None = None,
     due: bool | None = None,
+    executed: str | None = Query(None, pattern="^(yes|no)$"),
     sort: str = Query("cn"),
     order: str = Query("asc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
@@ -460,21 +462,48 @@ async def list_units(
     db: AsyncSession = Depends(get_db),
 ):
     conds, p = [], {"lim": page_size, "off": (page - 1) * page_size}
+    # Kondisi untuk query cakupan (tanpa CTE agregat) dibangun terpisah,
+    # karena `due` pada query utama bergantung pada CTE `r`.
+    cov_conds: list[str] = []
     if search:
-        conds.append("(u.cn ILIKE :s OR u.unit_model ILIKE :s OR u.product ILIKE :s "
-                     "OR u.unit_type ILIKE :s)")
+        sc = ("(u.cn ILIKE :s OR u.unit_model ILIKE :s OR u.product ILIKE :s "
+              "OR u.unit_type ILIKE :s)")
+        conds.append(sc); cov_conds.append(sc)
         p["s"] = f"%{search.strip()}%"
     if product:
-        conds.append("u.product = :prod")
+        conds.append("u.product = :prod"); cov_conds.append("u.product = :prod")
         p["prod"] = product
     if model:
-        conds.append("u.unit_model = :model")
+        conds.append("u.unit_model = :model"); cov_conds.append("u.unit_model = :model")
         p["model"] = model
     if due is not None:
         conds.append("(:due = FALSE OR (u.hm_now IS NOT NULL AND r.last_hm IS NOT NULL "
                      "AND (u.hm_now - r.last_hm) >= u.interval_hm))")
+        cov_conds.append(
+            "(:due = FALSE OR (u.hm_now IS NOT NULL AND "
+            "(SELECT MAX(x.hm) FROM injector_replacement x "
+            " WHERE x.cn = u.cn AND x.status = 'DONE') IS NOT NULL "
+            "AND (u.hm_now - (SELECT MAX(x.hm) FROM injector_replacement x "
+            " WHERE x.cn = u.cn AND x.status = 'DONE')) >= u.interval_hm))")
         p["due"] = due
-    where = f"WHERE {' AND '.join(conds)}" if conds else ""
+    # Cakupan eksekusi dihitung SEBELUM filter executed, supaya angka chip
+    # tetap menggambarkan seluruh unit pada filter product/model/search aktif.
+    # "Sudah" = unit punya minimal satu baris penggantian berstatus DONE.
+    done_exists = ("EXISTS (SELECT 1 FROM injector_replacement x "
+                   "WHERE x.cn = u.cn AND x.status = 'DONE')")
+    scope = {k: v for k, v in p.items() if k not in ("lim", "off")}
+    cov_where = f"WHERE {' AND '.join(cov_conds)}" if cov_conds else ""
+    cov = (await db.execute(text(f"""
+        SELECT COUNT(*) FILTER (WHERE {done_exists}) AS executed,
+               COUNT(*) FILTER (WHERE NOT {done_exists}) AS not_executed
+        FROM injector_unit u {cov_where}
+    """), scope)).mappings().first()
+    if executed == "yes":
+        conds.append(done_exists)
+    elif executed == "no":
+        conds.append(f"NOT {done_exists}")
+    if executed:
+        where = f"WHERE {' AND '.join(conds)}"
     col = _SORT.get(sort, "u.cn")
     total = (await db.execute(text(f"""
         WITH r AS ({_REPL_AGG})
@@ -487,6 +516,8 @@ async def list_units(
         LIMIT :lim OFFSET :off
     """), p)).mappings().all()
     return {"total": total, "page": page, "page_size": page_size,
+            "executed_units": cov["executed"] if cov else 0,
+            "not_executed_units": cov["not_executed"] if cov else 0,
             "data": [dict(r) for r in rows]}
 
 

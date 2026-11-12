@@ -391,6 +391,7 @@ async def import_status(import_id: str, db: AsyncSession = Depends(get_db)):
 _EVENTS_AGG = """
   SELECT cn,
          COUNT(*) AS event_count,
+         COUNT(*) FILTER (WHERE kind = 'MIDLIFE') AS ml_count,
          MAX(hm) AS last_hm,
          MAX(hm) FILTER (WHERE kind = 'OVH') AS ovh_hm,
          MAX(service_date) FILTER (WHERE kind = 'OVH') AS ovh_date,
@@ -407,6 +408,7 @@ _UNIT_SELECT = f"""
   SELECT u.cn, u.no, u.unit_model, u.product, u.unit_type, u.hm_now, u.interval_hm,
          u.remarks,
          COALESCE(e.event_count, 0) AS event_count,
+         COALESCE(e.ml_count, 0) AS ml_count,
          e.ovh_hm, e.ovh_date, e.ml_hm, e.ml_date, e.last_hm, e.last_kind, e.last_date,
          COALESCE(e.last_hm, 0) + u.interval_hm AS next_plan_hm,
          CASE WHEN u.hm_now IS NULL THEN NULL
@@ -455,6 +457,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
                COUNT(*) FILTER (WHERE kind = 'OVH') AS ovh,
                COUNT(*) FILTER (WHERE kind = 'MIDLIFE') AS midlife,
                COUNT(DISTINCT cn) AS unit_event,
+               COUNT(DISTINCT cn) FILTER (WHERE kind = 'MIDLIFE') AS unit_midlife,
                MAX(service_date) AS last_date
         FROM booster_event
     """))).mappings().first()
@@ -466,7 +469,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     """))).scalar() or 0
     return {
         "units": units, "total": ev["total"], "ovh": ev["ovh"], "midlife": ev["midlife"],
-        "unit_event": ev["unit_event"], "due": due,
+        "unit_event": ev["unit_event"], "unit_midlife": ev["unit_midlife"], "due": due,
         "last_date": str(ev["last_date"]) if ev["last_date"] else None,
         "interval": DEFAULT_INTERVAL,
     }
@@ -478,6 +481,7 @@ async def list_units(
     product: str | None = None,
     model: str | None = None,
     due: bool | None = None,
+    executed: str | None = Query(None, pattern="^(yes|no)$"),
     sort: str = Query("cn"),
     order: str = Query("asc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
@@ -485,21 +489,45 @@ async def list_units(
     db: AsyncSession = Depends(get_db),
 ):
     conds, p = [], {"lim": page_size, "off": (page - 1) * page_size}
+    # Kondisi untuk query cakupan (tanpa CTE agregat) dibangun terpisah,
+    # karena `due` pada query utama bergantung pada CTE.
+    cov_conds: list[str] = []
     if search:
-        conds.append("(u.cn ILIKE :s OR u.unit_model ILIKE :s OR u.product ILIKE :s "
-                     "OR u.unit_type ILIKE :s OR u.remarks ILIKE :s)")
+        sc = ("(u.cn ILIKE :s OR u.unit_model ILIKE :s OR u.product ILIKE :s "
+              "OR u.unit_type ILIKE :s OR u.remarks ILIKE :s)")
+        conds.append(sc); cov_conds.append(sc)
         p["s"] = f"%{search.strip()}%"
     if product:
-        conds.append("u.product = :prod")
+        conds.append("u.product = :prod"); cov_conds.append("u.product = :prod")
         p["prod"] = product
     if model:
-        conds.append("u.unit_model = :model")
+        conds.append("u.unit_model = :model"); cov_conds.append("u.unit_model = :model")
         p["model"] = model
     if due is not None:
         conds.append("(:due = FALSE OR (u.hm_now IS NOT NULL AND "
                      "(COALESCE(e.last_hm, 0) + u.interval_hm - u.hm_now) <= 0))")
+        cov_conds.append(
+            "(:due = FALSE OR (u.hm_now IS NOT NULL AND "
+            "(COALESCE((SELECT MAX(x.hm) FROM booster_event x WHERE x.cn = u.cn), 0) "
+            "+ u.interval_hm - u.hm_now) <= 0))")
         p["due"] = due
-    where = f"WHERE {' AND '.join(conds)}" if conds else ""
+    # Cakupan eksekusi dihitung SEBELUM filter executed, supaya angka chip
+    # tetap menggambarkan seluruh unit pada filter product/model/search aktif.
+    done_exists = ("EXISTS (SELECT 1 FROM booster_event x "
+                   "WHERE x.cn = u.cn AND x.kind = 'MIDLIFE')")
+    scope = {k: v for k, v in p.items() if k not in ("lim", "off")}
+    cov_where = f"WHERE {' AND '.join(cov_conds)}" if cov_conds else ""
+    cov = (await db.execute(text(f"""
+        SELECT COUNT(*) FILTER (WHERE {done_exists}) AS executed,
+               COUNT(*) FILTER (WHERE NOT {done_exists}) AS not_executed
+        FROM booster_unit u {cov_where}
+    """), scope)).mappings().first()
+    if executed == "yes":
+        conds.append(done_exists)
+    elif executed == "no":
+        conds.append(f"NOT {done_exists}")
+    if executed:
+        where = f"WHERE {' AND '.join(conds)}"
     col = _SORT.get(sort, "u.cn")
     total = (await db.execute(text(f"""
         WITH e AS ({_EVENTS_AGG})
@@ -512,6 +540,8 @@ async def list_units(
         LIMIT :lim OFFSET :off
     """), p)).mappings().all()
     return {"total": total, "page": page, "page_size": page_size,
+            "executed_units": cov["executed"] if cov else 0,
+            "not_executed_units": cov["not_executed"] if cov else 0,
             "data": [dict(r) for r in rows]}
 
 

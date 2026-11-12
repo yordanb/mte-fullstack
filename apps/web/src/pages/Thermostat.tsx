@@ -74,6 +74,8 @@ export default function ProkerThermostatPage() {
   const [product, setProduct] = useState('')
   const [model, setModel] = useState('')
   const [dueOnly, setDueOnly] = useState(false)
+  const [execFilter, setExecFilter] = useState<'' | 'yes' | 'no'>('')
+  const [coverage, setCoverage] = useState<{ executed: number; notExecuted: number } | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize] = useState(50)
 
@@ -103,7 +105,7 @@ export default function ProkerThermostatPage() {
     return () => window.clearTimeout(t)
   }, [q])
 
-  useEffect(() => { setPage(1) }, [search, product, model, dueOnly])
+  useEffect(() => { setPage(1) }, [search, product, model, dueOnly, execFilter])
 
   useEffect(() => {
     Promise.all([fetchThermostatFilters(), fetchThermostatStats()])
@@ -117,17 +119,22 @@ export default function ProkerThermostatPage() {
     fetchThermostatUnits({
       search: search || undefined, product: product || undefined,
       model: model || undefined, due: dueOnly ? true : undefined,
+      executed: execFilter || undefined,
       page, page_size: pageSize,
     })
       .then((r) => {
         if (!alive) return
         setUnits(r.data); setTotal(r.total)
+        setCoverage({
+          executed: r.executed_units ?? 0,
+          notExecuted: r.not_executed_units ?? 0,
+        })
         setCn((cur) => (cur && r.data.some((u) => u.cn === cur) ? cur : (r.data[0]?.cn ?? '')))
       })
       .catch((e) => { if (alive) setMsg(`gagal memuat unit: ${errMsg(e)}`) })
       .finally(() => { if (alive) setLoadingUnits(false) })
     return () => { alive = false }
-  }, [search, product, model, dueOnly, page, pageSize, reload])
+  }, [search, product, model, dueOnly, execFilter, page, pageSize, reload])
 
   useEffect(() => () => { if (timerRef.current) window.clearInterval(timerRef.current) }, [])
 
@@ -249,8 +256,10 @@ export default function ProkerThermostatPage() {
     } finally { setSaving(false) }
   }
 
-  const resetFilter = () => { setQ(''); setSearch(''); setProduct(''); setModel(''); setDueOnly(false) }
+  const resetFilter = () => { setQ(''); setSearch(''); setProduct(''); setModel(''); setDueOnly(false); setExecFilter('') }
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const donePct = kpi && kpi.units > 0 ? Math.round((kpi.done / kpi.units) * 100) : 0
+  const scopeTotal = coverage ? coverage.executed + coverage.notExecuted : total
   const dueCls = (v?: number | null) =>
     v == null ? 'text-gray-400' : Number(v) >= 0 ? 'text-red-600' : 'text-green-600'
   const progPct = prog && prog.total_rows > 0
@@ -350,9 +359,18 @@ export default function ProkerThermostatPage() {
           </p>
           <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
-              <p className="text-theme-xs text-gray-500">Unit thermostat</p>
-              <p className="text-theme-2xl font-bold text-brand-600">{fmtNum(kpi.units)}</p>
-              <p className="text-theme-xs text-gray-400">interval {intervalLabel} jam</p>
+              <p className="text-theme-xs text-gray-500">Sudah tereksekusi</p>
+              <p className="text-theme-2xl font-bold text-green-600">
+                {fmtNum(kpi.done)}
+                <span className="text-theme-sm font-normal text-gray-400"> / {fmtNum(kpi.units)} unit</span>
+              </p>
+              <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+                title={`${donePct}% unit sudah modif 74°C`}>
+                <div className="h-full rounded-full bg-green-500" style={{ width: `${donePct}%` }} />
+              </div>
+              <p className="mt-1 text-theme-xs text-gray-400">
+                {fmtNum(Math.max(0, kpi.units - kpi.done))} unit belum pernah proker · {donePct}%
+              </p>
             </div>
             <div className="rounded-2xl border bg-white p-4 dark:bg-gray-900">
               <p className="text-theme-xs text-gray-500">Modif 74°C</p>
@@ -388,6 +406,27 @@ export default function ProkerThermostatPage() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>›</button>
             </div>
           </div>
+          <div className="flex flex-wrap items-center gap-1.5 border-b px-3 py-2">
+            {([
+              { key: '', label: 'Semua', n: scopeTotal },
+              { key: 'yes', label: 'Sudah proker', n: coverage?.executed },
+              { key: 'no', label: 'Belum proker', n: coverage?.notExecuted },
+            ] as const).map((c) => (
+              <button key={c.key || 'all'} onClick={() => setExecFilter(c.key)}
+                className={`rounded-full border px-2.5 py-1 text-theme-xs font-medium ${
+                  execFilter === c.key
+                    ? c.key === 'no'
+                      ? 'border-gray-400 bg-gray-200 text-gray-800 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-100'
+                      : c.key === 'yes'
+                        ? 'border-green-500 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                        : 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
+                    : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-white/5'
+                }`}>
+                {c.label}
+                {c.n != null && <span className="ml-1 tabular-nums opacity-70">({fmtNum(c.n)})</span>}
+              </button>
+            ))}
+          </div>
           <div className="w-full overflow-auto" style={{ maxHeight: 620 }}>
             <table className="w-full border-collapse text-theme-xs">
               <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
@@ -397,6 +436,7 @@ export default function ProkerThermostatPage() {
                   <th className="px-2 py-2 text-right font-semibold">HM now</th>
                   <th className="px-2 py-2 text-right font-semibold">Deviasi</th>
                   <th className="px-2 py-2 text-center font-semibold">Modif 74°C</th>
+                  <th className="px-2 py-2 text-center font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -424,12 +464,23 @@ export default function ProkerThermostatPage() {
                         <span className={`rounded-full px-2 py-0.5 font-semibold ${b.cls}`}>{s}</span>
                         <span className="mt-0.5 block text-theme-xs text-gray-400">{fmtDate(u.modif_date)}</span>
                       </td>
+                      <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                        {s === 'DONE' ? (
+                          <span className="rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-700 dark:bg-green-900/40 dark:text-green-300">Sudah</span>
+                        ) : (
+                          <span className="rounded-full bg-gray-100 px-2 py-0.5 font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">Belum</span>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
                 {units.length === 0 && (
-                  <tr><td colSpan={5} className="px-4 py-10 text-center text-theme-sm text-gray-400">
-                    Belum ada unit. Import file thermostat (.xlsx) lewat tombol di atas.
+                  <tr><td colSpan={6} className="px-4 py-10 text-center text-theme-sm text-gray-400">
+                    {execFilter === 'no'
+                      ? 'Semua unit pada filter ini sudah pernah proker.'
+                      : execFilter === 'yes'
+                        ? 'Belum ada unit yang tereksekusi pada filter ini.'
+                        : 'Belum ada unit. Import file thermostat (.xlsx) lewat tombol di atas.'}
                   </td></tr>
                 )}
               </tbody>

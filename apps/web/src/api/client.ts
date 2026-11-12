@@ -1854,6 +1854,9 @@ export type ProkerPanelUnitPage = {
   total: number
   page: number
   page_size: number
+  /* jumlah unit status DONE & belum pernah DONE pada filter aktif */
+  executed_units?: number
+  not_executed_units?: number
   data: ProkerPanelUnit[]
 }
 
@@ -1868,7 +1871,7 @@ export async function fetchProkerPanelFilters(): Promise<ProkerPanelFilters> {
 }
 
 export async function fetchProkerPanelUnits(params: {
-  search?: string; product?: string; model?: string
+  search?: string; product?: string; model?: string; executed?: 'yes' | 'no'
   sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
 }): Promise<ProkerPanelUnitPage> {
   const r = await api.get('/v1/proker-panel/units', { params })
@@ -1941,6 +1944,8 @@ export type BoosterUnitRow = {
 
 export type BoosterUnit = BoosterUnitRow & {
   event_count: number
+  /* jumlah event MIDLIFE untuk unit ini (dipakai kolom Status) */
+  ml_count?: number
   ovh_hm: number | null
   ovh_date: string | null
   ml_hm: number | null
@@ -1989,6 +1994,8 @@ export type BoosterKpi = {
   ovh: number
   midlife: number
   unit_event: number
+  /** jumlah unit yang sudah punya event MIDLIFE (dipakai "sudah proker") */
+  unit_midlife?: number
   due: number
   last_date: string | null
   interval: number
@@ -2007,6 +2014,9 @@ export type BoosterUnitPage = {
   total: number
   page: number
   page_size: number
+  /* jumlah unit status MIDLIFE & belum MIDLIFE pada filter aktif */
+  executed_units?: number
+  not_executed_units?: number
   data: BoosterUnit[]
 }
 
@@ -2046,7 +2056,7 @@ export async function fetchBoosterFilters(): Promise<BoosterFilters> {
 }
 
 export async function fetchBoosterUnits(params: {
-  search?: string; product?: string; model?: string; due?: boolean
+  search?: string; product?: string; model?: string; due?: boolean; executed?: 'yes' | 'no'
   sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
 }): Promise<BoosterUnitPage> {
   const r = await api.get('/v1/booster/units', { params })
@@ -2148,6 +2158,9 @@ export type ThermostatUnitPage = {
   total: number
   page: number
   page_size: number
+  /* jumlah unit modif 74°C DONE & belum DONE pada filter aktif */
+  executed_units?: number
+  not_executed_units?: number
   data: ThermostatUnit[]
 }
 
@@ -2174,6 +2187,7 @@ export async function fetchThermostatFilters(): Promise<ThermostatFilters> {
 }
 export async function fetchThermostatUnits(params: {
   search?: string; product?: string; model?: string; status?: string; due?: boolean
+  executed?: 'yes' | 'no'
   sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
 }): Promise<ThermostatUnitPage> {
   const r = await api.get('/v1/thermostat/units', { params })
@@ -2268,6 +2282,8 @@ export type InjectorKpi = {
   done: number
   plan: number
   unit_with_repl: number
+  /** jumlah unit yang sudah punya penggantian DONE ("sudah proker") */
+  unit_done?: number
   due: number
   interval: number
   positions: number
@@ -2285,6 +2301,9 @@ export type InjectorUnitPage = {
   total: number
   page: number
   page_size: number
+  /* jumlah unit sudah DONE & belum DONE pada filter aktif */
+  executed_units?: number
+  not_executed_units?: number
   data: InjectorUnit[]
 }
 
@@ -2325,7 +2344,7 @@ export async function fetchInjectorFilters(): Promise<InjectorFilters> {
 }
 
 export async function fetchInjectorUnits(params: {
-  search?: string; product?: string; model?: string; due?: boolean
+  search?: string; product?: string; model?: string; due?: boolean; executed?: 'yes' | 'no'
   sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
 }): Promise<InjectorUnitPage> {
   const r = await api.get('/v1/injector/units', { params })

@@ -438,6 +438,7 @@ async def list_units(
     model: str | None = None,
     status: str | None = None,
     due: bool | None = None,
+    executed: str | None = Query(None, pattern="^(yes|no)$"),
     sort: str = Query("no"),
     order: str = Query("asc", pattern="^(asc|desc)$"),
     page: int = Query(1, ge=1),
@@ -462,7 +463,23 @@ async def list_units(
         conds.append("(:due = FALSE OR (hm_now IS NOT NULL "
                      "AND hm_now - (COALESCE(last_hm, 0) + interval_hm) >= 0))")
         p["due"] = due
-    where = f"WHERE {' AND '.join(conds)}" if conds else ""
+    # Cakupan eksekusi dihitung SEBELUM filter executed, supaya angka chip
+    # tetap menggambarkan seluruh unit pada filter product/model/search aktif.
+    # "Sudah" = modif 74°C berstatus DONE (satu baris per unit di thermo_unit).
+    done_expr = "COALESCE(modif_status, 'NOT YET') = 'DONE'"
+    not_done_expr = "COALESCE(modif_status, 'NOT YET') <> 'DONE'"
+    scope = {k: v for k, v in p.items() if k not in ("lim", "off")}
+    cov = (await db.execute(text(f"""
+        SELECT COUNT(*) FILTER (WHERE {done_expr}) AS executed,
+               COUNT(*) FILTER (WHERE {not_done_expr}) AS not_executed
+        FROM thermo_unit {where}
+    """), scope)).mappings().first()
+    if executed == "yes":
+        conds.append(done_expr)
+    elif executed == "no":
+        conds.append(not_done_expr)
+    if executed:
+        where = f"WHERE {' AND '.join(conds)}"
     col = _SORT.get(sort, "no")
     total = (await db.execute(text(
         f"SELECT COUNT(*) FROM thermo_unit {where}"), p)).scalar() or 0
@@ -473,6 +490,8 @@ async def list_units(
         LIMIT :lim OFFSET :off
     """), p)).mappings().all()
     return {"total": total, "page": page, "page_size": page_size,
+            "executed_units": cov["executed"] if cov else 0,
+            "not_executed_units": cov["not_executed"] if cov else 0,
             "data": [dict(r) for r in rows]}
 
 
