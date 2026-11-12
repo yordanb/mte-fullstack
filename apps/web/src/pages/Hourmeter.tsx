@@ -514,7 +514,32 @@ export default function HourmeterPage() {
 // endpoint input cepat; "Hapus" membatalkan input yang salah.
 // Tombol "+ HM RFU" membuka riwayat seluruh pembacaan unit tersebut (terbaru
 // lebih dulu) dan form tambah pembacaan baru — pembacaan baru disimpan pada
-// tanggalnya sendiri, pembacaan lama tidak tertimpa.
+// tanggalnya sendiri, pembacaan lama tidak tertimpa. Ikon mata di kolom
+// Lifetime Now membuka/menutup panel riwayat yang sama.
+
+/** Ikon mata — buka riwayat HM RFU unit. */
+function EyeIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
+/** Ikon mata dicoret — tutup riwayat (panel sedang terbuka). */
+function EyeOffIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M17.94 17.94A10.9 10.9 0 0 1 12 19c-6.5 0-10-7-10-7a19.8 19.8 0 0 1 5.06-5.94" />
+      <path d="M9.9 4.24A10.9 10.9 0 0 1 12 4c6.5 0 10 7 10 7a19.8 19.8 0 0 1-3.22 4.19" />
+      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+      <path d="m2 2 20 20" />
+    </svg>
+  )
+}
 
 const fmtHmVal = (v?: number | null) =>
   v == null ? '·' : new Intl.NumberFormat('id-ID').format(Math.round(Number(v)))
@@ -655,7 +680,24 @@ function DragflowTab({
                         {rdate ?? <span className="text-gray-300">·</span>}
                       </td>
                       <td className="min-w-[120px] px-2 py-1.5 text-right tabular-nums text-brand-600 dark:text-brand-300">
-                        {u ? fmtHmVal(u.lifetime) : '·'}
+                        <span className="inline-flex items-center justify-end gap-1.5">
+                          <span>{u ? fmtHmVal(u.lifetime) : '·'}</span>
+                          {canFill && (
+                            <button
+                              className={`shrink-0 rounded p-0.5 align-middle transition ${
+                                histCn?.cn === p.wp
+                                  ? 'text-brand-600 dark:text-brand-300'
+                                  : 'text-gray-400 hover:text-brand-600 dark:text-gray-500 dark:hover:text-brand-300'
+                              }`}
+                              title="Lihat riwayat HM RFU unit ini"
+                              aria-label={`Riwayat HM RFU ${p.wp}`}
+                              aria-expanded={histCn?.cn === p.wp}
+                              onClick={() => (histCn?.cn === p.wp ? onCloseHistory() : onOpenHistory(p.wp, p.ex))}
+                            >
+                              {histCn?.cn === p.wp ? <EyeOffIcon /> : <EyeIcon />}
+                            </button>
+                          )}
+                        </span>
                       </td>
                       <td className="min-w-[140px] px-2 py-1.5 text-right tabular-nums text-gray-600 dark:text-gray-400">
                         {u ? fmtHmVal(u.dc_hm) : '·'}
@@ -854,7 +896,7 @@ function DragflowTab({
         Lifetime Now = HM Daily Check terbaru − pembacaan HM RFU terakhir.
         HM Tercatat = waktu nilai itu tersimpan di database (upload Excel HM atau Input Cepat HM).
         {canFill && ' Tombol "Isi/Ubah RFU" menyimpan HM RFU beserta tanggalnya; "Hapus" membatalkan input yang salah.'}
-        {canFill && ' Tombol "+ HM RFU" membuka riwayat seluruh pembacaan unit dan menambah pembacaan baru tanpa menghapus yang lama.'}
+        {canFill && ' Tombol "+ HM RFU" (atau ikon mata di kolom Lifetime Now) membuka riwayat seluruh pembacaan unit dan menambah pembacaan baru tanpa menghapus yang lama.'}
       </p>
     </>
   )
