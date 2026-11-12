@@ -24,7 +24,9 @@ async def login(body: LoginIn, db: AsyncSession = Depends(get_db)):
                         path="/v1/auth/login", status=401)
         await db.commit()
         raise HTTPException(401, "Username/password salah")
-    await write_log(db, user_id=str(row["id"]), username=row["username"],
+    # `audit_logs.user_id` bertipe UUID → pakai username sebagai identitas
+    # (kolom user_id dibiarkan NULL; lihat perbaikan middleware di main.py).
+    await write_log(db, username=row["username"],
                     role=row["role"], method="POST",
                     path="/v1/auth/login", status=200)
     await db.commit()

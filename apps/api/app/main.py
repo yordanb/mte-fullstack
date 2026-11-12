@@ -35,7 +35,7 @@ from app.db.session import engine, SessionLocal
 
 app = FastAPI(title="MTE Oil Lab API", version="1.0.0")
 
-SKIP_AUDIT = ("/health", "/docs", "/redoc", "/openapi.json", "/v1/auth/login")
+SKIP_AUDIT = ("/health", "/docs", "/redoc", "/openapi.json")
 
 
 def _ip(req: Request) -> str | None:
@@ -47,34 +47,61 @@ def _ip(req: Request) -> str | None:
 
 @app.middleware("http")
 async def audit_middleware(req: Request, call_next):
-    resp = await call_next(req)
+    """Catat aktivitas API.
+
+    PENTING: log ditulis SEBELUM respons mulai dikirim, dan kegagalan tulis
+    ditelan. Kalau tidak, exception saat menulis log (mis. tipe kolom tidak
+    cocok) terjadi di tengah pengiriman respons → koneksi putus dan browser
+    hanya melihat "Network Error" (tanpa status HTTP).
+    """
+    path = req.url.path
     try:
-        path = req.url.path
-        if path in SKIP_AUDIT or path.startswith("/docs"):
-            return resp
-        uid, role, uname = None, None, None
-        tok = None
-        auth = req.headers.get("authorization", "")
-        if auth.lower().startswith("bearer "):
-            tok = auth[7:]
-        elif req.query_params.get("token"):
-            tok = req.query_params["token"]  # <img> foto tak bisa kirim header
-        if tok:
-            try:
-                from app.core.security import decode_token
-                p = decode_token(tok)
-                uid, role = p.get("sub"), p.get("role")
-            except Exception:
-                pass
-        async with SessionLocal() as db:
-            if uid:
-                uname = (await db.execute(text(
-                    "SELECT username FROM users WHERE id::text=:s"),
-                    {"s": uid})).scalar()
-            await write_log(db, user_id=uid, username=uname, role=role,
-                            method=req.method, path=path, status=resp.status_code,
-                            ip=_ip(req), user_agent=req.headers.get("user-agent"))
-            await db.commit()
+        skip = path in SKIP_AUDIT or path.startswith("/docs")
+    except Exception:
+        skip = False
+
+    if not skip:
+        try:
+            uid, role, uname = None, None, None
+            tok = None
+            auth = req.headers.get("authorization", "")
+            if auth.lower().startswith("bearer "):
+                tok = auth[7:]
+            elif req.query_params.get("token"):
+                tok = req.query_params["token"]  # <img> foto tak bisa kirim header
+            if tok:
+                try:
+                    from app.core.security import decode_token
+                    p = decode_token(tok)
+                    uid, role = p.get("sub"), p.get("role")
+                except Exception:
+                    pass
+            async with SessionLocal() as db:
+                if uid:
+                    uname = (await db.execute(text(
+                        "SELECT username FROM users WHERE id::text=:s"),
+                        {"s": uid})).scalar()
+                # `audit_logs.user_id` bertipe UUID sedangkan `sub` adalah id
+                # user (angka) → jangan diisi. Identitas tetap tercatat pada
+                # kolom `username`.
+                await write_log(db, user_id=None, username=uname, role=role,
+                                method=req.method, path=path, status=0,
+                                ip=_ip(req), user_agent=req.headers.get("user-agent"))
+                await db.commit()
+        except Exception:
+            pass
+
+    resp = await call_next(req)
+
+    try:
+        # Lengkapi status HTTP di baris log terbaru (best-effort, non-fatal).
+        if not skip:
+            async with SessionLocal() as db:
+                await db.execute(text("""
+                    UPDATE audit_logs SET status = :s
+                    WHERE method = :m AND path = :p AND status = 0
+                """), {"s": resp.status_code, "m": req.method[:10], "p": path[:500]})
+                await db.commit()
     except Exception:
         pass
     return resp
