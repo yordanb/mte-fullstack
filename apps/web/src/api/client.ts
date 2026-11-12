@@ -1050,6 +1050,11 @@ export type HourmeterUnit = {
   last_day: number | null
   final: number | null
   delta: number | null
+  /** HM terbaru dari halaman Activity (semua kategori) — null bila tidak ada
+   *  atau bila pembacaan Excel sudah lebih baru. Dipakai sebagai "Akhir". */
+  act_hm: number | null
+  /** Tanggal catatan Activity yang dipakai pada `act_hm` (ISO). */
+  act_date: string | null
 }
 export type HourmeterPivot = {
   period: string

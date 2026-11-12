@@ -428,7 +428,15 @@ export default function HourmeterPage() {
                         )
                       })}
                       <td className="min-w-[64px] px-1.5 py-1.5 text-center font-semibold tabular-nums">
-                        {u.final != null ? u.final.toLocaleString() : '·'}
+                        {u.act_hm != null ? (
+                          <span
+                            className="inline-flex items-center gap-1 text-brand-600 dark:text-brand-300"
+                            title={`HM terbaru dari Activity${u.act_date ? ` (${String(u.act_date).slice(0, 10).split('-').reverse().join('/')})` : ''} — belum ada pembacaan Excel yang lebih baru`}
+                          >
+                            {u.act_hm.toLocaleString()}
+                            <span className="rounded bg-brand-50 px-1 text-[10px] font-normal text-brand-600 dark:bg-brand-500/10 dark:text-brand-300">Akt</span>
+                          </span>
+                        ) : u.final != null ? u.final.toLocaleString() : '·'}
                       </td>
                       <td className={`min-w-[64px] px-1.5 py-1.5 text-center tabular-nums font-medium ${(u.delta ?? 0) < 0 ? 'text-red-600' : u.delta != null ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-300'}`}>
                         {u.delta != null ? u.delta.toLocaleString() : '·'}
@@ -447,6 +455,7 @@ export default function HourmeterPage() {
           <p className="mt-2 text-theme-xs text-gray-400">
             Sumber: upload Excel manual (sheet HM_Manual). Sel kosong berarti tidak ada pembacaan HM hari itu.
             Akhir = pembacaan HM terakhir hari itu bulan; Selisih = Akhir − Opening (dipakai HM bulan tersebut). Upload mengganti seluruh data periode yang dipilih.
+            Tanda <span className="rounded bg-brand-50 px-1 text-[10px] font-medium text-brand-600 dark:bg-brand-500/10 dark:text-brand-300">Akt</span> pada kolom Akhir berarti HM terbaru berasal dari input Activity (tab Rekap) — dipakai bila belum ada pembacaan Excel yang lebih baru. Data Excel tidak diubah.
           </p>
         </>
       ) : tab === 'dragflow' ? (

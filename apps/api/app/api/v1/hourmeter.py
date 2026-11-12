@@ -272,7 +272,16 @@ async def pivot(
     year: int = Query(None), month: int = Query(None, ge=1, le=12),
     db: AsyncSession = Depends(get_db), _user=Depends(get_current_user),
 ):
-    """Grid HM: baris = CN unit, kolom = hari, + opening & akhir & selisih."""
+    """Grid HM: baris = CN unit, kolom = hari, + opening & akhir & selisih.
+
+    Selain nilai Excel (hourmeter_opening/hourmeter_daily), tiap unit juga
+    membawa **HM terbaru dari halaman Activity** (tabel `activities.hm`,
+    semua kategori). Nilai Activity hanya punya tanggal (bukan hari ke-berapa
+    di grid), jadi tidak ditulis ke sel hari mana pun — ia dikirim sebagai
+    `act_hm`/`act_date` untuk dipakai sebagai **Akhir** unit bila lebih baru
+    dari pembacaan Excel. Dengan begitu HM yang diinput di Activity → Rekap
+    tetap terlihat di Grid HM, tanpa mengubah isi database Excel.
+    """
     today = date.today()
     year = year or today.year
     month = month or today.month
@@ -288,22 +297,68 @@ async def pivot(
         WHERE period = :p ORDER BY cn, day
     """), {"p": period})).fetchall()
 
+    # HM terbaru dari Activity pada PERIODE yang dipilih (semua kategori, boleh
+    # unit yang belum ada di Excel). Satu unit bisa punya banyak catatan;
+    # diambil yang terakhir: tanggal terbesar, lalu shift terbesar, lalu input
+    # terbaru (created_at). Dibatasi ke bulan yang dipilih agar Grid HM
+    # tidak menampilkan unit dari bulan lain saat filter diganti.
+    act_rows = (await db.execute(text("""
+        WITH act_rank AS (
+          SELECT cn, hm, date,
+                 ROW_NUMBER() OVER (PARTITION BY cn
+                     ORDER BY date DESC, shift DESC NULLS LAST,
+                              created_at DESC) AS rn
+          FROM activities
+          WHERE hm IS NOT NULL AND cn IS NOT NULL
+            AND date >= :start AND date <= :end
+        )
+        SELECT cn, hm, CAST(date AS TEXT) AS act_date
+        FROM act_rank WHERE rn = 1
+    """), {"start": f"{period}-01", "end": f"{period}-{days_in_month:02d}"})).mappings().all()
+    act: dict[str, tuple] = {r["cn"]: (r["hm"], r["act_date"]) for r in act_rows}
+
     cells: dict[str, dict[int, int]] = {}
     for r in val_rows:
         cells.setdefault(r[0], {})[r[1]] = r[2]
 
-    units = []
+    # CN = gabungan unit di Grid HM periode ini + unit yang hanya muncul di
+    # Activity, supaya HM Activity tidak "hilang" dari Grid.
+    cn_order: list[str] = []
+    seen: set[str] = set()
+    egi_by_cn: dict[str, str | None] = {}
+    opening_by_cn: dict[str, int | None] = {}
     for r in op_rows:
-        cn = r["cn"]
+        if r["cn"] not in seen:
+            seen.add(r["cn"]); cn_order.append(r["cn"])
+        egi_by_cn[r["cn"]] = r["egi"]
+        opening_by_cn[r["cn"]] = r["opening"]
+    for cn in act:
+        if cn not in seen:
+            seen.add(cn); cn_order.append(cn)
+    for cn in cells:
+        if cn not in seen:
+            seen.add(cn); cn_order.append(cn)
+
+    units = []
+    for cn in sorted(cn_order):
         vals = cells.get(cn, {})
-        opening = r["opening"]
+        opening = opening_by_cn.get(cn)
         last_day = max(vals) if vals else None
         final = vals[last_day] if last_day is not None else opening
-        delta = (final - opening) if (final is not None and opening is not None) else None
+        a_hm, a_date = act.get(cn, (None, None))
+        # HM Akhir = pembacaan Excel terbaru, atau HM Activity bila lebih baru
+        # / Excel belum punya pembacaan sama sekali.
+        act_final = None
+        hm_final = final
+        if a_hm is not None and (final is None or a_hm >= final):
+            act_final = a_hm
+            hm_final = a_hm
+        delta = (hm_final - opening) if (hm_final is not None and opening is not None) else None
         units.append({
-            "cn": cn, "egi": r["egi"], "opening": opening,
+            "cn": cn, "egi": egi_by_cn.get(cn), "opening": opening,
             "vals": {str(d): v for d, v in vals.items()},
             "last_day": last_day, "final": final, "delta": delta,
+            "act_hm": act_final, "act_date": a_date if act_final is not None else None,
         })
     return {"period": period, "days_in_month": days_in_month, "units": units}
 
