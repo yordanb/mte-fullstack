@@ -6,11 +6,24 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { DatePicker } from '../components/DatePicker'
 import {
   can, errMsg, todayLocal, fetchHourmeterPivot, fetchHourmeterStats, uploadHourmeter,
-  saveHourmeterQuick,
+  saveHourmeterQuick, fetchHourmeterSummary,
   type HourmeterPivot, type HourmeterStats, type HourmeterQuickItem, type HourmeterQuickRow,
+  type HourmeterSummary,
 } from '../api/client'
 
 const MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+
+// Pasangan unit Daily Check Dragflow — sama dengan ActivityPage web (DRAGFLOW_PAIRS).
+// Tabel HM Dragflow memakai pasangan yang sama, HM dirujuk dari aktivitas
+// "Daily Check Dragflow" (lookup by kode WP / pompa).
+export const DRAGFLOW_UNITS = [
+  { ex: 'EX264', wp: 'WP792' },
+  { ex: 'EX326', wp: 'WP1080' },
+  { ex: 'EX312', wp: 'WP1081' },
+  { ex: 'EX265', wp: 'WP791' },
+  { ex: 'EX339', wp: 'WP1309' },
+  { ex: 'EX329', wp: 'WP1063' },
+]
 
 // ── Parser baris "Wp1140 hm.2196" → { cn: 'WP1140', hm: 2196 } ──────────────
 // Menerima pemisah apa pun antara CN dan "hm" (spasi/tab), dan antara "hm"
@@ -47,11 +60,13 @@ const fmtNum = (v?: number | null) =>
 
 export default function HourmeterPage() {
   const now = new Date()
-  const [tab, setTab] = useState<'grid' | 'quick'>('grid')
+  const [tab, setTab] = useState<'grid' | 'quick' | 'dragflow'>('grid')
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [pivot, setPivot] = useState<HourmeterPivot | null>(null)
   const [stats, setStats] = useState<HourmeterStats | null>(null)
+  const [summary, setSummary] = useState<HourmeterSummary | null>(null)
+  const [loadingDf, setLoadingDf] = useState(false)
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [msgErr, setMsgErr] = useState(false)
@@ -76,7 +91,7 @@ export default function HourmeterPage() {
   const [tableH, setTableH] = useState(400)
 
   useLayoutEffect(() => {
-    if (tab !== 'grid') return
+    if (tab === 'quick') return
     const el = tableWrapRef.current
     if (!el) return
     const update = () => {
@@ -90,7 +105,21 @@ export default function HourmeterPage() {
     if (rootRef.current) ro.observe(rootRef.current)
     window.addEventListener('resize', update)
     return () => { ro.disconnect(); window.removeEventListener('resize', update) }
-  }, [loading, pivot, stats, msg, tab])
+  }, [loading, pivot, summary, stats, msg, tab])
+
+  const loadDragflow = async (y?: number, m?: number) => {
+    setLoadingDf(true)
+    try {
+      const [s, st] = await Promise.all([
+        fetchHourmeterSummary(y ?? year, m ?? month),
+        fetchHourmeterStats(),
+      ])
+      setSummary(s)
+      setStats(st)
+      setMsg('')
+    } catch (e) { setMsg(`gagal: ${errMsg(e)}`); setMsgErr(true) }
+    setLoadingDf(false)
+  }
 
   const load = async (y?: number, m?: number) => {
     setLoading(true)
@@ -103,6 +132,7 @@ export default function HourmeterPage() {
     setLoading(false)
   }
   useEffect(() => { if (tab === 'grid') load() }, [year, month, tab]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (tab === 'dragflow') loadDragflow() }, [year, month, tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const doUpload = async (file: File) => {
     setUploading(true); setMsg('mengupload & membaca file...'); setMsgErr(false)
@@ -150,7 +180,7 @@ export default function HourmeterPage() {
     <div ref={rootRef} className="w-full px-2">
       {/* Tab: Grid HM | Input Cepat */}
       <div className="mb-3 flex gap-1 border-b border-gray-200 dark:border-gray-700">
-        {([['grid', 'Grid HM'], ['quick', 'Input Cepat HM']] as const).map(([k, label]) => (
+        {([['grid', 'Grid HM'], ['quick', 'Input Cepat HM'], ['dragflow', 'HM Dragflow']] as const).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`-mb-px border-b-2 px-4 py-2 text-theme-sm font-medium ${
               tab === k
@@ -273,6 +303,20 @@ export default function HourmeterPage() {
             Akhir = pembacaan HM terakhir hari itu bulan; Selisih = Akhir − Opening (dipakai HM bulan tersebut). Upload mengganti seluruh data periode yang dipilih.
           </p>
         </>
+      ) : tab === 'dragflow' ? (
+        <DragflowTab
+          year={year}
+          month={month}
+          now={now}
+          loading={loadingDf}
+          summary={summary}
+          msg={msg}
+          msgErr={msgErr}
+          tableH={tableH}
+          tableWrapRef={tableWrapRef}
+          onMonth={setMonth}
+          onYear={setYear}
+        />
       ) : (
         <QuickInputTab
           canSave={canUpload}
@@ -291,6 +335,130 @@ export default function HourmeterPage() {
         />
       )}
     </div>
+  )
+}
+
+// ───────────────────────── Tab HM Dragflow ─────────────────────────────────
+//
+// Format tabel sama dengan "Grid HM" (unit baris, sticky CN Unit + EGI), tetapi
+// hanya unit dragflow (pasangan Activity → tab DC Dragflow) dan kolomnya:
+//   EX · Code Number · HM Last RFU · Lifetime Now · HM Tercatat
+// Sumber HM: pembacaan HM terakhir (daily/opening) per unit; "HM Tercatat"
+// = kapan nilai itu tersimpan di database (`hourmeter_daily.updated_at`).
+
+const fmtHmVal = (v?: number | null) =>
+  v == null ? '·' : new Intl.NumberFormat('id-ID').format(Math.round(Number(v)))
+
+const fmtStamp = (v?: string | null) => {
+  if (!v) return null
+  const d = new Date(v)
+  if (Number.isNaN(d.getTime())) return null
+  const p = (n: number) => String(n).padStart(2, '0')
+  const hm = `${p(d.getHours())}:${p(d.getMinutes())}`
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${hm}`
+}
+
+function DragflowTab({
+  year, month, now, loading, summary, msg, msgErr, tableH, tableWrapRef, onMonth, onYear,
+}: {
+  year: number
+  month: number
+  now: Date
+  loading: boolean
+  summary: HourmeterSummary | null
+  msg: string
+  msgErr: boolean
+  tableH: number
+  tableWrapRef: { current: HTMLDivElement | null }
+  onMonth: (m: number) => void
+  onYear: (y: number) => void
+}) {
+  const byCn = useMemo(() => {
+    const m = new Map<string, HourmeterSummary['units'][number]>()
+    for (const u of summary?.units ?? []) m.set(u.cn, u)
+    return m
+  }, [summary])
+
+  return (
+    <>
+      {/* Filter periode — sama dengan tab Grid HM */}
+      <div className="mb-3 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="block text-theme-xs text-gray-500">Bulan</label>
+          <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={month} onChange={e => onMonth(+e.target.value)}>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{MONTHS[m - 1]}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-theme-xs text-gray-500">Tahun</label>
+          <select className="rounded-lg border px-2 py-1.5 text-theme-sm" value={year} onChange={e => onYear(+e.target.value)}>
+            {Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i).map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <p className="text-theme-xs text-gray-400">
+          Unit mengikuti pasangan <span className="font-medium text-gray-500 dark:text-gray-400">Activity → tab DC Dragflow</span>
+          {' '}({DRAGFLOW_UNITS.length} pasangan EX–WP). HM dirujuk dari pembacaan hourmeter unit WP.
+        </p>
+      </div>
+
+      {msg && (
+        <div className={`mb-3 rounded-lg border px-4 py-2 text-theme-sm ${msgErr ? 'border-red-200 bg-red-50 text-red-700' : 'border-blue-200 bg-blue-50 text-blue-700'}`}>
+          {msg}
+        </div>
+      )}
+
+      {loading && !summary ? (
+        <div className="rounded-2xl border bg-white p-10 text-center text-theme-sm text-gray-500">Memuat…</div>
+      ) : (
+        <div
+          ref={(el) => { tableWrapRef.current = el }}
+          className="min-w-0 w-full overflow-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+          style={{ height: summary ? tableH : undefined, boxSizing: 'border-box' }}
+        >
+          <table className="border-collapse text-theme-xs" style={{ width: 'max-content' }}>
+            <thead className="sticky top-0 z-30">
+              <tr className="border-b bg-gray-50 dark:bg-gray-800">
+                <th className="sticky left-0 top-0 z-40 min-w-[64px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">EX</th>
+                <th className="sticky left-[64px] top-0 z-40 min-w-[96px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">Code Number</th>
+                <th className="top-0 z-40 min-w-[120px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
+                  title="Hourmeter pada aktivitas Daily Check Dragflow (RFU) terakhir">HM Last RFU</th>
+                <th className="top-0 z-40 min-w-[120px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
+                  title="Pembacaan HM terbaru lintas periode (umur unit berjalan)">Lifetime Now</th>
+                <th className="top-0 z-40 min-w-[150px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800"
+                  title="Kapan nilai HM tersebut tercatat di database">HM Tercatat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DRAGFLOW_UNITS.map((p, ri) => {
+                const u = byCn.get(p.wp)
+                const at = fmtStamp(u?.hm_at)
+                return (
+                  <tr key={p.wp} className={ri % 2 ? 'bg-gray-50/50 dark:bg-gray-800/30' : 'bg-white dark:bg-gray-900'}>
+                    <td className="sticky left-0 z-10 min-w-[64px] bg-inherit px-2 py-1.5 font-medium text-gray-500 dark:text-gray-400">{p.ex}</td>
+                    <td className="sticky left-[64px] z-10 min-w-[96px] bg-inherit px-2 py-1.5 font-semibold text-gray-700 dark:text-gray-300">{p.wp}</td>
+                    <td className="min-w-[120px] px-2 py-1.5 text-right font-semibold tabular-nums text-gray-700 dark:text-gray-300">
+                      {u ? fmtHmVal(u.hm_last) : '·'}
+                    </td>
+                    <td className="min-w-[120px] px-2 py-1.5 text-right tabular-nums text-brand-600 dark:text-brand-300">
+                      {u ? fmtHmVal(u.hm_lifetime) : '·'}
+                    </td>
+                    <td className={`min-w-[150px] whitespace-nowrap px-2 py-1.5 ${at ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300'}`}>
+                      {at ?? (u ? 'belum ada pembacaan' : 'belum ada di grid')}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="mt-2 text-theme-xs text-gray-400">
+        HM Last RFU = pembacaan HM terakhir unit WP pada periode {MONTHS[month - 1]} {year} (fallback opening bila belum ada pembacaan harian).
+        Lifetime Now = pembacaan HM terbaru lintas periode. HM Tercatat = waktu nilai itu tersimpan di database
+        (upload Excel HM atau Input Cepat HM).
+      </p>
+    </>
   )
 }
 

@@ -61,7 +61,7 @@ Agent / Administrasi**, autohide overlay, ikon per menu, dark mode penuh, notifi
 | Follow Up | **FUI** | Dossier per unit (ketik CN): kartu equipment (+serial), 10 DBR terbaru (Code USM, tanpa CONTINUE), 10 oil terakhir per component. Tombol Export PDF/PAMA **disembunyikan sementara** (`SHOW_FUI_EXPORT`). |
 | Follow Up | **Suggestion FUI** | Unit aktif yang sample terakhirnya non-NORMAL + masing-masing 3 oil terakhir, per kategori; tombol *Suggest Follow Up* per baris non-NORMAL (inputer+). |
 | Follow Up | **Report Follow Up** | Semua oil terakhir non-NORMAL + status Sudah/Belum suggest + saran terakhir; filter kategori/cari/status; riwayat suggest per lab. |
-| Technical Expert | **Hourmeter** | Pencatatan **HM bulanan** per unit. Tab **Grid HM** (upload Excel manual): rekap per bulan/per unit + ringkasan. Tab **Input Cepat HM**: tempel teks `WP491 hm.22531` (deteksi CN+HM otomatis), tanggal default hari ini (bisa diubah), simpan ke grid bulan itu, + peringatan bila CN tidak ada di master equipment. |
+| Technical Expert | **Hourmeter** | Pencatatan **HM bulanan** per unit. Tab **Grid HM** (upload Excel manual): rekap per bulan/per unit + ringkasan. Tab **Input Cepat HM**: tempel teks `WP491 hm.22531` (deteksi CN+HM otomatis), tanggal default hari ini (bisa diubah), simpan ke grid bulan itu, + peringatan bila CN tidak ada di master equipment. Tab **HM Dragflow**: 6 pasangan unit Activity "DC Dragflow" (EX–WP) dengan format tabel seperti Grid HM: **EX · Code Number · HM Last RFU · Lifetime Now · HM Tercatat** (waktu nilai HM tersimpan di database). |
 | Technical Expert | **PPM** | Placeholder (konten menyusul). |
 | Technical Expert | **Measurement** | Placeholder (konten menyusul). |
 | Operasional | **Yazu Lighting P2H** | Pivot **HM bulanan** per unit dari checklist inspeksi unit (sync Google Sheets), sticky header + scroll internal (vertikal & horizontal). Deteksi anomali kenaikan HM harian: **merah** bila delta `< 0` (HM mundur) atau `> 24`, **oranye** 14–24, **hijau** 10–14, normal 0–10. Delta dinormalisasi bila ada hari kosong (`delta / gap hari`). |
@@ -122,7 +122,7 @@ menu **Users**; menu baru wajib menambah key-nya di `role_permissions_menu_check
 | Safety | `POST /v1/safety/sync` · `GET /v1/safety/{latest-sync,coverage,records,export}` |
 | R1BI | `POST /v1/r1bi/sync` · `GET /v1/r1bi/{latest-sync,coverage,records,export}` |
 | Yazu | `POST /v1/yazu-lighting/sync` · `GET /v1/yazu-lighting/{stats,units,pivot,raw}` · `POST /v1/yazu-dc-lighting/sync` · `GET /v1/yazu-dc-lighting/{stats,units,pivot,raw}` · `POST /v1/yazu-pumping/sync` · `GET /v1/yazu-pumping/{stats,units,pivot,raw}` |
-| Hourmeter | `GET /v1/hourmeter/{periods,recap,units}` · `POST /v1/hourmeter/import` |
+| Hourmeter | `GET /v1/hourmeter/{stats,pivot,summary}` · `POST /v1/hourmeter/{upload,quick-input}` |
 | Manpower | `GET /v1/manpower/{periods,summary,trend,records}` · `GET /v1/manpower/manage` · `PATCH /v1/manpower/manage/{nrp}` · `POST /v1/manpower/manage/{bulk,autofill}` |
 | Ewacs | `POST /v1/ewacs/import` · `GET /v1/ewacs/{filters,kpi,trend,detail}` · `DELETE /v1/ewacs/all` (admin) |
 | Suggestion System | `POST /v1/ss/import` · `GET /v1/ss/import/{import_id}` · `GET /v1/ss/{filters,kpi,trend,breakdown,top,records,export}` · `DELETE /v1/ss/all` (semua **admin only**) |
@@ -184,6 +184,8 @@ Error selalu `{detail: "..."}` dan ditampilkan verbatim oleh web (helper `errMsg
 | `V65__proker_panel_booster.sql` | Proker GMC Panel Booster (2.000 h): tabel `proker_panel_unit` + `proker_panel_execution` + menu `prokerpanel` (grup Technical Expert) |
 | `V66__update_data_perm.sql` | Update Data (`import`) jadi gerbang izin tersendiri: upload SS & Manpower Inovasi lepas dari izin halaman sumber; default hanya admin + `adm te` |
 | `V67__yazu_pumping_dc.sql` | Modul baru **Yazu Pumping Daily Check**: tabel `yazu_pumping_dc` (+ kolom `kategori`: primer/mhp/booster) + `yazu_pumping_dc_sync_log` + menu `yazupumpingdc` (salin izin dari `yazupumping`) |
+| `V68__manpower_crew_dept_head.sql` | Kategori crew Manpower Inovasi `Dept Head` (constraint crew + seed) |
+| `V69__hourmeter_daily_updated.sql` | Kolom `hourmeter_daily.updated_at` + indeks `(cn, updated_at DESC)`; dipakai kolom **HM Tercatat** tab *HM Dragflow* (backfill dari log upload periode) |
 
 Fresh install: otomatis via `/docker-entrypoint-initdb.d` (urut abjad = urut versi).
 Database lama: jalankan manual file yang belum diterapkan (lihat riwayat di bawah).

@@ -228,8 +228,8 @@ async def upload_hourmeter(
         ]
         if vp:
             await db.execute(text("""
-                INSERT INTO hourmeter_daily(period, cn, day, hm)
-                VALUES (:p, :cn, :d, :v)
+                INSERT INTO hourmeter_daily(period, cn, day, hm, updated_at)
+                VALUES (:p, :cn, :d, :v, NOW())
             """), vp)
         nval = len(vp)
         await db.execute(text("""
@@ -308,6 +308,79 @@ async def pivot(
     return {"period": period, "days_in_month": days_in_month, "units": units}
 
 
+# ─── Ringkasan per unit (tab HM Dragflow) ─────────────────────────────────
+
+@router.get("/summary")
+async def summary(
+    year: int = Query(None), month: int = Query(None, ge=1, le=12),
+    db: AsyncSession = Depends(get_db), _user=Depends(get_current_user),
+):
+    """HM per unit (tanpa pivot harian) — untuk daftar unit dragflow.
+
+    `hm_last`   = pembacaan HM terbaru pada periode terpilih (fallback opening
+                  bila unit itu belum punya pembacaan harian);
+    `hm_lifetime` = pembacaan HM terbaru lintas periode (umur unit berjalan);
+    `hm_at`     = kapan pembacaan terbaru itu TERCATAT di database
+                  (`hourmeter_daily.updated_at`, lihat migrasi V69).
+    """
+    today = date.today()
+    year = year or today.year
+    month = month or today.month
+    period = f"{year}-{month:02d}"
+
+    # Semua dalam satu query (agregat per unit), supaya cepat untuk daftar unit.
+    rows = (await db.execute(text("""
+        WITH cur AS (
+          SELECT cn,
+                 MAX(day) AS last_day,
+                 COUNT(*)  AS n
+          FROM hourmeter_daily
+          WHERE period = :p
+          GROUP BY cn
+        ),
+        cur_hm AS (
+          SELECT d.cn, MAX(d.hm) AS hm, MAX(d.updated_at) AS updated_at
+          FROM hourmeter_daily d JOIN cur ON cur.cn = d.cn
+          WHERE d.period = :p AND d.day = cur.last_day
+          GROUP BY d.cn
+        ),
+        life_p AS (
+          SELECT cn, MAX(period) AS period
+          FROM hourmeter_daily
+          WHERE cn IN (SELECT cn FROM hourmeter_opening WHERE period = :p)
+          GROUP BY cn
+        ),
+        life_hm AS (
+          SELECT d.cn, MAX(d.hm) AS hm
+          FROM hourmeter_daily d JOIN life_p ON life_p.cn = d.cn AND life_p.period = d.period
+          WHERE d.day = (SELECT MAX(x.day) FROM hourmeter_daily x
+                         WHERE x.cn = d.cn AND x.period = d.period)
+          GROUP BY d.cn
+        )
+        SELECT o.cn, o.egi, o.opening,
+               c.hm         AS last_hm,
+               c.updated_at AS last_at,
+               l.hm         AS lifetime_hm
+        FROM hourmeter_opening o
+        LEFT JOIN cur_hm  c ON c.cn = o.cn
+        LEFT JOIN life_hm l ON l.cn = o.cn
+        WHERE o.period = :p
+        ORDER BY o.cn
+    """), {"p": period})).mappings().all()
+
+    units = [{
+        "cn": r["cn"],
+        "egi": r["egi"],
+        # HM periode terpilih: pembacaan harian terakhir, fallback opening.
+        "hm_last": r["last_hm"] if r["last_hm"] is not None else r["opening"],
+        # Lifetime = pembacaan terbaru lintas periode (umur unit berjalan).
+        "hm_lifetime": r["lifetime_hm"] if r["lifetime_hm"] is not None else r["opening"],
+        "hm_at": r["last_at"].isoformat() if r["last_at"] else None,
+    } for r in rows]
+
+    return {"period": period, "units": units}
+
+
 # ─── Input cepat HM (tempel teks "CN hm.NNNNN") ───────────────────────────
 
 @router.post("/quick-input", dependencies=[Depends(require_menu("hourmeter", "add"))])
@@ -355,9 +428,9 @@ async def quick_input(
             ON CONFLICT (period, cn) DO NOTHING
         """), {"p": period, "cn": cn, "op": hm, "who": user["username"]})
         await db.execute(text("""
-            INSERT INTO hourmeter_daily(period, cn, day, hm)
-            VALUES (:p, :cn, :d, :v)
-            ON CONFLICT (period, cn, day) DO UPDATE SET hm = EXCLUDED.hm
+            INSERT INTO hourmeter_daily(period, cn, day, hm, updated_at)
+            VALUES (:p, :cn, :d, :v, NOW())
+            ON CONFLICT (period, cn, day) DO UPDATE SET hm = EXCLUDED.hm, updated_at = NOW()
         """), {"p": period, "cn": cn, "d": day, "v": hm})
         saved += 1
         item = {"cn": cn, "hm": hm, "status": "saved", "warning": None}

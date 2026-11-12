@@ -1074,6 +1074,26 @@ export async function fetchHourmeterPivot(year?: number, month?: number): Promis
   return r.data
 }
 
+/** Ringkasan HM per unit (tab HM Dragflow). */
+export type HourmeterSummaryUnit = {
+  cn: string
+  egi: string | null
+  /** HM periode terpilih (pembacaan harian terakhir, fallback opening). */
+  hm_last: number | null
+  /** HM terbaru lintas periode (umur unit berjalan). */
+  hm_lifetime: number | null
+  /** Waktu pembacaan tercatat di DB (ISO) — null bila belum ada pembacaan. */
+  hm_at: string | null
+}
+export type HourmeterSummary = {
+  period: string
+  units: HourmeterSummaryUnit[]
+}
+export async function fetchHourmeterSummary(year?: number, month?: number): Promise<HourmeterSummary> {
+  const r = await api.get(`/v1/hourmeter/summary`, { params: { year, month } })
+  return r.data
+}
+
 /** Input cepat HM: simpan baris {cn, hm} pada satu tanggal (YYYY-MM-DD). */
 export type HourmeterQuickRow = { cn: string; hm: number | null }
 export type HourmeterQuickItem = {
