@@ -2,7 +2,7 @@
 // Tab 1 "Grid HM": rekap bulanan (upload Excel mengganti seluruh data periode).
 // Tab 2 "Input Cepat": tempel teks "CN hm.NNNNN" → deteksi CN+HM, tanggal default
 //   hari ini (bisa diubah sebelum disimpan), lalu simpan ke grid bulan itu.
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { DatePicker } from '../components/DatePicker'
 import {
   can, errMsg, todayLocal, fetchHourmeterPivot, fetchHourmeterStats, uploadHourmeter,
@@ -166,6 +166,49 @@ export default function HourmeterPage() {
     setSaving(false)
   }
 
+  // ── Tab HM Dragflow: form isi HM RFU per baris ───────────────────
+  const [rfEdit, setRfEdit] = useState<{ cn: string; ex: string } | null>(null)
+  const [rfHm, setRfHm] = useState('')
+  const [rfDate, setRfDate] = useState(todayLocal())
+  const [rfSaving, setRfSaving] = useState(false)
+  const [rfMsg, setRfMsg] = useState('')
+  const [rfErr, setRfErr] = useState(false)
+
+  const openRfForm = (cn: string, ex: string) => {
+    setRfEdit({ cn, ex })
+    setRfHm('')           // kosong = ambil nilai HM terakhir yang tampil
+    setRfDate(todayLocal())
+    setRfMsg(''); setRfErr(false)
+  }
+
+  const saveRf = async () => {
+    if (!rfEdit) return
+    const u = summary?.units.find((x) => x.cn === rfEdit.cn)
+    // Kosong = pakai HM terakhir (nilai yang tampil di baris), jadi operator
+    // cukup memilih tanggal saat HM itu dibaca (RFU).
+    const hm = rfHm.trim() === '' ? (u?.hm_lifetime ?? u?.hm_last ?? null) : Number(rfHm)
+    if (hm == null || Number.isNaN(hm)) {
+      setRfMsg('HM belum ada di grid. Isi angka HM RFU secara manual.'); setRfErr(true); return
+    }
+    setRfSaving(true); setRfMsg(''); setRfErr(false)
+    try {
+      const r = await saveHourmeterQuick(rfDate, [{ cn: rfEdit.cn, hm }])
+      const it = r.results[0]
+      if (it?.status === 'saved') {
+        setRfMsg(`HM RFU ${rfEdit.cn} tersimpan: ${hm.toLocaleString('id-ID')} pada ${r.date}.` +
+          (it.warning ? ` Catatan: ${it.warning}.` : ''))
+        setRfErr(false)
+        setRfEdit(null)      // tutup form, tabel langsung diperbarui
+        const [gy, gm] = r.period.split('-')
+        setYear(Number(gy)); setMonth(Number(gm))
+        await loadDragflow(Number(gy), Number(gm))
+      } else {
+        setRfMsg(it?.warning ?? 'HM gagal disimpan.'); setRfErr(true)
+      }
+    } catch (e) { setRfMsg(`gagal menyimpan: ${errMsg(e)}`); setRfErr(true) }
+    setRfSaving(false)
+  }
+
   const isAdmin = localStorage.getItem('mte_role') === 'admin'
   const canUpload = isAdmin || can('hourmeter', 'add')
   const curPeriod = (stats?.periods || []).filter((p) => p.period === `${year}-${String(month).padStart(2, '0')}`)[0]
@@ -316,6 +359,18 @@ export default function HourmeterPage() {
           tableWrapRef={tableWrapRef}
           onMonth={setMonth}
           onYear={setYear}
+          canFill={canUpload}
+          rfEdit={rfEdit}
+          rfHm={rfHm}
+          setRfHm={setRfHm}
+          rfDate={rfDate}
+          setRfDate={setRfDate}
+          rfSaving={rfSaving}
+          rfMsg={rfMsg}
+          rfErr={rfErr}
+          onOpenRf={openRfForm}
+          onSaveRf={saveRf}
+          onCancelRf={() => { setRfEdit(null); setRfMsg(''); setRfErr(false) }}
         />
       ) : (
         <QuickInputTab
@@ -342,9 +397,11 @@ export default function HourmeterPage() {
 //
 // Format tabel sama dengan "Grid HM" (unit baris, sticky CN Unit + EGI), tetapi
 // hanya unit dragflow (pasangan Activity → tab DC Dragflow) dan kolomnya:
-//   EX · Code Number · HM Last RFU · Lifetime Now · HM Tercatat
-// Sumber HM: pembacaan HM terakhir (daily/opening) per unit; "HM Tercatat"
-// = kapan nilai itu tersimpan di database (`hourmeter_daily.updated_at`).
+//   EX · Code Number · HM Last RFU · Date RFU · Lifetime Now · HM Tercatat · aksi
+// Sumber HM: pembacaan HM terakhir (daily/opening) per unit; "Date RFU"
+// = tanggal pembacaan HM terakhir itu; "HM Tercatat" = kapan nilai itu
+// tersimpan di database (`hourmeter_daily.updated_at`).
+// Tombol "Isi RFU" menulis HM RFU ke tanggal RFU lewat endpoint input cepat.
 
 const fmtHmVal = (v?: number | null) =>
   v == null ? '·' : new Intl.NumberFormat('id-ID').format(Math.round(Number(v)))
@@ -358,8 +415,19 @@ const fmtStamp = (v?: string | null) => {
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${hm}`
 }
 
+/** Tanggal saja: "09/11/2026". */
+const fmtDateOnly = (v?: string | null) => {
+  if (!v) return null
+  const d = new Date(v)
+  if (Number.isNaN(d.getTime())) return null
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`
+}
+
 function DragflowTab({
   year, month, now, loading, summary, msg, msgErr, tableH, tableWrapRef, onMonth, onYear,
+  canFill, rfEdit, rfHm, setRfHm, rfDate, setRfDate, rfSaving, rfMsg, rfErr,
+  onOpenRf, onSaveRf, onCancelRf,
 }: {
   year: number
   month: number
@@ -372,6 +440,18 @@ function DragflowTab({
   tableWrapRef: { current: HTMLDivElement | null }
   onMonth: (m: number) => void
   onYear: (y: number) => void
+  canFill: boolean
+  rfEdit: { cn: string; ex: string } | null
+  rfHm: string
+  setRfHm: (v: string) => void
+  rfDate: string
+  setRfDate: (v: string) => void
+  rfSaving: boolean
+  rfMsg: string
+  rfErr: boolean
+  onOpenRf: (cn: string, ex: string) => void
+  onSaveRf: () => void
+  onCancelRf: () => void
 }) {
   const byCn = useMemo(() => {
     const m = new Map<string, HourmeterSummary['units'][number]>()
@@ -421,31 +501,95 @@ function DragflowTab({
                 <th className="sticky left-0 top-0 z-40 min-w-[64px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">EX</th>
                 <th className="sticky left-[64px] top-0 z-40 min-w-[96px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800">Code Number</th>
                 <th className="top-0 z-40 min-w-[120px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
-                  title="Hourmeter pada aktivitas Daily Check Dragflow (RFU) terakhir">HM Last RFU</th>
+                  title="Pembacaan HM terakhir unit WP pada periode terpilih (RFU)">HM Last RFU</th>
+                <th className="top-0 z-40 min-w-[100px] bg-gray-50 px-2 py-2 text-center font-semibold dark:bg-gray-800"
+                  title="Tanggal HM Last RFU dibaca / dicatat">Date RFU</th>
                 <th className="top-0 z-40 min-w-[120px] bg-gray-50 px-2 py-2 text-right font-semibold dark:bg-gray-800"
                   title="Pembacaan HM terbaru lintas periode (umur unit berjalan)">Lifetime Now</th>
                 <th className="top-0 z-40 min-w-[150px] bg-gray-50 px-2 py-2 text-left font-semibold dark:bg-gray-800"
                   title="Kapan nilai HM tersebut tercatat di database">HM Tercatat</th>
+                {canFill && <th className="top-0 z-40 min-w-[90px] bg-gray-50 px-2 py-2 text-center font-semibold dark:bg-gray-800">Aksi</th>}
               </tr>
             </thead>
             <tbody>
               {DRAGFLOW_UNITS.map((p, ri) => {
                 const u = byCn.get(p.wp)
                 const at = fmtStamp(u?.hm_at)
+                const rdate = fmtDateOnly(u?.hm_at)
+                const editing = rfEdit?.cn === p.wp
+                const rowBg = editing
+                  ? 'bg-brand-50/70 dark:bg-brand-500/10'
+                  : ri % 2 ? 'bg-gray-50/50 dark:bg-gray-800/30' : 'bg-white dark:bg-gray-900'
+                const colSpan = canFill ? 7 : 6
                 return (
-                  <tr key={p.wp} className={ri % 2 ? 'bg-gray-50/50 dark:bg-gray-800/30' : 'bg-white dark:bg-gray-900'}>
-                    <td className="sticky left-0 z-10 min-w-[64px] bg-inherit px-2 py-1.5 font-medium text-gray-500 dark:text-gray-400">{p.ex}</td>
-                    <td className="sticky left-[64px] z-10 min-w-[96px] bg-inherit px-2 py-1.5 font-semibold text-gray-700 dark:text-gray-300">{p.wp}</td>
-                    <td className="min-w-[120px] px-2 py-1.5 text-right font-semibold tabular-nums text-gray-700 dark:text-gray-300">
-                      {u ? fmtHmVal(u.hm_last) : '·'}
-                    </td>
-                    <td className="min-w-[120px] px-2 py-1.5 text-right tabular-nums text-brand-600 dark:text-brand-300">
-                      {u ? fmtHmVal(u.hm_lifetime) : '·'}
-                    </td>
-                    <td className={`min-w-[150px] whitespace-nowrap px-2 py-1.5 ${at ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300'}`}>
-                      {at ?? (u ? 'belum ada pembacaan' : 'belum ada di grid')}
-                    </td>
-                  </tr>
+                  <Fragment key={p.wp}>
+                    <tr className={rowBg}>
+                      <td className="sticky left-0 z-10 min-w-[64px] bg-inherit px-2 py-1.5 font-medium text-gray-500 dark:text-gray-400">{p.ex}</td>
+                      <td className="sticky left-[64px] z-10 min-w-[96px] bg-inherit px-2 py-1.5 font-semibold text-gray-700 dark:text-gray-300">{p.wp}</td>
+                      <td className="min-w-[120px] px-2 py-1.5 text-right font-semibold tabular-nums text-gray-700 dark:text-gray-300">
+                        {u ? fmtHmVal(u.hm_last) : '·'}
+                      </td>
+                      <td className="min-w-[100px] whitespace-nowrap px-2 py-1.5 text-center tabular-nums text-gray-600 dark:text-gray-400">
+                        {rdate ?? <span className="text-gray-300">·</span>}
+                      </td>
+                      <td className="min-w-[120px] px-2 py-1.5 text-right tabular-nums text-brand-600 dark:text-brand-300">
+                        {u ? fmtHmVal(u.hm_lifetime) : '·'}
+                      </td>
+                      <td className={`min-w-[150px] whitespace-nowrap px-2 py-1.5 ${at ? 'text-gray-600 dark:text-gray-400' : 'text-gray-300'}`}>
+                        {at ?? (u ? 'belum ada pembacaan' : 'belum ada di grid')}
+                      </td>
+                      {canFill && (
+                        <td className="min-w-[90px] px-2 py-1.5 text-center">
+                          <button
+                            className="rounded-md border border-brand-300 px-2 py-0.5 text-theme-xs font-medium text-brand-600 hover:bg-brand-50 dark:border-brand-500/40 dark:text-brand-300 dark:hover:bg-brand-500/10"
+                            onClick={() => (editing ? onCancelRf() : onOpenRf(p.wp, p.ex))}
+                          >
+                            {editing ? 'Batal' : (u ? 'Ubah RFU' : 'Isi RFU')}
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                    {editing && (
+                      <tr className={rowBg}>
+                        <td colSpan={colSpan} className="px-2 pb-3 pt-0">
+                          <div className="flex flex-wrap items-end gap-3 rounded-lg border border-brand-200 bg-white px-3 py-2 dark:border-brand-500/30 dark:bg-gray-900">
+                            <div>
+                              <label className="block text-theme-xs text-gray-500">HM RFU (opsional)</label>
+                              <input
+                                className="w-32 rounded-lg border px-2 py-1 text-theme-sm tabular-nums"
+                                inputMode="numeric"
+                                placeholder={u ? fmtHmVal(u.hm_lifetime) : 'angka HM'}
+                                value={rfHm}
+                                onChange={(e) => setRfHm(e.target.value.replace(/[^\d]/g, ''))}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-theme-xs text-gray-500">Tanggal RFU</label>
+                              <DatePicker value={rfDate} onChange={setRfDate} />
+                            </div>
+                            <button
+                              className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white disabled:opacity-50"
+                              disabled={rfSaving}
+                              onClick={onSaveRf}
+                            >
+                              {rfSaving ? 'Menyimpan…' : 'Simpan'}
+                            </button>
+                            <button
+                              className="rounded-lg border px-3 py-1.5 text-theme-sm"
+                              disabled={rfSaving}
+                              onClick={onCancelRf}
+                            >Batal</button>
+                            <p className="text-theme-xs text-gray-400">
+                              HM dibiarkan kosong = pakai nilai <span className="font-medium text-gray-500 dark:text-gray-400">Lifetime Now</span> pada baris ini.
+                            </p>
+                            {rfMsg && (
+                              <p className={`w-full text-theme-xs ${rfErr ? 'text-red-600' : 'text-emerald-700 dark:text-emerald-400'}`}>{rfMsg}</p>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 )
               })}
             </tbody>
@@ -455,8 +599,9 @@ function DragflowTab({
 
       <p className="mt-2 text-theme-xs text-gray-400">
         HM Last RFU = pembacaan HM terakhir unit WP pada periode {MONTHS[month - 1]} {year} (fallback opening bila belum ada pembacaan harian).
-        Lifetime Now = pembacaan HM terbaru lintas periode. HM Tercatat = waktu nilai itu tersimpan di database
-        (upload Excel HM atau Input Cepat HM).
+        Date RFU = tanggal pembacaan HM itu. Lifetime Now = pembacaan HM terbaru lintas periode.
+        HM Tercatat = waktu nilai itu tersimpan di database (upload Excel HM atau Input Cepat HM).
+        {canFill && ' Tombol "Isi/Ubah RFU" menyimpan HM RFU beserta tanggalnya ke grid HM periode tanggal tersebut.'}
       </p>
     </>
   )
