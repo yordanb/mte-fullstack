@@ -1,0 +1,748 @@
+// Proker Gen Repair Exhaust Primer Mitsura — program kerja general repair
+// exhaust primer Mitsura (6.000 jam). Format checklist V/X/NA/PLAN/NOTE dengan
+// satu periode "2024 / 2025"; tiap jenis pekerjaan bisa 1 kolom STATUS atau
+// 3 kolom HM|DATE|STATUS. Struktur tampilan sama dengan ProkerExhaust.tsx.
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { DatePicker } from '../components/DatePicker'
+import {
+  can, errMsg, todayLocal,
+  fetchProkerExhaustMitsFilters, fetchProkerExhaustMitsStats, fetchProkerExhaustMitsUnits,
+  fetchProkerExhaustMitsUnit,
+  updateProkerExhaustMitsUnit, createProkerExhaustMitsExecution,
+  updateProkerExhaustMitsExecution, deleteProkerExhaustMitsExecution,
+  importProkerExhaustMitsXlsx, fetchProkerExhaustMitsImportStatus, refreshProkerExhaustMitsHm,
+  type ProkerExhaustMitsDetail, type ProkerExhaustMitsExecution, type ProkerExhaustMitsFilters,
+  type ProkerImportStatus, type ProkerExhaustMitsStats, type ProkerExhaustMitsStatus,
+  type ProkerExhaustMitsUnit, type ProkerExhaustMitsUnitRow,
+} from '../api/client'
+
+const fmtDate = (v?: string | null) => {
+  if (!v) return '-'
+  const p = String(v).slice(0, 10).split('-')
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : String(v)
+}
+
+const fmtNum = (v?: number | null) =>
+  v == null ? '-' : new Intl.NumberFormat('id-ID').format(Math.round(Number(v)))
+
+const fmtHm = (v?: number | null) =>
+  v == null ? '-' : new Intl.NumberFormat('id-ID', { maximumFractionDigits: 2 }).format(Number(v))
+
+const STATUS: Record<ProkerExhaustMitsStatus, { label: string; cls: string }> = {
+  DONE: { label: 'V — Selesai', cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
+  PLAN: { label: 'Rencana', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
+  MISSED: { label: 'X — Tidak', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
+  NA: { label: 'Tidak berlaku', cls: 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
+  NOTE: { label: 'Catatan', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' },
+}
+
+const inp = 'rounded-lg border px-2 py-1.5 text-theme-sm bg-white dark:bg-gray-900'
+
+type FormExec = {
+  id?: number
+  period: string
+  work_type: string
+  service_date: string
+  hm: string
+  remark: string
+  status: ProkerExhaustMitsStatus
+}
+
+const emptyExec = (): FormExec => ({
+  period: '', work_type: '', service_date: todayLocal(), hm: '', remark: '', status: 'DONE',
+})
+
+type FormUnit = { cn: string; no: string; unit_model: string; product: string; unit_type: string; hm_now: string }
+
+export default function ProkerExhaustMitsuraPage() {
+  const [q, setQ] = useState('')
+  const [search, setSearch] = useState('')
+  const [product, setProduct] = useState('')
+  const [model, setModel] = useState('')
+  const [execFilter, setExecFilter] = useState<'' | 'yes' | 'no'>('')
+  const [coverage, setCoverage] = useState<{ executed: number; notExecuted: number } | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize] = useState(50)
+
+  const [units, setUnits] = useState<ProkerExhaustMitsUnit[]>([])
+  const [total, setTotal] = useState(0)
+  const [filters, setFilters] = useState<ProkerExhaustMitsFilters | null>(null)
+  const [stats, setStats] = useState<ProkerExhaustMitsStats | null>(null)
+
+  const [cn, setCn] = useState('')
+  const [detail, setDetail] = useState<ProkerExhaustMitsDetail | null>(null)
+
+  const [msg, setMsg] = useState('')
+  const [loadingUnits, setLoadingUnits] = useState(false)
+  const [loadingDetail, setLoadingDetail] = useState(false)
+  const [reload, setReload] = useState(0)
+
+  const [execForm, setExecForm] = useState<FormExec | null>(null)
+  const [unitForm, setUnitForm] = useState<FormUnit | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  const [importing, setImporting] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [prog, setProg] = useState<ProkerImportStatus | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const timerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setSearch(q.trim()), 400)
+    return () => window.clearTimeout(t)
+  }, [q])
+
+  useEffect(() => { setPage(1) }, [search, product, model, execFilter])
+
+  useEffect(() => {
+    Promise.all([fetchProkerExhaustMitsFilters(), fetchProkerExhaustMitsStats()])
+      .then(([f, s]) => { setFilters(f); setStats(s) })
+      .catch((e) => setMsg(`gagal memuat ringkasan: ${errMsg(e)}`))
+  }, [reload])
+
+  useEffect(() => {
+    let alive = true
+    setLoadingUnits(true)
+    fetchProkerExhaustMitsUnits({
+      search: search || undefined, product: product || undefined,
+      model: model || undefined, executed: execFilter || undefined,
+      page, page_size: pageSize,
+    })
+      .then((r) => {
+        if (!alive) return
+        setUnits(r.data); setTotal(r.total)
+        setCoverage({
+          executed: r.executed_units ?? 0,
+          notExecuted: r.not_executed_units ?? 0,
+        })
+        if (!cn && r.data.length) setCn(r.data[0].cn)
+      })
+      .catch((e) => { if (alive) setMsg(`gagal memuat unit: ${errMsg(e)}`) })
+      .finally(() => { if (alive) setLoadingUnits(false) })
+    return () => { alive = false }
+  }, [search, product, model, execFilter, page, pageSize, reload]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!cn) { setDetail(null); return }
+    let alive = true
+    setLoadingDetail(true)
+    fetchProkerExhaustMitsUnit(cn)
+      .then((d) => { if (alive) setDetail(d) })
+      .catch((e) => { if (alive) setMsg(`gagal memuat riwayat: ${errMsg(e)}`) })
+      .finally(() => { if (alive) setLoadingDetail(false) })
+    return () => { alive = false }
+  }, [cn, reload])
+
+  useEffect(() => () => { if (timerRef.current) window.clearInterval(timerRef.current) }, [])
+
+  const poll = (id: string) => {
+    if (timerRef.current) window.clearInterval(timerRef.current)
+    timerRef.current = window.setInterval(async () => {
+      try {
+        const s = await fetchProkerExhaustMitsImportStatus(id)
+        setProg(s)
+        if (s.status === 'COMMITTED' || s.status === 'FAILED') {
+          if (timerRef.current) window.clearInterval(timerRef.current)
+          timerRef.current = null
+          setImporting(false)
+          if (s.status === 'FAILED') {
+            setMsg(`import gagal: ${s.errors?.error ?? 'tidak diketahui'}`)
+          } else {
+            setMsg(
+              `import selesai: ${fmtNum(s.errors?.units)} unit · ${fmtNum(s.errors?.inserted)} eksekusi baru`
+              + ` + ${fmtNum(s.errors?.updated)} diperbarui`,
+            )
+            setReload((x) => x + 1)
+          }
+        }
+      } catch (e) {
+        if (timerRef.current) window.clearInterval(timerRef.current)
+        timerRef.current = null
+        setImporting(false)
+        setMsg(`gagal cek status import: ${errMsg(e)}`)
+      }
+    }, 1500)
+  }
+
+  const handleFiles = async (files: File[]) => {
+    if (!files.length) return
+    setImporting(true); setProg(null); setMsg('')
+    try {
+      const r = await importProkerExhaustMitsXlsx(files)
+      setMsg(`mengimpor ${r.files} file…`)
+      poll(r.import_id)
+    } catch (e) {
+      setImporting(false)
+      setMsg(`import gagal: ${errMsg(e)}`)
+    }
+  }
+
+  const doRefreshHm = async () => {
+    setRefreshing(true); setMsg('')
+    try {
+      const res = await refreshProkerExhaustMitsHm()
+      setMsg(`Refresh HM selesai: ${res.updated} unit diperbarui · ${res.unchanged} sudah terbaru · ${res.not_found} tidak ditemukan di sumber data`)
+      setReload((x) => x + 1)
+    } catch (e) {
+      setMsg(`Refresh HM gagal: ${errMsg(e)}`)
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  // Selisih HM terhadap eksekusi sebelumnya (urut kronologis).
+  const deltaHm = useMemo(() => {
+    const out: Record<number, number | null> = {}
+    const asc = [...(detail?.executions ?? [])].sort((a, b) => {
+      const da = a.service_date ?? ''
+      const dbb = b.service_date ?? ''
+      if (da !== dbb) return da.localeCompare(dbb)
+      return (a.period_year ?? 0) - (b.period_year ?? 0)
+        || a.work_type.localeCompare(b.work_type)
+        || a.period.localeCompare(b.period)
+    })
+    let prev: number | null = null
+    for (const e of asc) {
+      const hm = e.hm == null ? null : Number(e.hm)
+      out[e.id] = hm != null && prev != null ? hm - prev : null
+      if (hm != null) prev = hm
+    }
+    return out
+  }, [detail])
+
+  const periodOptions = useMemo(() => {
+    const set = new Set<string>((detail?.executions ?? []).map((e) => e.period))
+    const y = new Date().getFullYear()
+    for (const yr of [`${y - 1} / ${y}`, `${y} / ${y + 1}`]) set.add(yr)
+    return Array.from(set).sort((a, b) => b.localeCompare(a))
+  }, [detail])
+
+  const workTypeOptions = useMemo(() => {
+    const set = new Set<string>((detail?.executions ?? []).map((e) => e.work_type))
+    for (const w of filters?.work_types ?? []) set.add(w)
+    return Array.from(set).sort()
+  }, [detail, filters])
+
+  const openAdd = () => {
+    if (!cn) return
+    setExecForm({
+      ...emptyExec(),
+      period: detail?.executions[0]?.period ?? '',
+      work_type: detail?.executions[0]?.work_type ?? workTypeOptions[0] ?? '',
+    })
+  }
+
+  const openEdit = (e: ProkerExhaustMitsExecution) => setExecForm({
+    id: e.id,
+    period: e.period,
+    work_type: e.work_type,
+    service_date: e.service_date ?? '',
+    hm: e.hm == null ? '' : String(e.hm),
+    remark: e.remark ?? '',
+    status: e.status,
+  })
+
+  const openUnit = () => {
+    if (!detail) return
+    setUnitForm({
+      cn: detail.unit.cn,
+      no: detail.unit.no == null ? '' : String(detail.unit.no),
+      unit_model: detail.unit.unit_model ?? '',
+      product: detail.unit.product ?? '',
+      unit_type: detail.unit.unit_type ?? '',
+      hm_now: detail.unit.hm_now == null ? '' : String(detail.unit.hm_now),
+    })
+  }
+
+  const saveExec = async () => {
+    if (!execForm || !cn) return
+    if (!execForm.period.trim()) { setMsg('periode wajib diisi'); return }
+    if (!execForm.work_type.trim()) { setMsg('work type wajib diisi'); return }
+    setSaving(true)
+    const body = {
+      period: execForm.period.trim(),
+      work_type: execForm.work_type.trim().toUpperCase(),
+      service_date: execForm.service_date || null,
+      hm: execForm.hm.trim() === '' ? null : Number(execForm.hm),
+      remark: execForm.remark.trim() || null,
+      status: execForm.status,
+    }
+    try {
+      if (execForm.id) await updateProkerExhaustMitsExecution(execForm.id, body)
+      else await createProkerExhaustMitsExecution(cn, body)
+      setExecForm(null)
+      setMsg(execForm.id ? 'riwayat diperbarui' : 'riwayat ditambahkan')
+      setReload((x) => x + 1)
+    } catch (e) {
+      setMsg(`gagal menyimpan: ${errMsg(e)}`)
+    } finally { setSaving(false) }
+  }
+
+  const removeExec = async (e: ProkerExhaustMitsExecution) => {
+    if (!window.confirm(`Hapus riwayat ${e.period} - ${e.work_type} untuk ${e.cn}?`)) return
+    try {
+      await deleteProkerExhaustMitsExecution(e.id)
+      setMsg('riwayat dihapus')
+      setReload((x) => x + 1)
+    } catch (err) { setMsg(`gagal menghapus: ${errMsg(err)}`) }
+  }
+
+  const saveUnit = async () => {
+    if (!unitForm) return
+    setSaving(true)
+    try {
+      await updateProkerExhaustMitsUnit(unitForm.cn, {
+        no: unitForm.no.trim() === '' ? null : Number(unitForm.no),
+        unit_model: unitForm.unit_model.trim() || null,
+        product: unitForm.product.trim() || null,
+        unit_type: unitForm.unit_type.trim() || null,
+        hm_now: unitForm.hm_now.trim() === '' ? null : Number(unitForm.hm_now),
+      } as Partial<ProkerExhaustMitsUnitRow>)
+      setUnitForm(null)
+      setMsg('data unit diperbarui')
+      setReload((x) => x + 1)
+    } catch (e) {
+      setMsg(`gagal menyimpan unit: ${errMsg(e)}`)
+    } finally { setSaving(false) }
+  }
+
+  const resetFilter = () => { setQ(''); setSearch(''); setProduct(''); setModel(''); setExecFilter('') }
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const s = detail?.stats
+  const donePct = stats && stats.units > 0 ? Math.round((stats.unit_done / stats.units) * 100) : 0
+  const scopeTotal = coverage ? coverage.executed + coverage.notExecuted : total
+  const progPct = prog && prog.total_rows > 0
+    ? Math.min(100, Math.round((prog.processed_rows / prog.total_rows) * 100))
+    : prog?.status === 'COMMITTED' ? 100 : 0
+
+  return (
+    <div className="w-full px-2">
+      {/* Baris atas: filter (kiri) + ringkasan KPI (kanan) */}
+      <div className="mb-3 flex flex-nowrap items-end gap-x-3 gap-y-2">
+        {/* Filter */}
+        <div className="flex flex-nowrap items-end gap-2 shrink-0">
+          <div>
+            <label className="block whitespace-nowrap text-theme-xs text-gray-500">Cari unit</label>
+            <input className={`${inp} w-28`} value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder="C/N / model" />
+          </div>
+          <div>
+            <label className="block whitespace-nowrap text-theme-xs text-gray-500">Product</label>
+            <select className={`${inp} max-w-[6.5rem]`} value={product} onChange={(e) => setProduct(e.target.value)}>
+              <option value="">Semua</option>
+              {(filters?.product ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block whitespace-nowrap text-theme-xs text-gray-500">Unit model</label>
+            <select className={`${inp} max-w-[6.5rem]`} value={model} onChange={(e) => setModel(e.target.value)}>
+              <option value="">Semua</option>
+              {(filters?.model ?? []).map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <button onClick={resetFilter} title="Reset filter"
+            className="whitespace-nowrap rounded-lg border px-2 py-1.5 text-theme-sm text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
+            Reset
+          </button>
+          {can('prokerexhaustmits', 'add') && (
+            <>
+              <input ref={fileRef} type="file" accept=".xlsx,.xlsm" multiple className="hidden"
+                onChange={(e) => {
+                  const fs = Array.from(e.target.files ?? [])
+                  handleFiles(fs)
+                  e.target.value = ''
+                }} />
+              <button onClick={() => fileRef.current?.click()} disabled={importing}
+                className="whitespace-nowrap rounded-lg bg-brand-500 px-2 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+                title="Upload file proker (.xlsx) format GENERAL REPAIR EXHAUST PRIMER MITSURA (checklist V/X/NA/PLAN). Data diperbarui per C/N + periode + work type.">
+                {importing ? 'Mengimpor…' : 'Import'}
+              </button>
+              <button onClick={doRefreshHm} disabled={refreshing}
+                className="whitespace-nowrap rounded-lg border px-2 py-1.5 text-theme-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/5"
+                title="Ambil HM terbaru per C/N dari halaman Hourmeter & Yazu Lighting Daily Check. Yazu DC (harian) diprioritaskan; unit yang tidak ada di sumber data dibiarkan.">
+                {refreshing ? 'Refresh…' : 'Refresh HM'}
+              </button>
+            </>
+          )}
+          {(loadingUnits || loadingDetail) && <span className="whitespace-nowrap text-theme-xs text-gray-500">Memuat…</span>}
+        </div>
+
+        {/* KPI */}
+        {stats && (
+          <div className="grid min-w-0 flex-1 grid-cols-4 gap-2">
+            <div className="min-w-0 rounded-xl border bg-white p-2 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500" title="Sudah tereksekusi">Sudah tereksekusi</p>
+              <p className="text-lg font-bold leading-tight text-green-600">
+                {fmtNum(stats.unit_done)}
+                <span className="text-[10px] font-normal text-gray-400"> / {fmtNum(stats.units)}</span>
+              </p>
+              <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800"
+                title={`${donePct}% unit sudah pernah proker`}>
+                <div className="h-full rounded-full bg-green-500" style={{ width: `${donePct}%` }} />
+              </div>
+              <p className="truncate text-[10px] text-gray-400" title={`${fmtNum(Math.max(0, stats.units - stats.unit_done))} unit belum pernah proker`}>
+                {fmtNum(Math.max(0, stats.units - stats.unit_done))} belum · {donePct}%
+              </p>
+            </div>
+            <div className="min-w-0 rounded-xl border bg-white p-2 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500" title="Total eksekusi">Total eksekusi</p>
+              <p className="text-lg font-bold leading-tight text-gray-700 dark:text-gray-200">{fmtNum(stats.total)}</p>
+              <p className="truncate text-[10px] text-gray-400">{fmtNum(stats.done)} selesai · {fmtNum(stats.note)} catatan</p>
+            </div>
+            <div className="min-w-0 rounded-xl border bg-white p-2 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500" title="Belum dilakukan (X)">Belum (X)</p>
+              <p className="text-lg font-bold leading-tight text-red-600">{fmtNum(stats.missed)}</p>
+              <p className="truncate text-[10px] text-gray-400">{fmtNum(stats.na)} tidak berlaku</p>
+            </div>
+            <div className="min-w-0 rounded-xl border bg-white p-2 dark:bg-gray-900">
+              <p className="truncate text-theme-xs text-gray-500" title="Rencana / catatan">Rencana / catatan</p>
+              <p className="text-lg font-bold leading-tight text-amber-600">
+                {fmtNum(stats.plan)} <span className="text-[10px] font-normal text-gray-400">/ {fmtNum(stats.note)}</span>
+              </p>
+              <p className="truncate text-[10px] text-gray-400" title={`terakhir: ${fmtDate(stats.last_date)}`}>terakhir: {fmtDate(stats.last_date)}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {msg && (
+        <div className="mb-3 flex items-start justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-theme-sm text-blue-700">
+          <span>{msg}</span>
+          <button className="text-theme-xs text-blue-500" onClick={() => setMsg('')}>tutup</button>
+        </div>
+      )}
+
+      {prog && (
+        <div className="mb-3 rounded-2xl border bg-white p-4 dark:bg-gray-900">
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 text-theme-sm">
+            <span className="font-medium">
+              Import: {prog.status} · {fmtNum(prog.processed_rows)} / {fmtNum(prog.total_rows)} baris
+            </span>
+            <span className="text-theme-xs text-gray-500">
+              {prog.errors && prog.status === 'COMMITTED'
+                ? `${fmtNum(prog.errors.units)} unit · ${fmtNum(prog.errors.inserted)} baru · ${fmtNum(prog.errors.updated)} diperbarui`
+                : prog.errors?.error ?? ''}
+            </span>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+            <div className={`h-full rounded-full transition-all ${prog.status === 'FAILED' ? 'bg-red-500' : 'bg-brand-500'}`}
+              style={{ width: `${progPct}%` }} />
+          </div>
+          <p className="mt-1 text-theme-xs text-gray-400">{prog.filename}</p>
+        </div>
+      )}
+
+      {stats && (
+        <p className="mb-3 text-theme-xs text-gray-500">
+          Program kerja <span className="font-semibold text-gray-600 dark:text-gray-300">General Repair Exhaust Primer Mitsura (6.000 jam)</span> —
+          format checklist (V selesai · X tidak · NA tidak berlaku · catatan temuan), data dari file Excel.
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
+        {/* Daftar unit */}
+        <div className="rounded-2xl border border-gray-200 bg-white lg:col-span-2 dark:border-gray-700 dark:bg-gray-900">
+          <div className="flex flex-wrap items-center gap-2 border-b px-4 py-2">
+            <span className="text-theme-sm font-semibold">Daftar Unit</span>
+            <span className="text-theme-xs text-gray-500">{fmtNum(total)} unit · hal {page}/{totalPages}</span>
+            <div className="ml-auto flex items-center gap-1">
+              <button className="rounded-lg border px-2 py-1 text-theme-xs disabled:opacity-40"
+                onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>‹</button>
+              <button className="rounded-lg border px-2 py-1 text-theme-xs disabled:opacity-40"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>›</button>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 border-b px-3 py-2">
+            {([
+              { key: '', label: 'Semua', n: scopeTotal },
+              { key: 'yes', label: 'Sudah proker', n: coverage?.executed },
+              { key: 'no', label: 'Belum proker', n: coverage?.notExecuted },
+            ] as const).map((c) => (
+              <button key={c.key || 'all'} onClick={() => setExecFilter(c.key)}
+                className={`rounded-full border px-2.5 py-1 text-theme-xs font-medium ${
+                  execFilter === c.key
+                    ? c.key === 'no'
+                      ? 'border-gray-400 bg-gray-200 text-gray-800 dark:border-gray-500 dark:bg-gray-700 dark:text-gray-100'
+                      : c.key === 'yes'
+                        ? 'border-green-500 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                        : 'border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
+                    : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-white/5'
+                }`}>
+                {c.label}
+                {c.n != null && <span className="ml-1 tabular-nums opacity-70">({fmtNum(c.n)})</span>}
+              </button>
+            ))}
+          </div>
+          <div className="w-full overflow-auto" style={{ maxHeight: 600 }}>
+            <table className="w-full border-collapse text-theme-xs">
+              <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
+                <tr className="border-b">
+                  <th className="px-2 py-2 text-left font-semibold">C/N</th>
+                  <th className="px-2 py-2 text-left font-semibold">Model</th>
+                  <th className="px-2 py-2 text-left font-semibold">Product</th>
+                  <th className="px-2 py-2 text-right font-semibold">HM now</th>
+                  <th className="px-2 py-2 text-center font-semibold">Proker</th>
+                  <th className="px-2 py-2 text-center font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {units.map((u, i) => (
+                  <tr key={u.cn} onClick={() => setCn(u.cn)}
+                    className={`cursor-pointer border-b border-gray-100 last:border-0 dark:border-gray-800 ${
+                      u.cn === cn ? 'bg-brand-50 dark:bg-brand-500/10'
+                        : i % 2 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''
+                    } hover:bg-brand-50/60 dark:hover:bg-brand-500/10`}>
+                    <td className="px-2 py-1.5 font-mono font-semibold whitespace-nowrap">{u.cn}</td>
+                    <td className="max-w-[120px] truncate px-2 py-1.5" title={u.unit_model ?? ''}>
+                      {u.unit_model ?? '-'}
+                      <span className="block truncate text-theme-xs text-gray-400" title={u.unit_type ?? ''}>
+                        {u.unit_type ?? ''}
+                      </span>
+                    </td>
+                    <td className="max-w-[110px] truncate px-2 py-1.5" title={u.product ?? ''}>{u.product ?? '-'}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{fmtHm(u.hm_now)}</td>
+                    <td className="px-2 py-1.5 text-center">
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                        {u.exec_count}
+                      </span>
+                      <span className="mt-0.5 block text-theme-xs text-gray-400">{fmtDate(u.last_date)}</span>
+                    </td>
+                    <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                      {u.done_count > 0 ? (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 font-semibold text-green-700 dark:bg-green-900/40 dark:text-green-300"
+                          title={`${u.done_count} eksekusi selesai`}>Sudah</span>
+                      ) : (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400">Belum</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {units.length === 0 && (
+                  <tr><td colSpan={6} className="px-4 py-10 text-center text-theme-sm text-gray-400">
+                    {execFilter === 'no'
+                      ? 'Semua unit pada filter ini sudah pernah proker.'
+                      : execFilter === 'yes'
+                        ? 'Belum ada unit yang tereksekusi pada filter ini.'
+                        : 'Belum ada unit. Import file GENERAL REPAIR EXHAUST PRIMER MITSURA (.xlsx) lewat tombol di atas.'}
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Detail unit */}
+        <div className="rounded-2xl border border-gray-200 bg-white lg:col-span-3 dark:border-gray-700 dark:bg-gray-900">
+          {!detail ? (
+            <p className="px-4 py-16 text-center text-theme-sm text-gray-400">
+              Pilih salah satu C/N di kiri untuk melihat riwayat proker-nya.
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-start gap-2 border-b px-4 py-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-theme-xl font-bold text-brand-600">{detail.unit.cn}</p>
+                  <p className="text-theme-sm text-gray-600 dark:text-gray-300">
+                    {detail.unit.unit_model ?? '-'} · {detail.unit.product ?? '-'}
+                    <span className="text-gray-400"> · {detail.unit.unit_type ?? '-'}</span>
+                  </p>
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                  {can('prokerexhaustmits', 'edit') && (
+                    <button onClick={openUnit}
+                      className="rounded-lg border px-2.5 py-1 text-theme-xs text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5">
+                      Edit unit
+                    </button>
+                  )}
+                  {can('prokerexhaustmits', 'add') && (
+                    <button onClick={openAdd}
+                      className="rounded-lg bg-brand-500 px-2.5 py-1 text-theme-xs font-medium text-white hover:bg-brand-600">
+                      + Riwayat
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 px-4 py-3 sm:grid-cols-4">
+                <div className="rounded-xl bg-gray-50 p-2.5 dark:bg-gray-800/60">
+                  <p className="text-theme-xs text-gray-500">Total proker</p>
+                  <p className="text-theme-lg font-bold">{fmtNum(s?.total)}</p>
+                  <p className="text-theme-xs text-gray-400">{fmtNum(s?.plan)} rencana</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-2.5 dark:bg-gray-800/60">
+                  <p className="text-theme-xs text-gray-500">HM sekarang</p>
+                  <p className="text-theme-lg font-bold tabular-nums">{fmtHm(detail.unit.hm_now)}</p>
+                  <p className="text-theme-xs text-gray-400">HM NOW di file</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-2.5 dark:bg-gray-800/60">
+                  <p className="text-theme-xs text-gray-500">Proker terakhir</p>
+                  <p className="text-theme-lg font-bold tabular-nums">{fmtHm(s?.last_hm)}</p>
+                  <p className="text-theme-xs text-gray-400">{fmtDate(s?.last_date)}</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-2.5 dark:bg-gray-800/60">
+                  <p className="text-theme-xs text-gray-500">Sisa ke {fmtNum(s?.interval)} jam</p>
+                  <p className={`text-theme-lg font-bold tabular-nums ${
+                    s?.sisa_hm != null && s.sisa_hm <= 0 ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    {s?.sisa_hm == null ? '-' : fmtHm(s.sisa_hm)}
+                  </p>
+                  <p className="text-theme-xs text-gray-400">target HM {fmtHm(s?.due_hm)}</p>
+                </div>
+              </div>
+
+              <div className="w-full overflow-auto" style={{ maxHeight: 420 }}>
+                <table className="w-full border-collapse text-theme-xs">
+                  <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-gray-800">
+                    <tr className="border-b">
+                      <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Periode</th>
+                      <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Work Type</th>
+                      <th className="px-2 py-2 text-left font-semibold whitespace-nowrap">Tanggal</th>
+                      <th className="px-2 py-2 text-right font-semibold">HM</th>
+                      <th className="px-2 py-2 text-right font-semibold">Δ HM</th>
+                      <th className="px-2 py-2 text-left font-semibold">Remark</th>
+                      <th className="px-2 py-2 text-center font-semibold">Status</th>
+                      <th className="px-2 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detail.executions.map((e, i) => {
+                      const st = STATUS[e.status] ?? STATUS.NOTE
+                      const d = deltaHm[e.id]
+                      return (
+                        <tr key={e.id} className={`border-b border-gray-100 last:border-0 dark:border-gray-800 ${
+                          i % 2 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''
+                        }`}>
+                          <td className="px-2 py-1.5 whitespace-nowrap">{e.period}</td>
+                          <td className="max-w-[170px] px-2 py-1.5 whitespace-nowrap" title={e.work_type}>
+                            <span className="truncate">{e.work_type}</span>
+                          </td>
+                          <td className="px-2 py-1.5 whitespace-nowrap tabular-nums">{fmtDate(e.service_date)}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">{fmtHm(e.hm)}</td>
+                          <td className={`px-2 py-1.5 text-right tabular-nums whitespace-nowrap ${
+                            d != null && d < 0 ? 'text-red-500' : 'text-gray-500'
+                          }`}>
+                            {d == null ? '-' : (d > 0 ? '+' : '') + fmtHm(d)}
+                          </td>
+                          <td className="max-w-[220px] px-2 py-1.5" title={e.remark ?? ''}>
+                            <span className="line-clamp-2">{e.remark ?? '-'}</span>
+                          </td>
+                          <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                            <span className={`rounded-full px-2 py-0.5 font-semibold ${st.cls}`}>{st.label}</span>
+                          </td>
+                          <td className="px-2 py-1.5 text-right whitespace-nowrap">
+                            {can('prokerexhaustmits', 'edit') && (
+                              <button className="text-brand-600 hover:underline" onClick={() => openEdit(e)}>Ubah</button>
+                            )}
+                            {can('prokerexhaustmits', 'delete') && (
+                              <button className="ml-2 text-red-600 hover:underline" onClick={() => removeExec(e)}>Hapus</button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {detail.executions.length === 0 && (
+                      <tr><td colSpan={8} className="px-4 py-10 text-center text-theme-sm text-gray-400">
+                        Belum ada riwayat proker untuk unit ini.
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Modal riwayat */}
+      {execForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 dark:bg-gray-900">
+            <h3 className="font-semibold">{execForm.id ? 'Ubah riwayat proker' : 'Tambah riwayat proker'} — {cn}</h3>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <label className="text-theme-sm">Periode
+                <input className={`${inp} mt-1 w-full`} list="proker-exhaust-mits-periods" value={execForm.period}
+                  onChange={(e) => setExecForm({ ...execForm, period: e.target.value })}
+                  placeholder="2024 / 2025" />
+                <datalist id="proker-exhaust-mits-periods">
+                  {periodOptions.map((p) => <option key={p} value={p} />)}
+                </datalist>
+              </label>
+              <label className="text-theme-sm">Work Type
+                <input className={`${inp} mt-1 w-full`} list="proker-exhaust-mits-wtypes" value={execForm.work_type}
+                  onChange={(e) => setExecForm({ ...execForm, work_type: e.target.value })}
+                  placeholder="MUFFLER STAINLESS" />
+                <datalist id="proker-exhaust-mits-wtypes">
+                  {workTypeOptions.map((w) => <option key={w} value={w} />)}
+                </datalist>
+              </label>
+              <label className="text-theme-sm">Tanggal
+                <div className="mt-1">
+                  <DatePicker value={execForm.service_date}
+                    onChange={(v) => setExecForm({ ...execForm, service_date: v })} />
+                </div>
+              </label>
+              <label className="text-theme-sm">HM
+                <input className={`${inp} mt-1 w-full`} type="number" step="any" value={execForm.hm}
+                  onChange={(e) => setExecForm({ ...execForm, hm: e.target.value })} />
+              </label>
+              <label className="col-span-2 text-theme-sm">Status
+                <select className={`${inp} mt-1 w-full`} value={execForm.status}
+                  onChange={(e) => setExecForm({ ...execForm, status: e.target.value as ProkerExhaustMitsStatus })}>
+                  {(Object.keys(STATUS) as ProkerExhaustMitsStatus[]).map((k) => (
+                    <option key={k} value={k}>{STATUS[k].label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="col-span-2 text-theme-sm">Remark / catatan
+                <textarea className={`${inp} mt-1 h-20 w-full`} value={execForm.remark}
+                  onChange={(e) => setExecForm({ ...execForm, remark: e.target.value })}
+                  placeholder="Temuan / catatan pekerjaan" />
+              </label>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="rounded-lg border px-4 py-2 text-theme-sm" onClick={() => setExecForm(null)}>Batal</button>
+              <button className="rounded-lg bg-brand-500 px-4 py-2 text-theme-sm text-white disabled:opacity-50"
+                onClick={saveExec} disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal unit */}
+      {unitForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 dark:bg-gray-900">
+            <h3 className="font-semibold">Edit unit {unitForm.cn}</h3>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <label className="text-theme-sm">NO
+                <input className={`${inp} mt-1 w-full`} type="number" value={unitForm.no}
+                  onChange={(e) => setUnitForm({ ...unitForm, no: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">HM now
+                <input className={`${inp} mt-1 w-full`} type="number" step="any" value={unitForm.hm_now}
+                  onChange={(e) => setUnitForm({ ...unitForm, hm_now: e.target.value })} />
+              </label>
+              <label className="col-span-2 text-theme-sm">Unit model
+                <input className={`${inp} mt-1 w-full`} value={unitForm.unit_model}
+                  onChange={(e) => setUnitForm({ ...unitForm, unit_model: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">Product
+                <input className={`${inp} mt-1 w-full`} value={unitForm.product}
+                  onChange={(e) => setUnitForm({ ...unitForm, product: e.target.value })} />
+              </label>
+              <label className="text-theme-sm">Unit type
+                <input className={`${inp} mt-1 w-full`} value={unitForm.unit_type}
+                  onChange={(e) => setUnitForm({ ...unitForm, unit_type: e.target.value })} />
+              </label>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="rounded-lg border px-4 py-2 text-theme-sm" onClick={() => setUnitForm(null)}>Batal</button>
+              <button className="rounded-lg bg-brand-500 px-4 py-2 text-theme-sm text-white disabled:opacity-50"
+                onClick={saveUnit} disabled={saving}>{saving ? 'Menyimpan…' : 'Simpan'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

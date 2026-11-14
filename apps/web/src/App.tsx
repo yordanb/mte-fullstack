@@ -28,6 +28,7 @@ import ProkerInjectorPage from './pages/ProkerInjector'
 import ProkerThermostatPage from './pages/Thermostat'
 import ProkerPanelPage from './pages/ProkerPanel'
 import ProkerExhaustPage from './pages/ProkerExhaust'
+import ProkerExhaustMitsuraPage from './pages/ProkerExhaustMitsura'
 import ManpowerPage from './pages/Manpower'
 import ManpowerGroupPage from './pages/ManpowerGroup'
 import { fetchMe, can } from './api/client'
@@ -103,6 +104,7 @@ export default function App() {
       {page === 'prokerthermo' && can('prokerthermo', 'view') && <ProkerThermostatPage />}
       {page === 'prokerpanel' && can('prokerpanel', 'view') && <ProkerPanelPage />}
       {page === 'prokerexhaust' && can('prokerexhaust', 'view') && <ProkerExhaustPage />}
+      {page === 'prokerexhaustmits' && can('prokerexhaustmits', 'view') && <ProkerExhaustMitsuraPage />}
       {page === 'manpower' && can('manpower', 'view') && <ManpowerPage />}
       {page === 'manpowermanage' && can('manpowermanage', 'view') && <ManpowerGroupPage />}
       {page === 'import' && <ImportPage />}

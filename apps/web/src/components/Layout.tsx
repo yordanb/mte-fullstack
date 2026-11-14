@@ -43,6 +43,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'prokerthermo', label: 'Proker Thermostat CAT' },
     { key: 'prokerpanel', label: 'Proker GMC Panel Booster' },
     { key: 'prokerexhaust', label: 'Proker Gen Repair Exhaust Primer' },
+    { key: 'prokerexhaustmits', label: 'Proker Gen Repair Exhaust Primer Mitsura' },
   ] },
   { title: 'Agent', items: [
     { key: 'ss', label: 'Sugestion System' },
@@ -137,6 +138,10 @@ const ICONS: Record<string, ReactNode> = {
   prokerexhaust: (
     // Knalpot / gas buang (exhaust manifold)
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 16h9a5 5 0 0 0 5-5V7" /><path d="M17 3h4v4h-4z" /><path d="M3 20h6" /></svg>
+  ),
+  prokerexhaustmits: (
+    // Checklist + knalpot: kartu centang
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><path d="m7 12 3 3 7-7" /></svg>
   ),
   manpower: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><circle cx="17" cy="9" r="2.4" /><path d="M16 14.2c3 .2 5.5 2.3 5.5 5.3" /></svg>

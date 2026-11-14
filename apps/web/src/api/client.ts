@@ -2156,6 +2156,158 @@ export async function refreshProkerExhaustHm(): Promise<RefreshHmResult> {
 }
 
 
+// --- Proker Gen Repair Exhaust Primer Mitsura ------------------------------
+export type ProkerExhaustMitsStatus = 'DONE' | 'PLAN' | 'MISSED' | 'NA' | 'NOTE'
+
+export type ProkerExhaustMitsUnitRow = {
+  cn: string
+  no: number | null
+  unit_model: string | null
+  product: string | null
+  unit_type: string | null
+  hm_now: number | null
+}
+
+export type ProkerExhaustMitsUnit = ProkerExhaustMitsUnitRow & {
+  exec_count: number
+  done_count: number
+  last_date: string | null
+  last_hm: number | null
+}
+
+export type ProkerExhaustMitsExecution = {
+  id: number
+  cn: string
+  period: string
+  period_year: number | null
+  work_type: string
+  hm: number | null
+  service_date: string | null
+  remark: string | null
+  status: ProkerExhaustMitsStatus
+}
+
+export type ProkerExhaustMitsDetail = {
+  unit: ProkerExhaustMitsUnitRow
+  executions: ProkerExhaustMitsExecution[]
+  stats: {
+    total: number
+    done: number
+    plan: number
+    missed: number
+    last_date: string | null
+    last_hm: number | null
+    interval: number
+    due_hm: number | null
+    sisa_hm: number | null
+  }
+}
+
+export type ProkerExhaustMitsStats = {
+  units: number
+  total: number
+  done: number
+  plan: number
+  missed: number
+  na: number
+  note: number
+  unit_done: number
+  last_date: string | null
+  this_year: number
+  year: number
+  per_year: { year: number; total: number; done: number }[]
+}
+
+export type ProkerExhaustMitsFilters = {
+  product: string[]
+  model: string[]
+  type: string[]
+  work_types: string[]
+  years: number[]
+  min_date: string | null
+  max_date: string | null
+  min_year: number | null
+  max_year: number | null
+}
+
+export type ProkerExhaustMitsUnitPage = {
+  total: number
+  page: number
+  page_size: number
+  executed_units?: number
+  not_executed_units?: number
+  data: ProkerExhaustMitsUnit[]
+}
+
+export async function fetchProkerExhaustMitsStats(): Promise<ProkerExhaustMitsStats> {
+  const r = await api.get('/v1/proker-exhaust-mits/stats')
+  return r.data
+}
+
+export async function fetchProkerExhaustMitsFilters(): Promise<ProkerExhaustMitsFilters> {
+  const r = await api.get('/v1/proker-exhaust-mits/filters')
+  return r.data
+}
+
+export async function fetchProkerExhaustMitsUnits(params: {
+  search?: string; product?: string; model?: string; executed?: 'yes' | 'no'
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<ProkerExhaustMitsUnitPage> {
+  const r = await api.get('/v1/proker-exhaust-mits/units', { params })
+  return r.data
+}
+
+export async function fetchProkerExhaustMitsUnit(cn: string): Promise<ProkerExhaustMitsDetail> {
+  const r = await api.get(`/v1/proker-exhaust-mits/units/${encodeURIComponent(cn)}`)
+  return r.data
+}
+
+export async function updateProkerExhaustMitsUnit(cn: string, body: Partial<ProkerExhaustMitsUnitRow>): Promise<ProkerExhaustMitsUnitRow> {
+  const r = await api.patch(`/v1/proker-exhaust-mits/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+
+export type ProkerExhaustMitsExecInput = {
+  period?: string
+  work_type?: string
+  hm?: number | null
+  service_date?: string | null
+  remark?: string | null
+  status?: ProkerExhaustMitsStatus
+}
+
+export async function createProkerExhaustMitsExecution(cn: string, body: ProkerExhaustMitsExecInput): Promise<ProkerExhaustMitsExecution> {
+  const r = await api.post(`/v1/proker-exhaust-mits/units/${encodeURIComponent(cn)}/executions`, body)
+  return r.data
+}
+
+export async function updateProkerExhaustMitsExecution(id: number, body: ProkerExhaustMitsExecInput): Promise<ProkerExhaustMitsExecution> {
+  const r = await api.patch(`/v1/proker-exhaust-mits/executions/${id}`, body)
+  return r.data
+}
+
+export async function deleteProkerExhaustMitsExecution(id: number): Promise<void> {
+  await api.delete(`/v1/proker-exhaust-mits/executions/${id}`)
+}
+
+export async function importProkerExhaustMitsXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/proker-exhaust-mits/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchProkerExhaustMitsImportStatus(id: string): Promise<ProkerImportStatus> {
+  const r = await api.get(`/v1/proker-exhaust-mits/import/${id}`)
+  return r.data
+}
+
+export async function refreshProkerExhaustMitsHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/proker-exhaust-mits/refresh-hm')
+  return r.data
+}
+
+
 // --- Proker Midlife Eng Booster ------------------------------------------
 export type BoosterKind = 'OVH' | 'MIDLIFE'
 
