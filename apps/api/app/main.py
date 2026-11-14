@@ -14,6 +14,7 @@ from app.api.v1.r1bi import router as r1bi_router
 from app.api.v1.fui import router as fui_router
 from app.api.v1.staging import router as staging_router
 from app.api.v1.mom import router as mom_router
+from app.api.v1.mom2 import router as mom2_router
 from app.api.v1.riwayat import router as riwayat_router
 from app.api.v1.yazu import router as yazu_router, do_sync
 from app.api.v1.yazu_dc import router as yazu_dc_router, do_sync as do_sync_dc
@@ -149,6 +150,7 @@ app.include_router(r1bi_router)
 app.include_router(fui_router)
 app.include_router(staging_router)
 app.include_router(mom_router)
+app.include_router(mom2_router)
 app.include_router(riwayat_router)
 app.include_router(yazu_router)
 app.include_router(yazu_dc_router)

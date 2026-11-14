@@ -21,6 +21,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'equipment', label: 'Equipment' },
     { key: 'staging', label: 'Staging Pump' },
     { key: 'mom', label: 'Minute of Meeting' },
+    { key: 'mom2', label: 'Minute of Meeting 2' },
     { key: 'riwayat', label: 'Riwayat' },
     { key: 'project', label: 'Project' },
     { key: 'import', label: 'Update Data' },

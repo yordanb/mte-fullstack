@@ -744,6 +744,85 @@ export async function patchMomItem(id: number, body: Record<string, unknown>) {
   const r = await api.patch(`/v1/mom/items/${id}`, body)
   return r.data
 }
+
+// ─── Minute of Meeting 2 (weekly SPEX pumping) ───────────
+
+export type Mom2Meeting = {
+  id: number; period: string; week?: number | null; meeting_date: string
+  participants?: string | null; status: string; created_by?: string | null
+  created_at?: string; updated_at?: string
+  total_items?: number; open_items?: number
+}
+
+export type Mom2Item = {
+  id: number; meeting_id: number; seq: number
+  topic?: string | null; description: string; reporter?: string | null
+  pic?: string | null; due_date?: string | null; due_flex: boolean
+  due_text?: string | null; status: string; remark?: string | null
+  carried_from_id?: number | null
+  created_at?: string; updated_at?: string
+}
+
+export type Mom2Next = {
+  period: string; week?: number | null; meeting_date: string
+  source_meeting_id?: number | null; source_period?: string | null
+}
+
+export async function fetchMom2Meetings(status?: string): Promise<{ data: Mom2Meeting[] }> {
+  const r = await api.get('/v1/mom2/meetings', { params: { status } })
+  return r.data
+}
+export async function fetchMom2Next(): Promise<{ data: Mom2Next }> {
+  const r = await api.get('/v1/mom2/next')
+  return r.data
+}
+export async function createMom2Meeting(body: { period: string; meeting_date: string; participants?: string; carry: boolean; source_meeting_id?: number }) {
+  const r = await api.post('/v1/mom2/meetings', body)
+  return r.data as { id: number }
+}
+export async function fetchMom2Meeting(id: number): Promise<Mom2Meeting & { items: Mom2Item[] }> {
+  const r = await api.get(`/v1/mom2/meetings/${id}`)
+  return r.data
+}
+export async function patchMom2Meeting(id: number, body: Record<string, unknown>) {
+  const r = await api.patch(`/v1/mom2/meetings/${id}`, body)
+  return r.data
+}
+export async function deleteMom2Meeting(id: number) {
+  const r = await api.delete(`/v1/mom2/meetings/${id}`)
+  return r.data
+}
+export async function carryMom2(mid: number) {
+  const r = await api.post(`/v1/mom2/meetings/${mid}/carry`)
+  return r.data as { ok: boolean; carried: number }
+}
+export async function addMom2Item(meetingId: number, body: Partial<Mom2Item> & { description: string }) {
+  const r = await api.post(`/v1/mom2/meetings/${meetingId}/items`, body)
+  return r.data as { id: number }
+}
+export async function patchMom2Item(id: number, body: Record<string, unknown>) {
+  const r = await api.patch(`/v1/mom2/items/${id}`, body)
+  return r.data
+}
+export async function deleteMom2Item(id: number) {
+  const r = await api.delete(`/v1/mom2/items/${id}`)
+  return r.data
+}
+export async function importMom2Xlsx(file: File): Promise<{ meeting_id: number; period: string; imported: number; warnings: string[] }> {
+  const form = new FormData()
+  form.append('file', file)
+  const r = await api.post('/v1/mom2/import', form)
+  return r.data
+}
+export async function exportMom2Xlsx(id: number, period: string) {
+  const r = await api.get(`/v1/mom2/meetings/${id}/export`, { responseType: 'blob' })
+  const url = URL.createObjectURL(r.data as Blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `MOM SPEX PUMP ${period}.xlsx`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 // ─── Riwayat (Issue Tracking) ──────────────────────────
 
 export type RiwayatIssue = {

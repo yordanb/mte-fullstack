@@ -9,6 +9,7 @@ import SafetyPage from './pages/Safety'
 import TimelinePage from './pages/Timeline'
 import StagingPage from './pages/Staging'
 import MomPage from './pages/Mom'
+import Mom2Page from './pages/Mom2'
 import RiwayatPage from './pages/Riwayat'
 import PpmPage from './pages/Ppm'
 import MeasurementPage from './pages/Measurement'
@@ -82,6 +83,7 @@ export default function App() {
       {page === 'timeline' && can('timeline', 'view') && <TimelinePage />}
       {page === 'staging' && can('staging', 'view') && <StagingPage />}
       {page === 'mom' && can('mom', 'view') && <MomPage />}
+      {page === 'mom2' && can('mom2', 'view') && <Mom2Page />}
       {page === 'riwayat' && can('riwayat', 'view') && <RiwayatPage />}
       {page === 'ppm' && can('ppm', 'view') && <PpmPage />}
       {page === 'measurement' && can('measurement', 'view') && <MeasurementPage />}
