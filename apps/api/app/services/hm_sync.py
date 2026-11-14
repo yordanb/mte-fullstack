@@ -18,7 +18,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Whitelist tabel proker yang boleh di-refresh (nama tabel tidak pernah dari user).
-TABLES = ("proker_unit", "proker_panel_unit", "booster_unit", "injector_unit", "thermo_unit")
+TABLES = ("proker_unit", "proker_panel_unit", "proker_exhaust_unit",
+          "booster_unit", "injector_unit", "thermo_unit")
 
 
 def _norm(cn: str | None) -> str:
