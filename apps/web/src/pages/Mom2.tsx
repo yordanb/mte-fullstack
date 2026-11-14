@@ -38,7 +38,6 @@ export default function Mom2Page() {
     try {
       const r = await fetchMom2Meetings()
       setMeetings(r.data)
-      setSelId((cur) => cur ?? r.data[0]?.id ?? null)
     } catch (e) {
       setMsg(`gagal memuat meeting: ${errMsg(e)}`)
     } finally { setLoading(false) }
@@ -184,23 +183,44 @@ export default function Mom2Page() {
     i.due_date && i.status !== 'close' && i.due_date < (meeting?.meeting_date ?? '')
       ? 'text-red-600 font-medium' : ''
 
+  // Kembali ke daftar judul meeting
+  const goBack = () => {
+    setSelId(null)
+    setMeeting(null)
+    setStatusFilter('')
+  }
+  // Buka MOM sebuah meeting dari daftar judul
+  const openMeeting = (id: number) => {
+    setStatusFilter('')
+    setSelId(id)
+  }
+
   return (
     <div className="w-full px-2">
       {/* Baris atas: filter + KPI */}
       <div className="mb-3 flex flex-wrap items-end gap-x-3 gap-y-2">
         <div className="flex flex-wrap items-end gap-3 shrink-0">
-          <div>
-            <label className="block text-theme-xs text-gray-500">Meeting</label>
-            <select className={`${inp} w-52`} value={selId ?? ''}
-              onChange={(e) => setSelId(Number(e.target.value) || null)}>
-              {meetings.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.period}{m.status === 'closed' ? ' (tutup)' : ''} — {fmtDate(m.meeting_date)}
-                </option>
-              ))}
-              {meetings.length === 0 && <option value="">Belum ada meeting</option>}
-            </select>
-          </div>
+          {meeting && (
+            <button onClick={goBack}
+              className="whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-theme-sm font-medium text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-white/5"
+              title="Kembali ke daftar meeting">
+              ← Daftar
+            </button>
+          )}
+          {meeting && (
+            <div>
+              <label className="block text-theme-xs text-gray-500">Meeting</label>
+              <select className={`${inp} w-52`} value={selId ?? ''}
+                onChange={(e) => setSelId(Number(e.target.value) || null)}>
+                {meetings.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.period}{m.status === 'closed' ? ' (tutup)' : ''} — {fmtDate(m.meeting_date)}
+                  </option>
+                ))}
+                {meetings.length === 0 && <option value="">Belum ada meeting</option>}
+              </select>
+            </div>
+          )}
           {can('mom2', 'add') && (
             <button onClick={() => setShowNew(true)} disabled={saving}
               className="rounded-lg bg-brand-500 px-3 py-1.5 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
@@ -267,9 +287,43 @@ export default function Mom2Page() {
       {loading && <p className="p-6 text-theme-sm text-gray-500">Memuat…</p>}
 
       {!loading && !meeting && (
-        <div className="rounded-2xl border bg-white p-6 text-center dark:bg-gray-900">
-          <p className="text-theme-sm text-gray-500">Belum ada meeting. Impor file Excel MOM weekly atau buat meeting baru.</p>
-        </div>
+        meetings.length === 0 ? (
+          <div className="rounded-2xl border bg-white p-6 text-center dark:bg-gray-900">
+            <p className="text-theme-sm text-gray-500">Belum ada meeting. Impor file Excel MOM weekly atau buat meeting baru.</p>
+          </div>
+        ) : (
+          /* Daftar judul meeting — klik untuk membuka MOM-nya */
+          <div className="rounded-2xl border bg-white dark:bg-gray-900">
+            <div className="border-b px-4 py-3">
+              <span className="text-theme-sm font-semibold">Daftar Meeting</span>
+              <span className="ml-2 text-theme-xs text-gray-500">{fmtNum(meetings.length)} meeting · klik judul untuk membuka MOM</span>
+            </div>
+            <div className="divide-y dark:divide-gray-800">
+              {meetings.map((m) => (
+                <button key={m.id} onClick={() => openMeeting(m.id)}
+                  className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-left hover:bg-brand-50/60 dark:hover:bg-brand-500/10">
+                  <div className="min-w-0 flex-1 basis-56">
+                    <p className="truncate font-semibold text-gray-800 dark:text-gray-100">{m.period}</p>
+                    <p className="text-theme-xs text-gray-500">{fmtDate(m.meeting_date)}</p>
+                  </div>
+                  <div className="max-w-xs min-w-0 basis-56 truncate text-theme-xs text-gray-500" title={m.participants ?? ''}>
+                    {m.participants ? `PIC : ${m.participants}` : ''}
+                  </div>
+                  <div className="text-theme-xs text-gray-500" title="Item belum CLOSE / total item">
+                    <span className="font-medium text-blue-600">{fmtNum(m.open_items)}</span>
+                    <span className="text-gray-400"> / {fmtNum(m.total_items)} item</span>
+                  </div>
+                  <span className={`whitespace-nowrap rounded-full px-2.5 py-1 text-theme-xs font-medium ${
+                    m.status === 'closed'
+                      ? 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                      : 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300'}`}>
+                    {m.status === 'closed' ? 'TUTUP' : 'TERBUKA'}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )
       )}
 
       {meeting && (
