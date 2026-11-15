@@ -31,7 +31,8 @@ export function Dashboard() {
   const loadCrit = async (p: '' | 'TL' | 'GS' | 'WP') => {
     try {
       setErr(''); setMode('latest'); setCritPrefix(p)
-      const res = await fetchLatestPerUnit(200, p || undefined, p ? 'CRITICAL' : undefined)
+      // Radio Critical: hanya unit berstatus Aktif di master equipment.
+      const res = await fetchLatestPerUnit(200, p || undefined, p ? 'CRITICAL' : undefined, !!p)
       got(res.data); setLastUp({ updated_at: res.updated_at, updated_by: res.updated_by })
     } catch (e) { setErr(`Gagal filter: ${errMsg(e)}`) }
   }

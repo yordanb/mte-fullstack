@@ -329,9 +329,10 @@ export async function fetchResults(vesselid: string, unit_id?: string): Promise<
 export type OilLatestMeta = { updated_at?: string | null; updated_by?: string | null }
 
 export async function fetchLatestPerUnit(
-  limit = 50, prefix?: string, condition?: string,
+  limit = 50, prefix?: string, condition?: string, aktifOnly?: boolean,
 ): Promise<{ data: LabRow[]; updated_at?: string | null; updated_by?: string | null }> {
-  const r = await api.get('/v1/results/latest-per-unit', { params: { limit, prefix, condition } })
+  const r = await api.get('/v1/results/latest-per-unit',
+    { params: { limit, prefix, condition, aktif_only: aktifOnly } })
   return { data: r.data.data, updated_at: r.data.updated_at, updated_by: r.data.updated_by }
 }
 

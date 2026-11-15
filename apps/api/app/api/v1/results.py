@@ -47,19 +47,27 @@ async def latest_per_unit(
     limit: int = Query(50, le=200),
     prefix: str | None = Query(None, min_length=2, max_length=2),
     condition: str | None = Query(None, description="cth CRITICAL"),
+    aktif_only: bool = Query(
+        False, description="hanya vessel (CN) berstatus aktif di master equipment"),
     db: AsyncSession = Depends(get_db),
 ):
     """Default dashboard: 1 baris terbaru per (vesselid, unit_id), format report penuh.
-    Filter opsional: prefix 2 huruf vessel + condition (untuk radio TL/GS/WP Critical)."""
+    Filter opsional: prefix 2 huruf vessel + condition (untuk radio TL/GS/WP Critical),
+    dan aktif_only untuk menyembunyikan CN yang Tidak Aktif di master equipment."""
     conds, params = [], {"lim": limit}
     inner = ""
     if prefix:
         inner = "WHERE vessel_prefix = UPPER(:prefix)"
         params["prefix"] = prefix
-    outer = ""
+    outer_parts: list[str] = []
     if condition:
-        outer = 'WHERE "condition" = UPPER(:condition)'
+        outer_parts.append('"condition" = UPPER(:condition)')
         params["condition"] = condition
+    if aktif_only:
+        outer_parts.append(
+            "EXISTS (SELECT 1 FROM equipment eq "
+            "WHERE eq.cn = UPPER(TRIM(t.vesselid)) AND eq.aktif)")
+    outer = f"WHERE {' AND '.join(outer_parts)}" if outer_parts else ""
     q = text(f"""
         SELECT * FROM (
           SELECT DISTINCT ON (vesselid, unit_id)
