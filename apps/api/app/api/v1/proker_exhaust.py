@@ -481,14 +481,19 @@ async def get_filters(db: AsyncSession = Depends(get_db)):
 
 @router.get("/stats", dependencies=[Depends(require_menu("prokerexhaust", "view"))])
 async def get_stats(db: AsyncSession = Depends(get_db)):
-    unit = (await db.execute(text("SELECT COUNT(*) FROM proker_exhaust_unit"))).scalar() or 0
+    unit = (await db.execute(text(
+        "SELECT COUNT(*) FROM proker_exhaust_unit WHERE "
+        "EXISTS (SELECT 1 FROM equipment eq WHERE eq.cn = proker_exhaust_unit.cn AND eq.aktif)"
+    ))).scalar() or 0
     row = (await db.execute(text("""
         SELECT COUNT(*) AS total,
                COUNT(*) FILTER (WHERE status = 'DONE') AS done,
                COUNT(*) FILTER (WHERE status = 'PLAN') AS plan,
                COUNT(*) FILTER (WHERE status = 'LATE') AS late,
                COUNT(*) FILTER (WHERE status = 'MISSED') AS missed,
-               COUNT(DISTINCT cn) FILTER (WHERE status = 'DONE') AS unit_done,
+               COUNT(DISTINCT cn) FILTER (WHERE status = 'DONE' AND EXISTS (
+                   SELECT 1 FROM equipment eq
+                   WHERE eq.cn = proker_exhaust_execution.cn AND eq.aktif)) AS unit_done,
                MAX(service_date) AS last_date
         FROM proker_exhaust_execution
     """))).mappings().first()
@@ -525,7 +530,10 @@ async def list_units(
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ):
-    conds, p = [], {"lim": page_size, "off": (page - 1) * page_size}
+    # Hanya unit berstatus AKTIF di master equipment (disinkronkan dari file
+    # populasi equipment); CN yang tidak terdaftar / nonaktif disembunyikan.
+    conds, p = ["EXISTS (SELECT 1 FROM equipment eq WHERE eq.cn = u.cn AND eq.aktif)"], \
+        {"lim": page_size, "off": (page - 1) * page_size}
     if search:
         conds.append("(u.cn ILIKE :s OR u.unit_model ILIKE :s OR u.product ILIKE :s "
                      "OR u.unit_type ILIKE :s)")

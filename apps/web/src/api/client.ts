@@ -507,6 +507,23 @@ export async function patchEquipment(cn: string, body: Partial<Equipment>) {
   return r.data
 }
 
+export type EquipmentPopulasiResult = {
+  file: string
+  total_cn: number
+  activated: number
+  deactivated: number
+  not_found: string[]
+}
+
+export async function importEquipmentPopulasi(file: File): Promise<EquipmentPopulasiResult> {
+  const form = new FormData()
+  form.append('file', file)
+  const r = await api.post('/v1/equipment/populasi', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return r.data
+}
+
 export type Activity = {
   id: string; date: string; title: string; description?: string | null
   category?: string | null; crew?: string | null; cn?: string | null; hm?: number | null; shift?: number | null; created_by?: string | null

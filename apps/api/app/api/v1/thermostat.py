@@ -423,6 +423,8 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
                                 AND hm_now - (COALESCE(last_hm, 0) + interval_hm) >= 0) AS due,
                MAX(last_date) AS last_date
         FROM thermo_unit
+        WHERE EXISTS (SELECT 1 FROM equipment eq
+                      WHERE eq.cn = thermo_unit.cn AND eq.aktif)
     """))).mappings().first()
     return {
         "units": agg["units"], "done": agg["done"], "not_yet": agg["not_yet"],
@@ -445,7 +447,12 @@ async def list_units(
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ):
-    conds, p = [], {"lim": page_size, "off": (page - 1) * page_size}
+    # Hanya unit berstatus AKTIF di master equipment (disinkronkan dari file
+    # populasi equipment); CN yang tidak terdaftar / nonaktif disembunyikan.
+    # Query thermo_unit tanpa alias, kondisi memakai nama tabel penuh.
+    conds, p = ["EXISTS (SELECT 1 FROM equipment eq "
+                "WHERE eq.cn = thermo_unit.cn AND eq.aktif)"], \
+        {"lim": page_size, "off": (page - 1) * page_size}
     if search:
         conds.append("(cn ILIKE :s OR unit_model ILIKE :s OR product ILIKE :s "
                      "OR unit_type ILIKE :s OR wr ILIKE :s)")

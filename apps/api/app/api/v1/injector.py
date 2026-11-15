@@ -426,13 +426,18 @@ async def get_filters(db: AsyncSession = Depends(get_db)):
 
 @router.get("/stats", dependencies=[Depends(require_menu("prokerinjector", "view"))])
 async def get_stats(db: AsyncSession = Depends(get_db)):
-    units = (await db.execute(text("SELECT COUNT(*) FROM injector_unit"))).scalar() or 0
+    units = (await db.execute(text(
+        "SELECT COUNT(*) FROM injector_unit WHERE "
+        "EXISTS (SELECT 1 FROM equipment eq WHERE eq.cn = injector_unit.cn AND eq.aktif)"
+    ))).scalar() or 0
     agg = (await db.execute(text("""
         SELECT COUNT(*) AS total,
                COUNT(*) FILTER (WHERE status = 'DONE') AS done,
                COUNT(*) FILTER (WHERE status = 'PLAN') AS plan,
-               COUNT(DISTINCT cn) AS unit_with_repl,
-               COUNT(DISTINCT cn) FILTER (WHERE status = 'DONE') AS unit_done
+               COUNT(DISTINCT cn) FILTER (WHERE EXISTS (
+                   SELECT 1 FROM equipment eq WHERE eq.cn = injector_replacement.cn AND eq.aktif)) AS unit_with_repl,
+               COUNT(DISTINCT cn) FILTER (WHERE status = 'DONE' AND EXISTS (
+                   SELECT 1 FROM equipment eq WHERE eq.cn = injector_replacement.cn AND eq.aktif)) AS unit_done
         FROM injector_replacement
     """))).mappings().first()
     due = (await db.execute(text(f"""
@@ -461,10 +466,13 @@ async def list_units(
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
 ):
-    conds, p = [], {"lim": page_size, "off": (page - 1) * page_size}
+    # Hanya unit berstatus AKTIF di master equipment (disinkronkan dari file
+    # populasi equipment); CN yang tidak terdaftar / nonaktif disembunyikan.
+    active_cond = "EXISTS (SELECT 1 FROM equipment eq WHERE eq.cn = u.cn AND eq.aktif)"
+    conds, p = [active_cond], {"lim": page_size, "off": (page - 1) * page_size}
     # Kondisi untuk query cakupan (tanpa CTE agregat) dibangun terpisah,
     # karena `due` pada query utama bergantung pada CTE `r`.
-    cov_conds: list[str] = []
+    cov_conds: list[str] = [active_cond]
     if search:
         sc = ("(u.cn ILIKE :s OR u.unit_model ILIKE :s OR u.product ILIKE :s "
               "OR u.unit_type ILIKE :s)")

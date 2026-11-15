@@ -1,5 +1,5 @@
 ﻿import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, isVideoType, can, canWrite, todayLocal, errMsg, importSsXlsx, fetchSsImportStatus, importManpowerXlsx, fetchManpowerImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
+import { fetchLatestPerUnit, fetchResults, fetchFleetAlerts, uploadExcel, fetchImportStatus, fetchDbr, fetchDbrCodes, uploadDbr, fetchEquipment, fetchEquipmentOne, fetchVesselUnits, downloadFuiPdf, downloadPamaPdf, fetchSuggestions, addSuggest, fetchSuggestHistory, fetchSuggestReport, createEquipment, patchEquipment, importEquipmentPopulasi, fetchActivityMonth, fetchActivityRecap, fetchActivityFilters, fetchActivitiesByDate, fetchActivity, createActivity, addActivityPhotos, patchActivity, deleteActivity, deleteActivityPhoto, activityPhotoUrl, isVideoType, can, canWrite, todayLocal, errMsg, importSsXlsx, fetchSsImportStatus, importManpowerXlsx, fetchManpowerImportStatus, type LabRow, type DbrRow, type Equipment, type Activity, type Suggest, type SuggestReportRow } from '../api/client'
 import { DatePicker } from '../components/DatePicker'
 import { VesselTable } from '../components/Widgets'
 
@@ -618,6 +618,8 @@ export function EquipmentPage() {
   const [edit, setEdit] = useState<Equipment | null>(null)
   const [view, setView] = useState<Equipment | null>(null)
   const [adding, setAdding] = useState(false)
+  const popRef = useRef<HTMLInputElement>(null)
+  const [popLoading, setPopLoading] = useState(false)
   const load = async (p = 1, s = sort, o = order) => {
     try {
       setMsg('')
@@ -660,6 +662,31 @@ export function EquipmentPage() {
         <button className="rounded-lg bg-brand-500 px-4 py-2 text-white" onClick={() => load(1)}>Tampilkan</button>
         {can('equipment', 'add') && (
           <button className="rounded-lg border px-4 py-2" onClick={() => setAdding(true)}>+ Tambah Unit</button>
+        )}
+        {can('equipment', 'add') && (
+          <>
+            <input ref={popRef} type="file" accept=".xlsx,.xlsm" className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files?.[0]
+                e.target.value = ''
+                if (!f) return
+                setPopLoading(true)
+                try {
+                  const res = await importEquipmentPopulasi(f)
+                  setMsg(`Populasi ${res.file}: ${res.total_cn} CN dibaca — ` +
+                    `${res.activated} unit diaktifkan, ${res.deactivated} unit PUMPING dinonaktifkan` +
+                    (res.not_found.length ? `, ${res.not_found.length} CN tidak ada di master: ${res.not_found.join(', ')}` : '') +
+                    '. Halaman Proker kini hanya menampilkan unit Aktif.')
+                  load(1)
+                } catch (err) { setMsg(`import populasi gagal: ${errMsg(err)}`) }
+                finally { setPopLoading(false) }
+              }} />
+            <button className="rounded-lg border px-4 py-2 disabled:opacity-50" disabled={popLoading}
+              onClick={() => popRef.current?.click()}
+              title="Upload file populasi equipment (.xlsx). CN yang ada di file menjadi Aktif; unit PUMPING yang CN-nya tidak ada di file menjadi Tidak Aktif — halaman Proker hanya menampilkan unit Aktif.">
+              {popLoading ? 'Memproses…' : 'Import Populasi'}
+            </button>
+          </>
         )}
         <span className="text-theme-sm text-gray-500">Total {total.toLocaleString('id-ID')}</span>
         <span className="text-theme-xs text-gray-400">

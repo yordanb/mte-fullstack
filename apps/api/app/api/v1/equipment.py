@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, File, Query, HTTPException, UploadFile
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_current_user, require_role
@@ -158,3 +158,86 @@ async def update_equipment(cn: str, body: dict, db: AsyncSession = Depends(get_d
     row = (await db.execute(text("SELECT * FROM equipment WHERE cn=:c"),
                             {"c": cn.upper()})).mappings().first()
     return dict(row)
+
+
+# ------------------------------------------------------------------- populasi
+def _parse_populasi(content: bytes) -> list[str]:
+    """Baca daftar CN aktif dari file populasi equipment (.xlsx).
+
+    Format: sheet berisi header `CN UNIT` (atau `C/N`); daftar CN dibaca di
+    bawah kolom tersebut sampai baris terakhir. CN dinormalisasi UPPER tanpa
+    spasi.
+    """
+    import io
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    try:
+        for ws in wb.worksheets:
+            for r in range(1, min(ws.max_row or 1, 15) + 1):
+                for c in range(1, min(ws.max_column or 1, 40) + 1):
+                    v = ws.cell(row=r, column=c).value
+                    if not isinstance(v, str):
+                        continue
+                    if v.strip().upper().replace(" ", "").replace("/", "") \
+                            .replace(".", "") in ("CNUNIT", "CN", "CNNUM"):
+                        cns: list[str] = []
+                        for rr in range(r + 1, (ws.max_row or 0) + 1):
+                            raw = ws.cell(row=rr, column=c).value
+                            if raw is None:
+                                continue
+                            cn = str(raw).strip().upper().replace(" ", "")
+                            if cn:
+                                cns.append(cn)
+                        if cns:
+                            return cns
+        raise ValueError(
+            "kolom 'CN UNIT' tidak ditemukan — bukan format file populasi equipment")
+    finally:
+        wb.close()
+
+
+@router.post("/populasi", dependencies=[Depends(require_role("inputer", "admin"))])
+async def import_populasi(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    user=Depends(get_current_user),
+):
+    """Sinkronisasi status aktif unit dari file populasi equipment.
+
+    CN yang ADA di file  -> `aktif = TRUE` (unit operasional).
+    CN PUMPING yang TIDAK ada di file -> `aktif = FALSE` (unit tidak
+    operasional). Kategori selain PUMPING (BIGWHEEL/LIGHTING/MOBILE) tidak
+    disentuh karena file populasi hanya mencakup unit pompa.
+    CN yang tidak terdaftar di master equipment dilaporkan `not_found`.
+    """
+    content = await file.read()
+    if not content:
+        raise HTTPException(400, "file kosong")
+    limit = 20 * 1024 * 1024
+    if len(content) > limit:
+        raise HTTPException(413, "file terlalu besar")
+    try:
+        cns = _parse_populasi(content)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    cns = sorted(set(cns))
+    if not cns:
+        raise HTTPException(400, "tidak ada CN yang terbaca dari file")
+
+    activated = (await db.execute(text(
+        "UPDATE equipment SET aktif = TRUE "
+        "WHERE cn = ANY(:cns) AND NOT aktif"), {"cns": cns})).rowcount
+    deactivated = (await db.execute(text(
+        "UPDATE equipment SET aktif = FALSE "
+        "WHERE category = 'PUMPING' AND aktif AND cn <> ALL(:cns)"),
+        {"cns": cns})).rowcount
+    found = set((await db.execute(text(
+        "SELECT cn FROM equipment WHERE cn = ANY(:cns)"), {"cns": cns})).scalars().all())
+    await db.commit()
+    return {
+        "file": file.filename,
+        "total_cn": len(cns),
+        "activated": activated,
+        "deactivated": deactivated,
+        "not_found": [c for c in cns if c not in found],
+    }
