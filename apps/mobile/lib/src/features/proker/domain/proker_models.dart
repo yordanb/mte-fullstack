@@ -25,6 +25,7 @@ Map<String, dynamic> _map(Object? v) =>
 
 /// Balasan POST /refresh-hm (semua varian Proker): updated/unchanged/not_found.
 class RefreshHmResult {
+
   final int updated;
   final int unchanged;
   final int notFound;
@@ -77,12 +78,18 @@ class ListPage<T> {
   final int page;
   final int pageSize;
   final List<T> data;
+  /// Cakupan eksekusi pada filter aktif (modul proker baru): unit DONE vs
+  /// belum (dihitung backend SEBELUM filter executed diterapkan).
+  final int? executedUnits;
+  final int? notExecutedUnits;
 
   const ListPage({
     required this.total,
     required this.page,
     required this.pageSize,
     required this.data,
+    this.executedUnits,
+    this.notExecutedUnits,
   });
 
   factory ListPage.fromJson(
@@ -94,6 +101,8 @@ class ListPage<T> {
         page: (j['page'] as num?)?.toInt() ?? 1,
         pageSize: _i(j['page_size']),
         data: [for (final e in _mapList(j['data'])) item(e)],
+        executedUnits: _iOrNull(j['executed_units']),
+        notExecutedUnits: _iOrNull(j['not_executed_units']),
       );
 }
 
@@ -113,6 +122,11 @@ class ProkerUnit {
   final int doneCount;
   final String? lastDate;
   final double? lastHm;
+  // Field khusus Proker Ponton (tipe ponton, detail, kondisi, remarks).
+  final String? typePonton;
+  final String? typeDetail;
+  final String? kondisi;
+  final String? remark;
 
   const ProkerUnit({
     required this.cn,
@@ -127,6 +141,10 @@ class ProkerUnit {
     this.doneCount = 0,
     this.lastDate,
     this.lastHm,
+    this.typePonton,
+    this.typeDetail,
+    this.kondisi,
+    this.remark,
   });
 
   factory ProkerUnit.fromJson(Map<String, dynamic> j) => ProkerUnit(
@@ -142,6 +160,10 @@ class ProkerUnit {
         doneCount: _i(j['done_count']),
         lastDate: _s(j['last_date']),
         lastHm: _d(j['last_hm']),
+        typePonton: _s(j['type_ponton']),
+        typeDetail: _s(j['type_detail']),
+        kondisi: _s(j['kondisi']),
+        remark: _s(j['remark']),
       );
 
   /// Judul singkat model — dipakai di kartu daftar unit.
@@ -166,6 +188,7 @@ class ProkerExecution {
   final String? serviceDate;
   final String? mekanik;
   final String status;
+  final String workType;
 
   const ProkerExecution({
     required this.id,
@@ -177,6 +200,7 @@ class ProkerExecution {
     this.serviceDate,
     this.mekanik,
     this.status = 'DONE',
+    this.workType = '',
   });
 
   factory ProkerExecution.fromJson(Map<String, dynamic> j) => ProkerExecution(
@@ -187,8 +211,11 @@ class ProkerExecution {
         periodSeq: _iOrNull(j['period_seq']),
         hm: _d(j['hm']),
         serviceDate: _s(j['service_date']),
-        mekanik: _s(j['mekanik']),
+        // Kolom lama = MEKANIK; modul baru (exhaust/fandrebb/gmc/fs/ponton)
+        // memakai REMARK — dibaca sebagai fallback agar satu model terpakai.
+        mekanik: _s(j['mekanik']) ?? _s(j['remark']),
         status: '${j['status'] ?? 'DONE'}'.toUpperCase(),
+        workType: _s(j['work_type']) ?? '',
       );
 }
 
@@ -199,7 +226,7 @@ class ProkerDetailStats {
   final int missed;
   final String? lastDate;
   final double? lastHm;
-  final double interval;
+  final double? interval;
   final double? dueHm;
   final double? sisaHm;
 
@@ -210,7 +237,7 @@ class ProkerDetailStats {
     this.missed = 0,
     this.lastDate,
     this.lastHm,
-    this.interval = 2000,
+    this.interval,
     this.dueHm,
     this.sisaHm,
   });
@@ -223,7 +250,8 @@ class ProkerDetailStats {
         missed: _i(j['missed']),
         lastDate: _s(j['last_date']),
         lastHm: _d(j['last_hm']),
-        interval: _d(j['interval']) ?? 2000,
+        // Modul tanpa interval HM (fire suppression / ponton) mengirim null.
+        interval: _d(j['interval']),
         dueHm: _d(j['due_hm']),
         sisaHm: _d(j['sisa_hm']),
       );
@@ -257,6 +285,7 @@ class ProkerStats {
   final int plan;
   final int late;
   final int missed;
+  final int notYet;
   final int unitDone;
   final String? lastDate;
   final int thisYear;
@@ -270,6 +299,7 @@ class ProkerStats {
     this.plan = 0,
     this.late = 0,
     this.missed = 0,
+    this.notYet = 0,
     this.unitDone = 0,
     this.lastDate,
     this.thisYear = 0,
@@ -284,6 +314,7 @@ class ProkerStats {
         plan: _i(j['plan']),
         late: _i(j['late']),
         missed: _i(j['missed']),
+        notYet: _i(j['not_yet']),
         unitDone: _i(j['unit_done']),
         lastDate: _s(j['last_date']),
         thisYear: _i(j['this_year']),
@@ -313,6 +344,8 @@ class ProkerFilters {
   final List<String> model;
   final List<String> type;
   final List<String> engine;
+  final List<String> workTypes;
+  final List<String> ponton;
   final List<int> years;
   final String? minDate;
   final String? maxDate;
@@ -324,6 +357,8 @@ class ProkerFilters {
     this.model = const [],
     this.type = const [],
     this.engine = const [],
+    this.workTypes = const [],
+    this.ponton = const [],
     this.years = const [],
     this.minDate,
     this.maxDate,
@@ -336,6 +371,8 @@ class ProkerFilters {
         model: _sList(j['model']),
         type: _sList(j['type']),
         engine: _sList(j['engine']),
+        workTypes: _sList(j['work_types']),
+        ponton: _sList(j['ponton']),
         years: [
           for (final y in (j['years'] as List? ?? const []))
             if ((y as num?) != null) y!.toInt(),

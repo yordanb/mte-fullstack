@@ -32,9 +32,11 @@ import 'package:mte_data_center/src/features/users/presentation/users_page.dart'
 import 'package:mte_data_center/src/features/equipment/presentation/equipment_form_page.dart';
 import 'package:mte_data_center/src/features/equipment/presentation/equipment_page.dart';
 import 'package:mte_data_center/src/features/mom/presentation/mom_page.dart';
+import 'package:mte_data_center/src/features/mom/presentation/mom2_page.dart';
 import 'package:mte_data_center/src/features/performance/presentation/performance_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_booster_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_injector_page.dart';
+import 'package:mte_data_center/src/features/proker/presentation/proker_module_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_primer_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_panel_page.dart';
 import 'package:mte_data_center/src/features/proker/presentation/proker_thermostat_page.dart';
@@ -112,6 +114,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (c, s) => const ProkerThermostatPage()),
       GoRoute(
           path: '/prokerpanel', builder: (c, s) => const ProkerPanelPage()),
+      GoRoute(
+          path: '/prokerexhaust', builder: (c, s) => const ProkerExhaustPage()),
+      GoRoute(
+          path: '/prokerexhaustmits',
+          builder: (c, s) => const ProkerExhaustMitsPage()),
+      GoRoute(
+          path: '/prokerfandrebb',
+          builder: (c, s) => const ProkerFanDriveRebbPage()),
+      GoRoute(
+          path: '/prokerfandpompa',
+          builder: (c, s) => const ProkerFanPompaPage()),
+      GoRoute(path: '/prokergmc', builder: (c, s) => const ProkerGmcPage()),
+      GoRoute(
+          path: '/prokerfsbooster',
+          builder: (c, s) => const ProkerFireSupBoosterPage()),
+      GoRoute(
+          path: '/prokerfsprimer',
+          builder: (c, s) => const ProkerFireSupPrimerPage()),
+      GoRoute(
+          path: '/prokerponton', builder: (c, s) => const ProkerPontonPage()),
       GoRoute(path: '/suggestion', builder: (c, s) => const SuggestionPage()),
       GoRoute(
         path: '/suggestion/new',
@@ -142,6 +164,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (c, s) => ActivityFormPage(id: s.pathParameters['id']!)),
       GoRoute(path: '/bomak', builder: (c, s) => const SafetyPage()),
       GoRoute(path: '/mom', builder: (c, s) => const MomPage()),
+      GoRoute(path: '/mom2', builder: (c, s) => const Mom2Page()),
       GoRoute(path: '/update-data', builder: (c, s) => const UpdateDataPage()),
       GoRoute(path: '/users', builder: (c, s) => const UsersPage()),
       GoRoute(path: '/audit', builder: (c, s) => const AuditPage()),

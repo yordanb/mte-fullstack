@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react'
 import { fetchUsers, createUser, patchUser, deleteUser, fetchPerms, setPerm, fetchMe, errMsg, type PermRow } from '../api/client'
 
 const ROLES = ['admin', 'inputer', 'mekanik', 'viewer', 'planner', 'group leader', 'section head', 'adm te', 'adm lce']
-const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'equipment', 'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak', 'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement', 'yazu_lighting', 'yazudc_lighting', 'yazupumping', 'yazupumpingdc', 'ewacs', 'tarsupport', 'ss', 'ssab', 'proker', 'prokerbooster', 'prokerinjector', 'prokerthermo', 'prokerpanel', 'manpower', 'manpowermanage']
+// Urutan sama dengan constraint role_permissions_menu_check (V78) —
+// cermin users.py MENUS & mobile user_models.dart permMenus.
+const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'timeline', 'equipment', 'fui', 'sugfui', 'fureport',
+  'project', 'bomak', 'staging', 'mom', 'mom2', 'riwayat', 'import', 'ppm', 'measurement',
+  'yazu_lighting', 'yazudc_lighting', 'yazupumping', 'yazupumpingdc', 'ewacs', 'tarsupport', 'ss', 'ssab',
+  'proker', 'prokerbooster', 'prokerinjector', 'manpower', 'manpowermanage', 'hourmeter', 'prokerthermo',
+  'prokerpanel', 'prokerexhaust', 'prokerexhaustmits', 'prokerfandrebb', 'prokerfandpompa', 'prokergmc',
+  'prokerfsbooster', 'prokerfsprimer', 'prokerponton']
 const ACTS = [
   { key: 'can_view', label: 'Lihat' },
   { key: 'can_add', label: 'Tambah' },

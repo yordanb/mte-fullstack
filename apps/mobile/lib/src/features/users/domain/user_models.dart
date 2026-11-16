@@ -25,14 +25,18 @@ const permMatrixRoles = [
   'group leader', 'section head', 'adm te', 'adm lce',
 ];
 
-/// 32 menu izin backend (users.py MENUS; urutan penting = urutan tampil web).
+/// 42 menu izin backend (users.py MENUS; urutan penting = urutan tampil web).
+/// Disinkronkan dengan constraint role_permissions_menu_check (V78) —
+/// termasuk mom2, hourmeter, dan 8 modul proker baru.
 const permMenus = [
-  'dashboard', 'dbr', 'performance', 'activity', 'equipment',
-  'fui', 'sugfui', 'fureport', 'timeline', 'project', 'bomak',
-  'staging', 'mom', 'riwayat', 'import', 'ppm', 'measurement',
-  'yazu_lighting', 'yazudc_lighting', 'yazupumping', 'yazupumpingdc', 'ewacs', 'tarsupport', 'ss', 'ssab',
-  'proker', 'prokerbooster', 'prokerinjector', 'prokerthermo', 'prokerpanel',
-  'manpower', 'manpowermanage',
+  'dashboard', 'dbr', 'performance', 'activity', 'timeline', 'equipment',
+  'fui', 'sugfui', 'fureport', 'project', 'bomak', 'staging', 'mom', 'mom2',
+  'riwayat', 'import', 'ppm', 'measurement', 'yazu_lighting',
+  'yazudc_lighting', 'yazupumping', 'yazupumpingdc', 'ewacs', 'tarsupport',
+  'ss', 'ssab', 'proker', 'prokerbooster', 'prokerinjector', 'manpower',
+  'manpowermanage', 'hourmeter', 'prokerthermo', 'prokerpanel',
+  'prokerexhaust', 'prokerexhaustmits', 'prokerfandrebb', 'prokerfandpompa',
+  'prokergmc', 'prokerfsbooster', 'prokerfsprimer', 'prokerponton',
 ];
 
 /// Label ramah baris matriks izin (web Users.tsx:110); menu lain apa adanya.
@@ -50,6 +54,15 @@ String menuLabel(String menu) => switch (menu) {
       'prokerinjector' => 'prokerinjector — midlife injector primer',
       'prokerthermo' => 'prokerthermo — Thermostat CAT',
       'prokerpanel' => 'prokerpanel — GMC Panel Booster',
+      'mom2' => 'mom2 — MOM Weekly SPEX',
+      'prokerexhaust' => 'prokerexhaust — Gen Repair Exhaust',
+      'prokerexhaustmits' => 'prokerexhaustmits — Exhaust Mitsura',
+      'prokerfandrebb' => 'prokerfandrebb — Rebearing Fan Drive',
+      'prokerfandpompa' => 'prokerfandpompa — Fan Drive Pompa',
+      'prokergmc' => 'prokergmc — GMC Motor (2.000 jam)',
+      'prokerfsbooster' => 'prokerfsbooster — Fire Suppression Booster',
+      'prokerfsprimer' => 'prokerfsprimer — Fire Suppression Primer',
+      'prokerponton' => 'prokerponton — General Repair Ponton',
       _ => menu,
     };
 

@@ -12,7 +12,14 @@ from app.db.session import get_db
 router = APIRouter(prefix="/v1/users", tags=["users"])
 admin_router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
-MENUS = ("dashboard", "dbr", "performance", "activity", "equipment", "fui", "sugfui", "fureport", "timeline", "project", "bomak", "staging", "mom", "riwayat", "import", "ppm", "measurement", "yazu_lighting", "yazudc_lighting", "yazupumping", "yazupumpingdc", "ewacs", "tarsupport", "ss", "ssab", "proker", "prokerbooster", "prokerinjector", "prokerthermo", "prokerpanel", "manpower", "manpowermanage")
+# Urutan sama dengan constraint role_permissions_menu_check (V78) — urutan ini
+# juga dipakai tampilan matriks izin di web Users.tsx & mobile user_models.dart.
+MENUS = ("dashboard", "dbr", "performance", "activity", "timeline", "equipment", "fui", "sugfui", "fureport",
+         "project", "bomak", "staging", "mom", "mom2", "riwayat", "import", "ppm", "measurement",
+         "yazu_lighting", "yazudc_lighting", "yazupumping", "yazupumpingdc", "ewacs", "tarsupport", "ss", "ssab",
+         "proker", "prokerbooster", "prokerinjector", "manpower", "manpowermanage", "hourmeter", "prokerthermo",
+         "prokerpanel", "prokerexhaust", "prokerexhaustmits", "prokerfandrebb", "prokerfandpompa", "prokergmc",
+         "prokerfsbooster", "prokerfsprimer", "prokerponton")
 ROLES = ("admin", "inputer", "mekanik", "viewer", "planner", "group leader", "section head", "adm te", "adm lce")
 
 

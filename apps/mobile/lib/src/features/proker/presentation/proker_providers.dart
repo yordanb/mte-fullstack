@@ -353,9 +353,7 @@ void invalidatePrimerData(WidgetRef ref) {
   ref.invalidate(primerFiltersProvider);
   ref.invalidate(primerUnitsProvider);
   ref.invalidate(primerDetailProvider);
-}
-
-void invalidatePanelData(WidgetRef ref) {
+}void invalidatePanelData(WidgetRef ref) {
   ref.invalidate(panelStatsProvider);
   ref.invalidate(panelFiltersProvider);
   ref.invalidate(panelUnitsProvider);
@@ -380,4 +378,155 @@ void invalidateThermoData(WidgetRef ref) {
   ref.invalidate(thermoKpiProvider);
   ref.invalidate(thermoFiltersProvider);
   ref.invalidate(thermoUnitsProvider);
+}
+
+// ─────────── 8 modul proker baru (paritas web, shape seragam) ──────────────
+
+/// Filter seragam modul baru: search/product/model (+ tipe ponton khusus
+/// Proker Ponton) + chip cakupan eksekusi ('' = semua / yes / no).
+class ModuleFilter {
+  final String q;
+  final String product;
+  final String model;
+  final String ponton;
+  final String executed;
+  final int page;
+
+  const ModuleFilter({
+    this.q = '',
+    this.product = '',
+    this.model = '',
+    this.ponton = '',
+    this.executed = '',
+    this.page = 1,
+  });
+
+  ModuleFilter copyWith({
+    String? q,
+    String? product,
+    String? model,
+    String? ponton,
+    String? executed,
+    int? page,
+  }) =>
+      ModuleFilter(
+        q: q ?? this.q,
+        product: product ?? this.product,
+        model: model ?? this.model,
+        ponton: ponton ?? this.ponton,
+        executed: executed ?? this.executed,
+        page: page ?? this.page,
+      );
+}
+
+class ModuleFilterNotifier extends Notifier<ModuleFilter> {
+  @override
+  ModuleFilter build() => const ModuleFilter();
+
+  /// Terapkan filter — selalu kembali ke halaman 1 (perilaku web).
+  void apply({
+    String? q,
+    String? product,
+    String? model,
+    String? ponton,
+    String? executed,
+  }) =>
+      state = state.copyWith(
+        q: q,
+        product: product,
+        model: model,
+        ponton: ponton,
+        executed: executed,
+        page: 1,
+      );
+
+  void setPage(int p) => state = state.copyWith(page: p);
+}
+
+/// Satu provider filter per modul (instance terpisah, satu class bersama).
+final exhaustFilterProvider =
+    NotifierProvider<ModuleFilterNotifier, ModuleFilter>(
+        ModuleFilterNotifier.new);
+final exhaustMitsFilterProvider =
+    NotifierProvider<ModuleFilterNotifier, ModuleFilter>(
+        ModuleFilterNotifier.new);
+final fandrebbFilterProvider =
+    NotifierProvider<ModuleFilterNotifier, ModuleFilter>(
+        ModuleFilterNotifier.new);
+final fanpompaFilterProvider =
+    NotifierProvider<ModuleFilterNotifier, ModuleFilter>(
+        ModuleFilterNotifier.new);
+final gmcFilterProvider =
+    NotifierProvider<ModuleFilterNotifier, ModuleFilter>(
+        ModuleFilterNotifier.new);
+final fsboosterFilterProvider =
+    NotifierProvider<ModuleFilterNotifier, ModuleFilter>(
+        ModuleFilterNotifier.new);
+final fsprimerFilterProvider =
+    NotifierProvider<ModuleFilterNotifier, ModuleFilter>(
+        ModuleFilterNotifier.new);
+final pontonFilterProvider =
+    NotifierProvider<ModuleFilterNotifier, ModuleFilter>(
+        ModuleFilterNotifier.new);
+
+/// Peta modul → provider filter-nya (dipakai provider family di bawah).
+final Map<String,
+        NotifierProvider<ModuleFilterNotifier, ModuleFilter>>
+    moduleFilterProviders = {
+  'prokerexhaust': exhaustFilterProvider,
+  'prokerexhaustmits': exhaustMitsFilterProvider,
+  'prokerfandrebb': fandrebbFilterProvider,
+  'prokerfandpompa': fanpompaFilterProvider,
+  'prokergmc': gmcFilterProvider,
+  'prokerfsbooster': fsboosterFilterProvider,
+  'prokerfsprimer': fsprimerFilterProvider,
+  'prokerponton': pontonFilterProvider,
+};
+
+final moduleStatsProvider =
+    FutureProvider.family<ProkerStats, String>((ref, id) {
+  final api = ref.watch(prokerApiProvider);
+  return _guard(ref, () => api.moduleStats(id));
+});
+
+final moduleFiltersProvider =
+    FutureProvider.family<ProkerFilters, String>((ref, id) {
+  final api = ref.watch(prokerApiProvider);
+  return _guard(ref, () => api.moduleFilters(id));
+});
+
+final moduleUnitsProvider =
+    FutureProvider.family<ListPage<ProkerUnit>, String>((ref, id) {
+  final f = ref.watch(moduleFilterProviders[id]!);
+  final api = ref.watch(prokerApiProvider);
+  return _guard(
+    ref,
+    () => api.moduleUnits(
+      id,
+      search: f.q,
+      product: f.product,
+      model: f.model,
+      ponton: f.ponton,
+      executed: f.executed,
+      page: f.page,
+      pageSize: prokerPageSize,
+    ),
+  );
+});
+
+/// Detail unit — key "modulId|cn" karena family hanya menerima 1 argumen.
+final moduleDetailProvider =
+    FutureProvider.family<ProkerDetail, String>((ref, key) {
+  final sep = key.indexOf('|');
+  final id = key.substring(0, sep);
+  final cn = key.substring(sep + 1);
+  final api = ref.watch(prokerApiProvider);
+  return _guard(ref, () => api.moduleDetail(id, cn));
+});
+
+void invalidateModuleData(WidgetRef ref, String id) {
+  ref.invalidate(moduleStatsProvider(id));
+  ref.invalidate(moduleFiltersProvider(id));
+  ref.invalidate(moduleUnitsProvider(id));
+  ref.invalidate(moduleDetailProvider);
 }

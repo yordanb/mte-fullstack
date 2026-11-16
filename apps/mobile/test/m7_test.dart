@@ -20,10 +20,10 @@ void main() {
     expect(r.errors.first.row, 2);
   });
 
-  test('perm matrix: 32 menu backend (sinkron users.py MENUS, urutan sama)', () {
-    expect(permMenus.length, 32);
+  test('perm matrix: 42 menu backend (sinkron users.py MENUS, urutan sama)', () {
+    expect(permMenus.length, 42);
     expect(permMenus.first, 'dashboard');
-    expect(permMenus.last, 'manpowermanage');
+    expect(permMenus.last, 'prokerponton');
     expect(
         permMenus,
         containsAll([
@@ -32,7 +32,10 @@ void main() {
           'yazupumping', 'yazupumpingdc', 'ewacs',
           'tarsupport', 'ss', 'ssab', 'proker', 'prokerbooster',
           'prokerinjector', 'prokerthermo', 'prokerpanel',
-          'manpower', 'manpowermanage',
+          'manpower', 'manpowermanage', 'hourmeter', 'mom2',
+          'prokerexhaust', 'prokerexhaustmits', 'prokerfandrebb',
+          'prokerfandpompa', 'prokergmc', 'prokerfsbooster', 'prokerfsprimer',
+          'prokerponton',
         ]));
     expect(permMenus.toSet().length, permMenus.length); // tanpa duplikat
   });

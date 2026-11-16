@@ -1,10 +1,13 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mte_data_center/src/core/auth/auth_notifier.dart';
+import 'package:mte_data_center/src/core/network/dio_client.dart' show apiMessage;
 import 'package:mte_data_center/src/core/widgets/app_scaffold.dart';
 import 'package:mte_data_center/src/core/widgets/error_view.dart';
 
+import '../data/equipment_api.dart';
 import 'equipment_providers.dart';
 
 const _cats = ['BIGWHEEL', 'LIGHTING', 'MOBILE', 'PUMPING'];
@@ -41,6 +44,57 @@ class _EquipmentPageState extends ConsumerState<EquipmentPage> {
     super.dispose();
   }
 
+  /// Pilih file populasi (.xlsx) → POST /v1/equipment/populasi → dialog hasil.
+  Future<void> _importPopulasi() async {
+    final res = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx', 'xlsm'],
+      withData: false,
+    );
+    final file = res?.files.single;
+    if (file == null || file.path == null) return;
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final r = await ref.read(equipmentApiProvider).importPopulasi(
+            path: file.path!,
+            filename: file.name,
+          );
+      if (!mounted) return;
+      Navigator.of(context).pop(); // tutup loading
+      final notFound = (r['not_found'] as List?) ?? const [];
+      await showDialog<void>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: const Text('Import Populasi selesai'),
+          content: Text(
+            'File: ${r['file'] ?? '-'}\n'
+            'CN terbaca: ${r['total_cn'] ?? 0}\n'
+            'Diaktifkan: ${r['activated'] ?? 0}\n'
+            'Dinonaktifkan: ${r['deactivated'] ?? 0}\n'
+            'Tidak terdaftar: ${notFound.length}'
+            '${notFound.isNotEmpty ? '\n\n${notFound.take(10).join(', ')}'
+                '${notFound.length > 10 ? ' …' : ''}' : ''}',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c), child: const Text('OK')),
+          ],
+        ),
+      );
+      ref.invalidate(eqListProvider);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // tutup loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Import Populasi gagal: ${apiMessage(e)}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final f = ref.watch(eqFilterProvider);
@@ -53,6 +107,14 @@ class _EquipmentPageState extends ConsumerState<EquipmentPage> {
     return AppScaffold(
       title: 'Equipment',
       actions: [
+        // Import Populasi: sinkron status aktif unit pompa dari file
+        // populasi equipment (backend require_role inputer/admin).
+        if (auth.isAdmin || auth.role == 'inputer')
+          IconButton(
+            tooltip: 'Import Populasi',
+            icon: const Icon(Icons.upload_file),
+            onPressed: _importPopulasi,
+          ),
         if (auth.can('equipment', 'add'))
           IconButton(
             tooltip: 'Tambah Unit',

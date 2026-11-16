@@ -5,7 +5,7 @@ import 'package:mte_data_center/src/core/network/dio_client.dart';
 import '../domain/equipment_models.dart';
 
 /// Lapisan data Equipment (equipment.py): list + sort server, detail,
-/// create (409 bila CN ada), patch parsial.
+/// create (409 bila CN ada), patch parsial, import populasi.
 class EquipmentApi {
   final Dio _dio;
   EquipmentApi(this._dio);
@@ -50,6 +50,21 @@ class EquipmentApi {
   Future<Equipment> patch(String cn, Map<String, dynamic> body) async {
     final r = await _dio.patch('/v1/equipment/$cn', data: body);
     return Equipment.fromJson((r.data as Map).cast<String, dynamic>());
+  }
+
+  /// Import Populasi — sinkronisasi status aktif unit pompa dari file
+  /// populasi equipment (.xlsx, kolom 'CN UNIT'). CN di file → aktif,
+  /// CN PUMPING di luar file → nonaktif. Balasan: total_cn/activated/
+  /// deactivated/not_found.
+  Future<Map<String, dynamic>> importPopulasi({
+    required String path,
+    required String filename,
+  }) async {
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(path, filename: filename),
+    });
+    final r = await _dio.post('/v1/equipment/populasi', data: form);
+    return Map<String, dynamic>.from(r.data as Map);
   }
 }
 

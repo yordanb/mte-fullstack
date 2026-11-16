@@ -237,6 +237,61 @@ class ProkerApi {
           '/v1/thermostat/refresh-hm', 'refresh HM thermostat',
           options: _optsRefresh));
 
+  // ── 8 modul proker baru (paritas web client.ts) ─────────────────
+  // Peta menu key → prefix endpoint. Semua modul punya shape sama:
+  // stats / filters / units / units/{cn} / refresh-hm.
+  static const Map<String, String> modulePaths = {
+    'prokerexhaust': '/v1/proker-exhaust',
+    'prokerexhaustmits': '/v1/proker-exhaust-mits',
+    'prokerfandrebb': '/v1/proker-fandrebb',
+    'prokerfandpompa': '/v1/proker-fanpompa',
+    'prokergmc': '/v1/proker-gmc',
+    'prokerfsbooster': '/v1/proker-fsbooster',
+    'prokerfsprimer': '/v1/proker-fsprimer',
+    'prokerponton': '/v1/proker-ponton',
+  };
+
+  Future<ProkerStats> moduleStats(String id) async => ProkerStats.fromJson(
+      await _get('${modulePaths[id]!}/stats', 'ringkasan $id'));
+
+  Future<ProkerFilters> moduleFilters(String id) async =>
+      ProkerFilters.fromJson(
+          await _get('${modulePaths[id]!}/filters', 'filter $id'));
+
+  Future<ListPage<ProkerUnit>> moduleUnits(
+    String id, {
+    String? search,
+    String? product,
+    String? model,
+    String? ponton,
+    String? executed,
+    int page = 1,
+    int pageSize = 50,
+  }) async =>
+      ListPage.fromJson(
+        await _get('${modulePaths[id]!}/units', 'daftar unit $id',
+            query: {
+              if (search != null && search.isNotEmpty) 'search': search,
+              if (product != null && product.isNotEmpty) 'product': product,
+              if (model != null && model.isNotEmpty) 'model': model,
+              if (ponton != null && ponton.isNotEmpty) 'ponton': ponton,
+              if (executed != null && executed.isNotEmpty) 'executed': executed,
+              if (page > 0) 'page': page,
+              if (pageSize > 0) 'page_size': pageSize,
+            }),
+        ProkerUnit.fromJson,
+      );
+
+  Future<ProkerDetail> moduleDetail(String id, String cn) async =>
+      ProkerDetail.fromJson(await _get(
+          '${modulePaths[id]!}/units/${Uri.encodeComponent(cn)}',
+          'riwayat $id $cn'));
+
+  Future<RefreshHmResult> moduleRefreshHm(String id) async =>
+      RefreshHmResult.fromJson(await _post(
+          '${modulePaths[id]!}/refresh-hm', 'refresh HM $id',
+          options: _optsRefresh));
+
   Exception _handleDioError(DioException e, String context) {
     if (kIsWeb && e.type == DioExceptionType.connectionError) {
       return Exception(
