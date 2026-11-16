@@ -2326,6 +2326,344 @@ export async function refreshProkerExhaustMitsHm(): Promise<RefreshHmResult> {
 }
 
 
+// --- Proker Rebearing Fan Drive Replacement Primer --------------------------
+export type ProkerFanRebbStatus = 'DONE' | 'PLAN' | 'MISSED' | 'NA' | 'NOTE'
+
+export type ProkerFanRebbUnitRow = {
+  cn: string; no: number | null; unit_model: string | null
+  product: string | null; unit_type: string | null; hm_now: number | null
+}
+
+export type ProkerFanRebbUnit = ProkerFanRebbUnitRow & {
+  exec_count: number; done_count: number; last_date: string | null; last_hm: number | null
+}
+
+export type ProkerFanRebbExecution = {
+  id: number; cn: string; period: string; period_year: number | null
+  work_type: string; hm: number | null; service_date: string | null
+  remark: string | null; status: ProkerFanRebbStatus
+}
+
+export type ProkerFanRebbDetail = {
+  unit: ProkerFanRebbUnitRow
+  executions: ProkerFanRebbExecution[]
+  stats: {
+    total: number; done: number; last_date: string | null; last_hm: number | null
+    interval: number; due_hm: number | null; sisa_hm: number | null
+  }
+}
+
+export type ProkerFanRebbStats = {
+  units: number; total: number; done: number; plan: number; unit_done: number
+  last_date: string | null; this_year: number; year: number
+}
+
+export type ProkerFanRebbFilters = {
+  product: string[]; model: string[]; type: string[]; periods: string[]
+  min_date: string | null; max_date: string | null
+}
+
+export type ProkerFanRebbUnitPage = {
+  total: number; page: number; page_size: number
+  executed_units?: number; not_executed_units?: number
+  data: ProkerFanRebbUnit[]
+}
+
+export async function fetchProkerFanRebbStats(): Promise<ProkerFanRebbStats> {
+  const r = await api.get('/v1/proker-fandrebb/stats')
+  return r.data
+}
+
+export async function fetchProkerFanRebbFilters(): Promise<ProkerFanRebbFilters> {
+  const r = await api.get('/v1/proker-fandrebb/filters')
+  return r.data
+}
+
+export async function fetchProkerFanRebbUnits(params: {
+  search?: string; product?: string; model?: string; executed?: 'yes' | 'no'
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<ProkerFanRebbUnitPage> {
+  const r = await api.get('/v1/proker-fandrebb/units', { params })
+  return r.data
+}
+
+export async function fetchProkerFanRebbUnit(cn: string): Promise<ProkerFanRebbDetail> {
+  const r = await api.get(`/v1/proker-fandrebb/units/${encodeURIComponent(cn)}`)
+  return r.data
+}
+
+export async function updateProkerFanRebbUnit(cn: string, body: Partial<ProkerFanRebbUnitRow>): Promise<ProkerFanRebbUnitRow> {
+  const r = await api.patch(`/v1/proker-fandrebb/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+
+export type ProkerFanRebbExecInput = {
+  period?: string
+  hm?: number | null
+  service_date?: string | null
+  remark?: string | null
+  status?: ProkerFanRebbStatus
+}
+
+export async function createProkerFanRebbExecution(cn: string, body: ProkerFanRebbExecInput): Promise<ProkerFanRebbExecution> {
+  const r = await api.post(`/v1/proker-fandrebb/units/${encodeURIComponent(cn)}/executions`, body)
+  return r.data
+}
+
+export async function updateProkerFanRebbExecution(id: number, body: ProkerFanRebbExecInput): Promise<ProkerFanRebbExecution> {
+  const r = await api.patch(`/v1/proker-fandrebb/executions/${id}`, body)
+  return r.data
+}
+
+export async function deleteProkerFanRebbExecution(id: number): Promise<void> {
+  await api.delete(`/v1/proker-fandrebb/executions/${id}`)
+}
+
+export async function importProkerFanRebbXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/proker-fandrebb/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchProkerFanRebbImportStatus(id: string): Promise<ProkerImportStatus> {
+  const r = await api.get(`/v1/proker-fandrebb/import/${id}`)
+  return r.data
+}
+
+export async function refreshProkerFanRebbHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/proker-fandrebb/refresh-hm')
+  return r.data
+}
+
+
+// --- Proker Fan Drive Pompa Primer (Upgrade Pulley) -------------------------
+export type ProkerFanPompaStatus = 'DONE' | 'PLAN' | 'MISSED' | 'NA' | 'NOTE'
+
+export type ProkerFanPompaUnitRow = {
+  cn: string; no: number | null; unit_model: string | null
+  product: string | null; unit_type: string | null; hm_now: number | null
+}
+
+export type ProkerFanPompaUnit = ProkerFanPompaUnitRow & {
+  exec_count: number; done_count: number; last_date: string | null; last_hm: number | null
+}
+
+export type ProkerFanPompaExecution = {
+  id: number; cn: string; period: string; period_year: number | null
+  work_type: string; hm: number | null; service_date: string | null
+  remark: string | null; wo: string | null; wr: string | null
+  status: ProkerFanPompaStatus
+}
+
+export type ProkerFanPompaDetail = {
+  unit: ProkerFanPompaUnitRow
+  executions: ProkerFanPompaExecution[]
+  stats: {
+    total: number; done: number; last_date: string | null; last_hm: number | null
+    interval: number | null; due_hm: number | null; sisa_hm: number | null
+  }
+}
+
+export type ProkerFanPompaStats = {
+  units: number; total: number; done: number; plan: number; unit_done: number
+  last_date: string | null; this_year: number; year: number
+}
+
+export type ProkerFanPompaFilters = {
+  product: string[]; model: string[]; type: string[]; work_types: string[]
+  min_date: string | null; max_date: string | null
+}
+
+export type ProkerFanPompaUnitPage = {
+  total: number; page: number; page_size: number
+  executed_units?: number; not_executed_units?: number
+  data: ProkerFanPompaUnit[]
+}
+
+export async function fetchProkerFanPompaStats(): Promise<ProkerFanPompaStats> {
+  const r = await api.get('/v1/proker-fanpompa/stats')
+  return r.data
+}
+
+export async function fetchProkerFanPompaFilters(): Promise<ProkerFanPompaFilters> {
+  const r = await api.get('/v1/proker-fanpompa/filters')
+  return r.data
+}
+
+export async function fetchProkerFanPompaUnits(params: {
+  search?: string; product?: string; model?: string; executed?: 'yes' | 'no'
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<ProkerFanPompaUnitPage> {
+  const r = await api.get('/v1/proker-fanpompa/units', { params })
+  return r.data
+}
+
+export async function fetchProkerFanPompaUnit(cn: string): Promise<ProkerFanPompaDetail> {
+  const r = await api.get(`/v1/proker-fanpompa/units/${encodeURIComponent(cn)}`)
+  return r.data
+}
+
+export async function updateProkerFanPompaUnit(cn: string, body: Partial<ProkerFanPompaUnitRow>): Promise<ProkerFanPompaUnitRow> {
+  const r = await api.patch(`/v1/proker-fanpompa/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+
+export type ProkerFanPompaExecInput = {
+  period?: string
+  work_type?: string
+  hm?: number | null
+  service_date?: string | null
+  remark?: string | null
+  wo?: string | null
+  wr?: string | null
+  status?: ProkerFanPompaStatus
+}
+
+export async function createProkerFanPompaExecution(cn: string, body: ProkerFanPompaExecInput): Promise<ProkerFanPompaExecution> {
+  const r = await api.post(`/v1/proker-fanpompa/units/${encodeURIComponent(cn)}/executions`, body)
+  return r.data
+}
+
+export async function updateProkerFanPompaExecution(id: number, body: ProkerFanPompaExecInput): Promise<ProkerFanPompaExecution> {
+  const r = await api.patch(`/v1/proker-fanpompa/executions/${id}`, body)
+  return r.data
+}
+
+export async function deleteProkerFanPompaExecution(id: number): Promise<void> {
+  await api.delete(`/v1/proker-fanpompa/executions/${id}`)
+}
+
+export async function importProkerFanPompaXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/proker-fanpompa/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchProkerFanPompaImportStatus(id: string): Promise<ProkerImportStatus> {
+  const r = await api.get(`/v1/proker-fanpompa/import/${id}`)
+  return r.data
+}
+
+export async function refreshProkerFanPompaHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/proker-fanpompa/refresh-hm')
+  return r.data
+}
+
+
+// --- Proker GMC Motor Booster (2.000 jam) -----------------------------------
+export type ProkerGmcStatus = 'DONE' | 'PLAN' | 'MISSED' | 'NA' | 'NOTE'
+
+export type ProkerGmcUnitRow = {
+  cn: string; no: number | null; unit_model: string | null
+  product: string | null; unit_type: string | null; hm_now: number | null
+}
+
+export type ProkerGmcUnit = ProkerGmcUnitRow & {
+  exec_count: number; done_count: number; last_date: string | null; last_hm: number | null
+}
+
+export type ProkerGmcExecution = {
+  id: number; cn: string; period: string; period_year: number | null
+  work_type: string; hm: number | null; service_date: string | null
+  remark: string | null; status: ProkerGmcStatus
+}
+
+export type ProkerGmcDetail = {
+  unit: ProkerGmcUnitRow
+  executions: ProkerGmcExecution[]
+  stats: {
+    total: number; done: number; last_date: string | null; last_hm: number | null
+    interval: number; due_hm: number | null; sisa_hm: number | null
+  }
+}
+
+export type ProkerGmcStats = {
+  units: number; total: number; done: number; plan: number; unit_done: number
+  last_date: string | null; this_year: number; year: number
+  per_year: { year: number; total: number; done: number }[]
+}
+
+export type ProkerGmcFilters = {
+  product: string[]; model: string[]; type: string[]; years: number[]
+  min_date: string | null; max_date: string | null
+}
+
+export type ProkerGmcUnitPage = {
+  total: number; page: number; page_size: number
+  executed_units?: number; not_executed_units?: number
+  data: ProkerGmcUnit[]
+}
+
+export async function fetchProkerGmcStats(): Promise<ProkerGmcStats> {
+  const r = await api.get('/v1/proker-gmc/stats')
+  return r.data
+}
+
+export async function fetchProkerGmcFilters(): Promise<ProkerGmcFilters> {
+  const r = await api.get('/v1/proker-gmc/filters')
+  return r.data
+}
+
+export async function fetchProkerGmcUnits(params: {
+  search?: string; product?: string; model?: string; executed?: 'yes' | 'no'
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<ProkerGmcUnitPage> {
+  const r = await api.get('/v1/proker-gmc/units', { params })
+  return r.data
+}
+
+export async function fetchProkerGmcUnit(cn: string): Promise<ProkerGmcDetail> {
+  const r = await api.get(`/v1/proker-gmc/units/${encodeURIComponent(cn)}`)
+  return r.data
+}
+
+export async function updateProkerGmcUnit(cn: string, body: Partial<ProkerGmcUnitRow>): Promise<ProkerGmcUnitRow> {
+  const r = await api.patch(`/v1/proker-gmc/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+
+export type ProkerGmcExecInput = {
+  period?: string
+  hm?: number | null
+  service_date?: string | null
+  remark?: string | null
+  status?: ProkerGmcStatus
+}
+
+export async function createProkerGmcExecution(cn: string, body: ProkerGmcExecInput): Promise<ProkerGmcExecution> {
+  const r = await api.post(`/v1/proker-gmc/units/${encodeURIComponent(cn)}/executions`, body)
+  return r.data
+}
+
+export async function updateProkerGmcExecution(id: number, body: ProkerGmcExecInput): Promise<ProkerGmcExecution> {
+  const r = await api.patch(`/v1/proker-gmc/executions/${id}`, body)
+  return r.data
+}
+
+export async function deleteProkerGmcExecution(id: number): Promise<void> {
+  await api.delete(`/v1/proker-gmc/executions/${id}`)
+}
+
+export async function importProkerGmcXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/proker-gmc/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchProkerGmcImportStatus(id: string): Promise<ProkerImportStatus> {
+  const r = await api.get(`/v1/proker-gmc/import/${id}`)
+  return r.data
+}
+
+export async function refreshProkerGmcHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/proker-gmc/refresh-hm')
+  return r.data
+}
+
+
 // --- Proker Midlife Eng Booster ------------------------------------------
 export type BoosterKind = 'OVH' | 'MIDLIFE'
 

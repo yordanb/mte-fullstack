@@ -30,6 +30,9 @@ from app.api.v1.thermostat import router as thermostat_router
 from app.api.v1.proker_panel import router as proker_panel_router
 from app.api.v1.proker_exhaust import router as proker_exhaust_router
 from app.api.v1.proker_exhaust_mitsura import router as proker_exhaust_mitsura_router
+from app.api.v1.proker_fandrebb import router as proker_fandrebb_router
+from app.api.v1.proker_fanpompa import router as proker_fanpompa_router
+from app.api.v1.proker_gmc import router as proker_gmc_router
 from app.api.v1.manpower import router as manpower_router
 from app.core.config import settings
 from app.core.security import hash_pw
@@ -168,6 +171,9 @@ app.include_router(thermostat_router)
 app.include_router(proker_panel_router)
 app.include_router(proker_exhaust_router)
 app.include_router(proker_exhaust_mitsura_router)
+app.include_router(proker_fandrebb_router)
+app.include_router(proker_fanpompa_router)
+app.include_router(proker_gmc_router)
 app.include_router(manpower_router)
 
 # ─── Scheduler: yazu sync 06:00 & 18:00 Asia/Makassar (GMT+8) ───

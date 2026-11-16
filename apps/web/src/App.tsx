@@ -29,6 +29,9 @@ import ProkerThermostatPage from './pages/Thermostat'
 import ProkerPanelPage from './pages/ProkerPanel'
 import ProkerExhaustPage from './pages/ProkerExhaust'
 import ProkerExhaustMitsuraPage from './pages/ProkerExhaustMitsura'
+import ProkerFanDriveRebbPage from './pages/ProkerFanDriveRebb'
+import ProkerFanPompaPage from './pages/ProkerFanPompa'
+import ProkerGmcPage from './pages/ProkerGmc'
 import ManpowerPage from './pages/Manpower'
 import ManpowerGroupPage from './pages/ManpowerGroup'
 import { fetchMe, can } from './api/client'
@@ -105,6 +108,9 @@ export default function App() {
       {page === 'prokerpanel' && can('prokerpanel', 'view') && <ProkerPanelPage />}
       {page === 'prokerexhaust' && can('prokerexhaust', 'view') && <ProkerExhaustPage />}
       {page === 'prokerexhaustmits' && can('prokerexhaustmits', 'view') && <ProkerExhaustMitsuraPage />}
+      {page === 'prokerfandrebb' && can('prokerfandrebb', 'view') && <ProkerFanDriveRebbPage />}
+      {page === 'prokerfandpompa' && can('prokerfandpompa', 'view') && <ProkerFanPompaPage />}
+      {page === 'prokergmc' && can('prokergmc', 'view') && <ProkerGmcPage />}
       {page === 'manpower' && can('manpower', 'view') && <ManpowerPage />}
       {page === 'manpowermanage' && can('manpowermanage', 'view') && <ManpowerGroupPage />}
       {page === 'import' && <ImportPage />}

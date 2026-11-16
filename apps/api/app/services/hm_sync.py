@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Whitelist tabel proker yang boleh di-refresh (nama tabel tidak pernah dari user).
 TABLES = ("proker_unit", "proker_panel_unit", "proker_exhaust_unit",
           "proker_exhaust_mitsura_unit",
+          "proker_fandrebb_unit", "proker_fanpompa_unit", "proker_gmc_unit",
           "booster_unit", "injector_unit", "thermo_unit")
 
 
