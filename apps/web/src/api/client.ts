@@ -2664,6 +2664,344 @@ export async function refreshProkerGmcHm(): Promise<RefreshHmResult> {
 }
 
 
+// --- Proker Fire Suppression Booster ----------------------------------------
+export type ProkerFsBoostStatus = 'DONE' | 'NOT YET' | 'PLAN' | 'NA' | 'NOTE'
+
+export type ProkerFsBoostUnitRow = {
+  cn: string; no: number | null; unit_model: string | null
+  product: string | null; unit_type: string | null; hm_now: number | null
+}
+
+export type ProkerFsBoostUnit = ProkerFsBoostUnitRow & {
+  exec_count: number; done_count: number; last_date: string | null; last_hm: number | null
+}
+
+export type ProkerFsBoostExecution = {
+  id: number; cn: string; period: string; period_year: number | null
+  work_type: string; hm: number | null; service_date: string | null
+  remark: string | null; status: ProkerFsBoostStatus
+}
+
+export type ProkerFsBoostDetail = {
+  unit: ProkerFsBoostUnitRow
+  executions: ProkerFsBoostExecution[]
+  stats: {
+    total: number; done: number; last_date: string | null; last_hm: number | null
+    interval: number | null; due_hm: number | null; sisa_hm: number | null
+  }
+}
+
+export type ProkerFsBoostStats = {
+  units: number; total: number; done: number; not_yet: number; unit_done: number
+  last_date: string | null; this_year: number; year: number
+}
+
+export type ProkerFsBoostFilters = {
+  product: string[]; model: string[]; type: string[]
+  min_date: string | null; max_date: string | null
+}
+
+export type ProkerFsBoostUnitPage = {
+  total: number; page: number; page_size: number
+  executed_units?: number; not_executed_units?: number
+  data: ProkerFsBoostUnit[]
+}
+
+export async function fetchProkerFsBoostStats(): Promise<ProkerFsBoostStats> {
+  const r = await api.get('/v1/proker-fsbooster/stats')
+  return r.data
+}
+
+export async function fetchProkerFsBoostFilters(): Promise<ProkerFsBoostFilters> {
+  const r = await api.get('/v1/proker-fsbooster/filters')
+  return r.data
+}
+
+export async function fetchProkerFsBoostUnits(params: {
+  search?: string; product?: string; model?: string; executed?: 'yes' | 'no'
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<ProkerFsBoostUnitPage> {
+  const r = await api.get('/v1/proker-fsbooster/units', { params })
+  return r.data
+}
+
+export async function fetchProkerFsBoostUnit(cn: string): Promise<ProkerFsBoostDetail> {
+  const r = await api.get(`/v1/proker-fsbooster/units/${encodeURIComponent(cn)}`)
+  return r.data
+}
+
+export async function updateProkerFsBoostUnit(cn: string, body: Partial<ProkerFsBoostUnitRow>): Promise<ProkerFsBoostUnitRow> {
+  const r = await api.patch(`/v1/proker-fsbooster/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+
+export type ProkerFsBoostExecInput = {
+  period?: string
+  hm?: number | null
+  service_date?: string | null
+  remark?: string | null
+  status?: ProkerFsBoostStatus
+}
+
+export async function createProkerFsBoostExecution(cn: string, body: ProkerFsBoostExecInput): Promise<ProkerFsBoostExecution> {
+  const r = await api.post(`/v1/proker-fsbooster/units/${encodeURIComponent(cn)}/executions`, body)
+  return r.data
+}
+
+export async function updateProkerFsBoostExecution(id: number, body: ProkerFsBoostExecInput): Promise<ProkerFsBoostExecution> {
+  const r = await api.patch(`/v1/proker-fsbooster/executions/${id}`, body)
+  return r.data
+}
+
+export async function deleteProkerFsBoostExecution(id: number): Promise<void> {
+  await api.delete(`/v1/proker-fsbooster/executions/${id}`)
+}
+
+export async function importProkerFsBoostXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/proker-fsbooster/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchProkerFsBoostImportStatus(id: string): Promise<ProkerImportStatus> {
+  const r = await api.get(`/v1/proker-fsbooster/import/${id}`)
+  return r.data
+}
+
+export async function refreshProkerFsBoostHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/proker-fsbooster/refresh-hm')
+  return r.data
+}
+
+
+// --- Proker Fire Suppression Primer -----------------------------------------
+export type ProkerFsPrimStatus = 'DONE' | 'NOT YET' | 'PLAN' | 'NA' | 'NOTE'
+
+export type ProkerFsPrimUnitRow = {
+  cn: string; no: number | null; unit_model: string | null
+  product: string | null; unit_type: string | null; hm_now: number | null
+}
+
+export type ProkerFsPrimUnit = ProkerFsPrimUnitRow & {
+  exec_count: number; done_count: number; last_date: string | null; last_hm: number | null
+}
+
+export type ProkerFsPrimExecution = {
+  id: number; cn: string; period: string; period_year: number | null
+  work_type: string; hm: number | null; service_date: string | null
+  remark: string | null; status: ProkerFsPrimStatus
+}
+
+export type ProkerFsPrimDetail = {
+  unit: ProkerFsPrimUnitRow
+  executions: ProkerFsPrimExecution[]
+  stats: {
+    total: number; done: number; last_date: string | null; last_hm: number | null
+    interval: number | null; due_hm: number | null; sisa_hm: number | null
+  }
+}
+
+export type ProkerFsPrimStats = {
+  units: number; total: number; done: number; not_yet: number; unit_done: number
+  last_date: string | null; this_year: number; year: number
+}
+
+export type ProkerFsPrimFilters = {
+  product: string[]; model: string[]; type: string[]
+  min_date: string | null; max_date: string | null
+}
+
+export type ProkerFsPrimUnitPage = {
+  total: number; page: number; page_size: number
+  executed_units?: number; not_executed_units?: number
+  data: ProkerFsPrimUnit[]
+}
+
+export async function fetchProkerFsPrimStats(): Promise<ProkerFsPrimStats> {
+  const r = await api.get('/v1/proker-fsprimer/stats')
+  return r.data
+}
+
+export async function fetchProkerFsPrimFilters(): Promise<ProkerFsPrimFilters> {
+  const r = await api.get('/v1/proker-fsprimer/filters')
+  return r.data
+}
+
+export async function fetchProkerFsPrimUnits(params: {
+  search?: string; product?: string; model?: string; executed?: 'yes' | 'no'
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<ProkerFsPrimUnitPage> {
+  const r = await api.get('/v1/proker-fsprimer/units', { params })
+  return r.data
+}
+
+export async function fetchProkerFsPrimUnit(cn: string): Promise<ProkerFsPrimDetail> {
+  const r = await api.get(`/v1/proker-fsprimer/units/${encodeURIComponent(cn)}`)
+  return r.data
+}
+
+export async function updateProkerFsPrimUnit(cn: string, body: Partial<ProkerFsPrimUnitRow>): Promise<ProkerFsPrimUnitRow> {
+  const r = await api.patch(`/v1/proker-fsprimer/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+
+export type ProkerFsPrimExecInput = {
+  period?: string
+  hm?: number | null
+  service_date?: string | null
+  remark?: string | null
+  status?: ProkerFsPrimStatus
+}
+
+export async function createProkerFsPrimExecution(cn: string, body: ProkerFsPrimExecInput): Promise<ProkerFsPrimExecution> {
+  const r = await api.post(`/v1/proker-fsprimer/units/${encodeURIComponent(cn)}/executions`, body)
+  return r.data
+}
+
+export async function updateProkerFsPrimExecution(id: number, body: ProkerFsPrimExecInput): Promise<ProkerFsPrimExecution> {
+  const r = await api.patch(`/v1/proker-fsprimer/executions/${id}`, body)
+  return r.data
+}
+
+export async function deleteProkerFsPrimExecution(id: number): Promise<void> {
+  await api.delete(`/v1/proker-fsprimer/executions/${id}`)
+}
+
+export async function importProkerFsPrimXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/proker-fsprimer/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchProkerFsPrimImportStatus(id: string): Promise<ProkerImportStatus> {
+  const r = await api.get(`/v1/proker-fsprimer/import/${id}`)
+  return r.data
+}
+
+export async function refreshProkerFsPrimHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/proker-fsprimer/refresh-hm')
+  return r.data
+}
+
+
+// --- Proker General Repair Ponton (EVERY YEAR) ------------------------------
+export type ProkerPontonStatus = 'DONE' | 'NOT YET' | 'PLAN' | 'NA' | 'NOTE'
+
+export type ProkerPontonUnitRow = {
+  cn: string; no: number | null; unit_model: string | null
+  product: string | null; unit_type: string | null
+  type_ponton: string | null; type_detail: string | null
+  kondisi: string | null; remark: string | null; hm_now: number | null
+}
+
+export type ProkerPontonUnit = ProkerPontonUnitRow & {
+  exec_count: number; done_count: number; last_date: string | null; last_hm: number | null
+}
+
+export type ProkerPontonExecution = {
+  id: number; cn: string; period: string; period_year: number | null
+  work_type: string; hm: number | null; service_date: string | null
+  remark: string | null; status: ProkerPontonStatus
+}
+
+export type ProkerPontonDetail = {
+  unit: ProkerPontonUnitRow
+  executions: ProkerPontonExecution[]
+  stats: {
+    total: number; done: number; last_date: string | null; last_hm: number | null
+    interval: number | null; due_hm: number | null; sisa_hm: number | null
+  }
+}
+
+export type ProkerPontonStats = {
+  units: number; total: number; done: number; not_yet: number; unit_done: number
+  last_date: string | null; this_year: number; year: number
+  per_year: { year: number; total: number; done: number }[]
+}
+
+export type ProkerPontonFilters = {
+  product: string[]; model: string[]; type: string[]; ponton: string[]; years: number[]
+  min_date: string | null; max_date: string | null
+}
+
+export type ProkerPontonUnitPage = {
+  total: number; page: number; page_size: number
+  executed_units?: number; not_executed_units?: number
+  data: ProkerPontonUnit[]
+}
+
+export async function fetchProkerPontonStats(): Promise<ProkerPontonStats> {
+  const r = await api.get('/v1/proker-ponton/stats')
+  return r.data
+}
+
+export async function fetchProkerPontonFilters(): Promise<ProkerPontonFilters> {
+  const r = await api.get('/v1/proker-ponton/filters')
+  return r.data
+}
+
+export async function fetchProkerPontonUnits(params: {
+  search?: string; product?: string; model?: string; ponton?: string
+  executed?: 'yes' | 'no'
+  sort?: string; order?: 'asc' | 'desc'; page?: number; page_size?: number
+}): Promise<ProkerPontonUnitPage> {
+  const r = await api.get('/v1/proker-ponton/units', { params })
+  return r.data
+}
+
+export async function fetchProkerPontonUnit(cn: string): Promise<ProkerPontonDetail> {
+  const r = await api.get(`/v1/proker-ponton/units/${encodeURIComponent(cn)}`)
+  return r.data
+}
+
+export async function updateProkerPontonUnit(cn: string, body: Partial<ProkerPontonUnitRow>): Promise<ProkerPontonUnitRow> {
+  const r = await api.patch(`/v1/proker-ponton/units/${encodeURIComponent(cn)}`, body)
+  return r.data
+}
+
+export type ProkerPontonExecInput = {
+  period?: string
+  work_type?: string
+  hm?: number | null
+  service_date?: string | null
+  remark?: string | null
+  status?: ProkerPontonStatus
+}
+
+export async function createProkerPontonExecution(cn: string, body: ProkerPontonExecInput): Promise<ProkerPontonExecution> {
+  const r = await api.post(`/v1/proker-ponton/units/${encodeURIComponent(cn)}/executions`, body)
+  return r.data
+}
+
+export async function updateProkerPontonExecution(id: number, body: ProkerPontonExecInput): Promise<ProkerPontonExecution> {
+  const r = await api.patch(`/v1/proker-ponton/executions/${id}`, body)
+  return r.data
+}
+
+export async function deleteProkerPontonExecution(id: number): Promise<void> {
+  await api.delete(`/v1/proker-ponton/executions/${id}`)
+}
+
+export async function importProkerPontonXlsx(files: File[]): Promise<{ import_id: string; status: string; files: number }> {
+  const form = new FormData()
+  files.forEach((f) => form.append('files', f))
+  const r = await api.post('/v1/proker-ponton/import', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return r.data
+}
+
+export async function fetchProkerPontonImportStatus(id: string): Promise<ProkerImportStatus> {
+  const r = await api.get(`/v1/proker-ponton/import/${id}`)
+  return r.data
+}
+
+export async function refreshProkerPontonHm(): Promise<RefreshHmResult> {
+  const r = await api.post('/v1/proker-ponton/refresh-hm')
+  return r.data
+}
+
+
 // --- Proker Midlife Eng Booster ------------------------------------------
 export type BoosterKind = 'OVH' | 'MIDLIFE'
 

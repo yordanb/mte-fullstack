@@ -47,6 +47,9 @@ const GROUPS: MenuGroup[] = [
     { key: 'prokerfandrebb', label: 'Proker Rebearing Fan Drive Primer' },
     { key: 'prokerfandpompa', label: 'Proker Fan Drive Pompa Primer' },
     { key: 'prokergmc', label: 'Proker GMC Motor (2.000 Jam)' },
+    { key: 'prokerfsbooster', label: 'Proker Fire Suppression Booster' },
+    { key: 'prokerfsprimer', label: 'Proker Fire Suppression Primer' },
+    { key: 'prokerponton', label: 'Proker General Repair Ponton' },
   ] },
   { title: 'Agent', items: [
     { key: 'ss', label: 'Sugestion System' },
@@ -157,6 +160,18 @@ const ICONS: Record<string, ReactNode> = {
   prokergmc: (
     // Motor + kunci engkol: blok mesin dengan baut
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="8" width="14" height="10" rx="1.5" /><path d="M18 11h2.5v4H18" /><path d="M8 8V5.5h5V8" /><path d="M8 13h6" /></svg>
+  ),
+  prokerfsbooster: (
+    // Alat pemadam (fire suppression): tabung + semprotan
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="8" y="7" width="8" height="14" rx="3.5" /><path d="M10 7V5h4v2" /><path d="M12 5V3" /><path d="m14 3 3-1" /><path d="M12 11v6" /></svg>
+  ),
+  prokerfsprimer: (
+    // Asap + api tercoret (proteksi kebakaran)
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3c2 3 4 4.5 4 8a4 4 0 1 1-8 0c0-1.5.4-2.7 1-4" /><path d="M12 13v8" /><path d="M9 17h6" /></svg>
+  ),
+  prokerponton: (
+    // Perahu/ponton di atas air
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 13h18l-3 5H6l-3-5Z" /><path d="M7 13V9h10v4" /><path d="M3 20c2 1 4 1 6 0s4-1 6 0 4 1 6 0" /></svg>
   ),
   manpower: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><circle cx="17" cy="9" r="2.4" /><path d="M16 14.2c3 .2 5.5 2.3 5.5 5.3" /></svg>
