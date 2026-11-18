@@ -25,7 +25,7 @@ const permMatrixRoles = [
   'group leader', 'section head', 'adm te', 'adm lce',
 ];
 
-/// 42 menu izin backend (users.py MENUS; urutan penting = urutan tampil web).
+/// 43 menu izin backend (users.py MENUS; urutan penting = urutan tampil web).
 /// Disinkronkan dengan constraint role_permissions_menu_check (V78) —
 /// termasuk mom2, hourmeter, dan 8 modul proker baru.
 const permMenus = [
@@ -37,6 +37,7 @@ const permMenus = [
   'manpowermanage', 'hourmeter', 'prokerthermo', 'prokerpanel',
   'prokerexhaust', 'prokerexhaustmits', 'prokerfandrebb', 'prokerfandpompa',
   'prokergmc', 'prokerfsbooster', 'prokerfsprimer', 'prokerponton',
+  'prokersummary',
 ];
 
 /// Label ramah baris matriks izin (web Users.tsx:110); menu lain apa adanya.
@@ -63,6 +64,7 @@ String menuLabel(String menu) => switch (menu) {
       'prokerfsbooster' => 'prokerfsbooster — Fire Suppression Booster',
       'prokerfsprimer' => 'prokerfsprimer — Fire Suppression Primer',
       'prokerponton' => 'prokerponton — General Repair Ponton',
+      'prokersummary' => 'prokersummary — Summary Program Kerja',
       _ => menu,
     };
 

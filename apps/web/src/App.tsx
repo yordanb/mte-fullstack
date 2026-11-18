@@ -35,6 +35,7 @@ import ProkerGmcPage from './pages/ProkerGmc'
 import ProkerFireSupBoosterPage from './pages/ProkerFireSupBooster'
 import ProkerFireSupPrimerPage from './pages/ProkerFireSupPrimer'
 import ProkerPontonPage from './pages/ProkerPonton'
+import ProkerSummaryPage from './pages/ProkerSummary'
 import ManpowerPage from './pages/Manpower'
 import ManpowerGroupPage from './pages/ManpowerGroup'
 import { fetchMe, can } from './api/client'
@@ -117,6 +118,7 @@ export default function App() {
       {page === 'prokerfsbooster' && can('prokerfsbooster', 'view') && <ProkerFireSupBoosterPage />}
       {page === 'prokerfsprimer' && can('prokerfsprimer', 'view') && <ProkerFireSupPrimerPage />}
       {page === 'prokerponton' && can('prokerponton', 'view') && <ProkerPontonPage />}
+      {page === 'prokersummary' && can('prokersummary', 'view') && <ProkerSummaryPage />}
       {page === 'manpower' && can('manpower', 'view') && <ManpowerPage />}
       {page === 'manpowermanage' && can('manpowermanage', 'view') && <ManpowerGroupPage />}
       {page === 'import' && <ImportPage />}

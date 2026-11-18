@@ -3711,3 +3711,27 @@ export async function autofillManpowerProfile(): Promise<{
   const r = await api.post('/v1/manpower/manage/autofill', {})
   return r.data
 }
+
+// Summary Program Kerja (matriks CN x modul proker, grup Technical Expert)
+
+export type ProkerSummaryCell = { hm: number | null; date: string | null }
+
+export type ProkerSummaryUnit = {
+  cn: string
+  model: string | null
+  product: string | null
+  cells: Record<string, ProkerSummaryCell>
+}
+
+export type ProkerSummaryResp = {
+  modules: { key: string; label: string }[]
+  units: ProkerSummaryUnit[]
+  total: number
+}
+
+export async function fetchProkerSummary(search?: string): Promise<ProkerSummaryResp> {
+  const r = await api.get('/v1/proker-summary', {
+    params: search ? { search } : undefined,
+  })
+  return r.data
+}

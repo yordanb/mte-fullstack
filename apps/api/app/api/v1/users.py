@@ -19,7 +19,7 @@ MENUS = ("dashboard", "dbr", "performance", "activity", "timeline", "equipment",
          "yazu_lighting", "yazudc_lighting", "yazupumping", "yazupumpingdc", "ewacs", "tarsupport", "ss", "ssab",
          "proker", "prokerbooster", "prokerinjector", "manpower", "manpowermanage", "hourmeter", "prokerthermo",
          "prokerpanel", "prokerexhaust", "prokerexhaustmits", "prokerfandrebb", "prokerfandpompa", "prokergmc",
-         "prokerfsbooster", "prokerfsprimer", "prokerponton")
+         "prokerfsbooster", "prokerfsprimer", "prokerponton", "prokersummary")
 ROLES = ("admin", "inputer", "mekanik", "viewer", "planner", "group leader", "section head", "adm te", "adm lce")
 
 

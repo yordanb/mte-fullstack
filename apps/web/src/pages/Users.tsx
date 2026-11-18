@@ -9,7 +9,7 @@ const MENUS = ['dashboard', 'dbr', 'performance', 'activity', 'timeline', 'equip
   'yazu_lighting', 'yazudc_lighting', 'yazupumping', 'yazupumpingdc', 'ewacs', 'tarsupport', 'ss', 'ssab',
   'proker', 'prokerbooster', 'prokerinjector', 'manpower', 'manpowermanage', 'hourmeter', 'prokerthermo',
   'prokerpanel', 'prokerexhaust', 'prokerexhaustmits', 'prokerfandrebb', 'prokerfandpompa', 'prokergmc',
-  'prokerfsbooster', 'prokerfsprimer', 'prokerponton']
+  'prokerfsbooster', 'prokerfsprimer', 'prokerponton', 'prokersummary']
 const ACTS = [
   { key: 'can_view', label: 'Lihat' },
   { key: 'can_add', label: 'Tambah' },

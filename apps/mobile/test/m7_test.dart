@@ -20,10 +20,10 @@ void main() {
     expect(r.errors.first.row, 2);
   });
 
-  test('perm matrix: 42 menu backend (sinkron users.py MENUS, urutan sama)', () {
-    expect(permMenus.length, 42);
+  test('perm matrix: 43 menu backend (sinkron users.py MENUS, urutan sama)', () {
+    expect(permMenus.length, 43);
     expect(permMenus.first, 'dashboard');
-    expect(permMenus.last, 'prokerponton');
+    expect(permMenus.last, 'prokersummary');
     expect(
         permMenus,
         containsAll([

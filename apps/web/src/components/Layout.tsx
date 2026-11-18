@@ -32,6 +32,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'fureport', label: 'Report Follow Up' },
   ] },
   { title: 'Technical Expert', items: [
+    { key: 'prokersummary', label: 'Summary Program Kerja' },
     { key: 'hourmeter', label: 'Hourmeter' },
     { key: 'ppm', label: 'PPM' },
     { key: 'measurement', label: 'Measurement' },
@@ -172,6 +173,10 @@ const ICONS: Record<string, ReactNode> = {
   prokerponton: (
     // Perahu/ponton di atas air
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 13h18l-3 5H6l-3-5Z" /><path d="M7 13V9h10v4" /><path d="M3 20c2 1 4 1 6 0s4-1 6 0 4 1 6 0" /></svg>
+  ),
+  prokersummary: (
+    // Matriks tabel: grid dengan baris & kolom terisi
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M3 15h18M9 9v11" /></svg>
   ),
   manpower: (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.2" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><circle cx="17" cy="9" r="2.4" /><path d="M16 14.2c3 .2 5.5 2.3 5.5 5.3" /></svg>
