@@ -3,8 +3,14 @@
 Satu baris per unit (Code Number), satu kolom per modul proker; tiap sel
 menampilkan HM + tanggal eksekusi terakhir yang benar-benar terlaksana
 (bukan PLAN). Sumber baris = union CN dari semua tabel unit proker.
+Fitur: daftar matriks + export Excel (layout sama).
 """
+import io
+from datetime import datetime
+
+import openpyxl
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -80,12 +86,8 @@ def _units_union_sql() -> str:
         f"SELECT cn, unit_model, product FROM {t}" for t in _UNIT_TABLES)
 
 
-@router.get("", dependencies=[Depends(require_menu("prokersummary", "view"))])
-async def get_summary(
-    search: str = Query("", max_length=100),
-    db: AsyncSession = Depends(get_db),
-):
-    """Matriks ringkasan: daftar unit + eksekusi terlaksana terakhir per modul.
+async def _summary_rows(db: AsyncSession, search: str) -> tuple[list[dict], list[dict]]:
+    """Kembalikan (modules, units) — dipakai endpoint daftar & export Excel.
 
     Unit hanya yang aktif di equipment (aturan sama dengan halaman proker).
     """
@@ -148,5 +150,114 @@ ORDER BY u.cn
                 "date": row["service_date"].isoformat() if row["service_date"] else None,
             }
 
+    modules = [{"key": k, "label": label} for k, label in MODULES]
+    return modules, units_out
+
+
+@router.get("", dependencies=[Depends(require_menu("prokersummary", "view"))])
+async def get_summary(
+    search: str = Query("", max_length=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """Matriks ringkasan: daftar unit + eksekusi terlaksana terakhir per modul."""
+    modules, units_out = await _summary_rows(db, search)
     return {"modules": modules, "units": units_out,
             "total": len(units_out)}
+
+
+# ─── Export Excel (layout matriks sama dengan halaman) ─────────────────────
+
+@router.get("/export", dependencies=[Depends(require_menu("prokersummary", "view"))])
+async def export_xlsx(
+    search: str = Query("", max_length=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export matriks summary ke .xlsx — 2 kolom per modul (HM, Tanggal)."""
+    modules, units = await _summary_rows(db, search)
+
+    thin = openpyxl.styles.Side(style='thin')
+    border = openpyxl.styles.Border(left=thin, right=thin, top=thin, bottom=thin)
+    bold10 = openpyxl.styles.Font(bold=True, size=10)
+    normal10 = openpyxl.styles.Font(size=10)
+    center = openpyxl.styles.Alignment(horizontal='center', vertical='center')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Summary Proker'
+
+    ws['A1'] = 'SUMMARY PROGRAM KERJA'
+    ws['A1'].font = openpyxl.styles.Font(bold=True, size=12)
+    ws['A2'] = f"Diunduh: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    ws['A2'].font = openpyxl.styles.Font(size=9, italic=True)
+
+    # Header 2 baris: baris 1 = nama modul (merge 2 kolom), baris 2 = HM|Tanggal.
+    hr, hr2 = 4, 5
+    fixed = ('No', 'Code Number', 'Model', 'Product')
+    for i, h in enumerate(fixed, start=1):
+        ws.merge_cells(start_row=hr, start_column=i, end_row=hr2, end_column=i)
+        c = ws.cell(row=hr, column=i, value=h)
+        c.font = bold10
+        c.border = border
+        c.alignment = center
+    col = len(fixed) + 1
+    for _, label in modules:
+        ws.merge_cells(start_row=hr, start_column=col, end_row=hr,
+                       end_column=col + 1)
+        c = ws.cell(row=hr, column=col, value=label)
+        c.font = bold10
+        c.border = border
+        c.alignment = openpyxl.styles.Alignment(
+            horizontal='center', vertical='center', wrap_text=True)
+        for j, sub in enumerate(('HM', 'Tanggal')):
+            c2 = ws.cell(row=hr2, column=col + j, value=sub)
+            c2.font = bold10
+            c2.border = border
+            c2.alignment = center
+        col += 2
+
+    # Data — HM angka (bisa dihitung), tanggal teks dd/mm/yyyy ala web.
+    for idx, u in enumerate(units, start=1):
+        r = hr2 + idx
+        vals = (idx, u['cn'], u['model'], u['product'])
+        for i, v in enumerate(vals, start=1):
+            c = ws.cell(row=r, column=i, value=v)
+            c.font = normal10
+            c.border = border
+        col = len(fixed) + 1
+        for key, _ in modules:
+            cell = u['cells'].get(key)
+            has_hm = cell is not None and cell['hm'] is not None
+            hm = ws.cell(row=r, column=col, value=cell['hm'] if has_hm else None)
+            hm.font = normal10
+            hm.border = border
+            hm.number_format = '#,##0.##'
+            d = cell['date'] if cell else None
+            has_date = bool(d)
+            date = ws.cell(
+                row=r, column=col + 1,
+                value=(f'{d[8:10]}/{d[5:7]}/{d[:4]}' if has_date else None))
+            date.font = normal10
+            date.border = border
+            col += 2
+
+    ws.row_dimensions[hr].height = 30  # nama modul bisa 2 baris saat wrap
+    for r_ in range(hr2, hr2 + len(units) + 1):
+        ws.row_dimensions[r_].height = 15
+    ws.column_dimensions['A'].width = 5
+    ws.column_dimensions['B'].width = 14
+    ws.column_dimensions['C'].width = 20
+    ws.column_dimensions['D'].width = 16
+    col = len(fixed) + 1
+    for _ in modules:
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 9
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col + 1)].width = 12
+        col += 2
+    ws.freeze_panes = f'E{hr2 + 1}'
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    fname = 'Summary Program Kerja.xlsx'
+    return StreamingResponse(
+        buf, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename="{fname}"'})

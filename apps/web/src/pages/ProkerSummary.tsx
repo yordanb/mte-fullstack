@@ -3,7 +3,7 @@
 // tiap sel: HM + tanggal eksekusi terlaksana terakhir (bukan PLAN).
 import { useEffect, useRef, useState } from 'react'
 import {
-  errMsg, fetchProkerSummary,
+  errMsg, exportProkerSummaryXlsx, fetchProkerSummary,
   type ProkerSummaryResp,
 } from '../api/client'
 
@@ -28,6 +28,7 @@ export default function ProkerSummaryPage() {
   const [data, setData] = useState<ProkerSummaryResp | null>(null)
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const timerRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -35,6 +36,18 @@ export default function ProkerSummaryPage() {
     timerRef.current = window.setTimeout(() => setSearch(q.trim()), 400)
     return () => window.clearTimeout(timerRef.current ?? undefined)
   }, [q])
+
+  const doExport = async () => {
+    if (exporting) return
+    setExporting(true)
+    try {
+      await exportProkerSummaryXlsx(search || undefined)
+    } catch (e) {
+      setMsg(`export gagal: ${errMsg(e)}`)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -61,6 +74,14 @@ export default function ProkerSummaryPage() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
+        <button
+          onClick={doExport}
+          disabled={exporting}
+          className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-3 py-2 text-theme-sm font-medium text-white hover:bg-brand-600 disabled:opacity-50"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12M7 10l5 5 5-5" /><path d="M5 21h14" /></svg>
+          {exporting ? 'Menyiapkan...' : 'Export Excel'}
+        </button>
         <span className="text-theme-sm text-gray-500">
           {loading ? 'Memuat...' : `${data ? data.total : 0} unit · ${data ? data.modules.length : 0} modul`}
         </span>

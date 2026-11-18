@@ -3735,3 +3735,16 @@ export async function fetchProkerSummary(search?: string): Promise<ProkerSummary
   })
   return r.data
 }
+
+export async function exportProkerSummaryXlsx(search?: string) {
+  const r = await api.get('/v1/proker-summary/export', {
+    params: search ? { search } : undefined,
+    responseType: 'blob',
+  })
+  const url = URL.createObjectURL(r.data as Blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'Summary Program Kerja.xlsx'
+  a.click()
+  URL.revokeObjectURL(url)
+}
