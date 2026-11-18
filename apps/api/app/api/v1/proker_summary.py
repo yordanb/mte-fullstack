@@ -200,10 +200,10 @@ async def export_xlsx(
         c.border = border
         c.alignment = center
     col = len(fixed) + 1
-    for _, label in modules:
+    for m in modules:
         ws.merge_cells(start_row=hr, start_column=col, end_row=hr,
                        end_column=col + 1)
-        c = ws.cell(row=hr, column=col, value=label)
+        c = ws.cell(row=hr, column=col, value=m['label'])
         c.font = bold10
         c.border = border
         c.alignment = openpyxl.styles.Alignment(
@@ -224,8 +224,8 @@ async def export_xlsx(
             c.font = normal10
             c.border = border
         col = len(fixed) + 1
-        for key, _ in modules:
-            cell = u['cells'].get(key)
+        for m in modules:
+            cell = u['cells'].get(m['key'])
             has_hm = cell is not None and cell['hm'] is not None
             hm = ws.cell(row=r, column=col, value=cell['hm'] if has_hm else None)
             hm.font = normal10
