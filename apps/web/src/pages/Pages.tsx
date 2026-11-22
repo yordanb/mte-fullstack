@@ -1387,8 +1387,8 @@ function ActForm({ date, initial, catOptions, onClose, onSaved }: {
     if (on) {
       if (!isDc) prevCatRef.current = category
       setCategory('Replace Gland Packing')
-      if (!gpCn) setGpCn(cn)
-      if (!gpHm) setGpHm(hm)
+      if (!gpCn && cn) setGpCn(cn)
+      if (!gpHm && hm) setGpHm(hm)
     } else {
       if (!isDc) setCategory(prevCatRef.current)
     }
@@ -1407,8 +1407,8 @@ function ActForm({ date, initial, catOptions, onClose, onSaved }: {
         if (shift == null) { setMsg('Shift wajib dipilih untuk Daily Check Dragflow.'); return }
       }
       if (replaceGlandPacking) {
-        if (!gpCn.trim() && !cn.trim()) { setMsg('Unit / CN wajib diisi untuk Replace Gland Packing.'); return }
-        if (!gpHm.trim() && !hm.trim()) { setMsg('Hourmeter replace wajib diisi untuk Replace Gland Packing.'); return }
+        if (!gpCn.trim()) { setMsg('Unit / CN untuk Replace Gland Packing wajib diisi.'); return }
+        if (!gpHm.trim()) { setMsg('Hourmeter replace untuk Replace Gland Packing wajib diisi.'); return }
       }
       setBusy(true); setPct(0)
       let aid = initial?.id
@@ -1432,8 +1432,8 @@ function ActForm({ date, initial, catOptions, onClose, onSaved }: {
         aid = res.id
       }
       if (replaceGlandPacking) {
-        const finalCn = (gpCn.trim() || cn).toUpperCase()
-        const finalHm = Number(gpHm.trim() || hm)
+        const finalCn = gpCn.trim().toUpperCase()
+        const finalHm = parseInt(gpHm.trim(), 10)
         if (finalCn && !isNaN(finalHm)) {
           await setGlandPacking(finalCn, finalHm, gpDate || d)
         }
