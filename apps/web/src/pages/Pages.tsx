@@ -853,7 +853,7 @@ function EqDetail({ row, onClose }: { row: Equipment; onClose: () => void }) {
 
 const ACT_MONTHS = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
 const ACT_CREWS = ['Pumping', 'Lighting', 'Mobile', 'Grader', 'PCH']
-const ACT_CATS = ['Proker', 'FUI', 'USM', 'SCM', 'Daily Check Dragflow', 'Washing PLTS', 'Daily Check Waterfill', 'Replace Gland Packing']
+const ACT_CATS = ['Proker', 'FUI', 'USM', 'SCM', 'Daily Check Dragflow', 'Washing PLTS', 'Daily Check Waterfill']
 
 const DRAGFLOW_PAIRS = [
   { ex: 'EX264', wp: 'WP792' },
@@ -1343,6 +1343,14 @@ function ActForm({ date, initial, catOptions, onClose, onSaved }: {
   const [cn, setCn] = useState(initial?.cn ?? '')
   const [desc, setDesc] = useState(initial?.description ?? '')
   const [shift, setShift] = useState<number | null>(initial?.shift ?? null)
+  
+  // Gland packing replacement states
+  const [replaceGlandPacking, setReplaceGlandPacking] = useState(initial?.replaceGlandPacking ?? false)
+  const [gpMenuOpen, setGpMenuOpen] = useState(false)
+  const [gpCn, setGpCn] = useState(initial?.replaceGlandPackingCn ?? '')
+  const [gpHm, setGpHm] = useState(initial?.replaceGlandPackingHm != null ? String(initial.replaceGlandPackingHm) : '')
+  const [gpDate, setGpDate] = useState(initial?.replaceGlandPackingDate ?? date)
+
   const [msg, setMsg] = useState('')
   const [busy, setBusy] = useState(false)
   const [pct, setPct] = useState(0)
@@ -1372,6 +1380,20 @@ function ActForm({ date, initial, catOptions, onClose, onSaved }: {
       setShift(null)
     }
   }
+
+  const toggleGp = (on: boolean) => {
+    setReplaceGlandPacking(on)
+    if (on) {
+      if (!isDc) prevCatRef.current = category
+      setCategory('Replace Gland Packing')
+      if (!gpCn) setGpCn(cn)
+      if (!gpHm) setGpHm(hm)
+    } else {
+      if (!isDc) setCategory(prevCatRef.current)
+    }
+    setGpMenuOpen(false)
+  }
+
   const save = async () => {
     if (busy) return
     try {
@@ -1383,9 +1405,14 @@ function ActForm({ date, initial, catOptions, onClose, onSaved }: {
         if (!hm.trim()) { setMsg('Hourmeter wajib diisi untuk Daily Check Dragflow.'); return }
         if (shift == null) { setMsg('Shift wajib dipilih untuk Daily Check Dragflow.'); return }
       }
+      if (replaceGlandPacking) {
+        if (!gpCn.trim() && !cn.trim()) { setMsg('Unit / CN wajib diisi untuk Replace Gland Packing.'); return }
+        if (!gpHm.trim() && !hm.trim()) { setMsg('Hourmeter replace wajib diisi untuk Replace Gland Packing.'); return }
+      }
       setBusy(true); setPct(0)
+      let aid = initial?.id
       if (initial) {
-        await patchActivity(initial.id, { date: d, title, category: category || null, crew: crew.trim(), cn: cn || null, hm: hm.trim() || null, shift: shift != null ? String(shift) : null, description: desc || null })
+        await patchActivity(initial.id, { date: d, title, category: category || null, crew: crew.trim(), cn: cn ? cn.toUpperCase() : null, hm: hm.trim() || null, shift: shift != null ? String(shift) : null, description: desc || null })
         const el = document.getElementById('act-files-edit') as HTMLInputElement | null
         const extra = Array.from(el?.files ?? [])
         if (extra.length > 0) await addActivityPhotos(initial.id, extra, (p) => setPct(p))
@@ -1400,7 +1427,15 @@ function ActForm({ date, initial, catOptions, onClose, onSaved }: {
         if (shift != null) fd.append('shift', String(shift))
         if (desc) fd.append('description', desc)
         files.forEach((f) => fd.append('files', f))
-        await createActivity(fd, (p) => setPct(p))
+        const res = await createActivity(fd, (p) => setPct(p))
+        aid = res.id
+      }
+      if (replaceGlandPacking) {
+        const finalCn = (gpCn.trim() || cn).toUpperCase()
+        const finalHm = Number(gpHm.trim() || hm)
+        if (finalCn && !isNaN(finalHm)) {
+          await setGlandPacking(finalCn, finalHm, gpDate || d)
+        }
       }
       onSaved()
     } catch (e) { setMsg(`gagal: ${errMsg(e)}`); setBusy(false) }
@@ -1419,6 +1454,30 @@ function ActForm({ date, initial, catOptions, onClose, onSaved }: {
               <input type="checkbox" className="h-4 w-4 accent-brand-500" checked={isDc} onChange={(e) => toggleDc(e.target.checked)} />
               DC Dragflow
             </label>
+
+            <div className="relative">
+              <button
+                type="button"
+                className={`flex h-10 items-center gap-1.5 rounded-lg border px-3 text-theme-sm ${replaceGlandPacking ? 'border-brand-500 bg-brand-50 font-medium text-brand-600' : 'text-gray-600'}`}
+                onClick={() => setGpMenuOpen(!gpMenuOpen)}
+              >
+                <span>Gland Packing</span>
+                <span className="text-xs">▼</span>
+              </button>
+              {gpMenuOpen && (
+                <div className="absolute right-0 top-11 z-10 w-56 rounded-lg border bg-white p-2 shadow-lg dark:bg-gray-800">
+                  <label className="flex cursor-pointer items-center gap-2 rounded p-1.5 text-theme-sm hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-brand-500"
+                      checked={replaceGlandPacking}
+                      onChange={(e) => toggleGp(e.target.checked)}
+                    />
+                    <span>Replace Gland Packing</span>
+                  </label>
+                </div>
+              )}
+            </div>
           </div>
           <label className="text-theme-sm">Judul<input className={inp} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="cth Perbaikan pompa WP855" /></label>
           {category === 'Daily Check Dragflow' ? (
@@ -1479,6 +1538,23 @@ function ActForm({ date, initial, catOptions, onClose, onSaved }: {
             <label className="text-theme-sm">Hourmeter<input type="number" min="0" step="any" className={inp} value={hm} onChange={(e) => setHm(e.target.value)} placeholder="cth 12500" /></label>
           </div>
           <label className="text-theme-sm">Keterangan<textarea className={inp} rows={4} value={desc} onChange={(e) => setDesc(e.target.value)} /></label>
+
+          {replaceGlandPacking && (
+            <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/50 p-3 dark:border-brand-800 dark:bg-brand-950/20">
+              <h4 className="text-theme-sm font-semibold text-brand-700 dark:text-brand-300">Data Replace Gland Packing</h4>
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                <label className="text-theme-sm">Unit / CN
+                  <input className={inp} value={gpCn} onChange={(e) => setGpCn(e.target.value.toUpperCase())} placeholder={cn || "cth WP855"} />
+                </label>
+                <label className="text-theme-sm">Hourmeter Replace
+                  <input type="number" min="0" className={inp} value={gpHm} onChange={(e) => setGpHm(e.target.value)} placeholder={hm || "cth 12500"} />
+                </label>
+                <label className="text-theme-sm">Tanggal Replace
+                  <div className="mt-1"><DatePicker value={gpDate} onChange={(v) => setGpDate(v)} /></div>
+                </label>
+              </div>
+            </div>
+          )}
           {!initial ? (
             <label className="text-theme-sm">Foto/Video (boleh banyak)<input type="file" id="act-files" accept="image/*,video/*" multiple className={inp} /></label>
           ) : localStorage.getItem('mte_role') === 'admin' ? (

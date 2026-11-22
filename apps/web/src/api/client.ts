@@ -530,6 +530,11 @@ export type Activity = {
   category?: string | null; crew?: string | null; cn?: string | null; hm?: number | null; shift?: number | null; created_by?: string | null
   created_at?: string; photos?: { id: string; orig_name?: string | null; content_type?: string | null }[]
   photos_count?: number; cover_id?: string | null
+  // Gland packing replacement fields
+  replaceGlandPacking?: boolean;
+  replaceGlandPackingCn?: string | null;
+  replaceGlandPackingHm?: number | null;
+  replaceGlandPackingDate?: string | null;
 }
 
 /** True bila content_type menandakan video (mis. "video/mp4"). */
@@ -568,11 +573,22 @@ export async function createActivity(fd: FormData, onProgress?: (pct: number) =>
       if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
     },
   })
+  return r.data as { id: string }
+}
+
+export async function patchActivity(id: string, body: Record<string, string | null | number | boolean | null>) {
+  const r = await api.patch(`/v1/activities/${id}`, body)
   return r.data
 }
 
-export async function patchActivity(id: string, body: Record<string, string | null>) {
-  const r = await api.patch(`/v1/activities/${id}`, body)
+export async function setGlandPacking(
+  cn: string, hm: number, date: string
+): Promise<{ ok: boolean }> {
+  const r = await api.post('/v1/glandpacking', {
+    cn,
+    hm,
+    replace_date: date,
+  })
   return r.data
 }
 
