@@ -79,6 +79,19 @@ class _FormBodyState extends ConsumerState<_FormBody> {
   late final TextEditingController _replaceGlandPackingHm;
   late String? _replaceGlandPackingDate;
 
+  // Handler saat opsi Gland Packing dipilih dari popup menu
+  void _onToggleReplaceGlandPacking(bool? v) {
+    if (v == null) return;
+    setState(() {
+      _replaceGlandPacking = v;
+      if (v) {
+        if (!_isDc) _prevCat = _cat;
+        _cat = 'Replace Gland Packing';
+      } else {
+        if (!_isDc) _cat = _prevCat;
+      }
+    });
+  }
   bool get _isEdit => widget.initial != null;
   bool get _isDc => _cat == dcDragflowCategory;
 
@@ -320,26 +333,21 @@ class _FormBodyState extends ConsumerState<_FormBody> {
                 ),
               ),
               const SizedBox(width: 8),
-              Tooltip(
-                message: 'Tandai penggantian Gland Packing: menambahkan catatan Unit/CN, '
-                    'Hourmeter replace, dan Tanggal ke tabel glandpacking_replacement.',
-                child: FilterChip(
-                  label: const Text('Replace Gland Packing'),
-                  selected: _replaceGlandPacking,
-                  onSelected: _busy ? null : (v) {
-                    setState(() {
-                      _replaceGlandPacking = v;
-                      if (v) {
-                        _cat = 'Replace Gland Packing';
-                      } else {
-                        // Revert to previous category if deselected and not DC Dragflow
-                        if (!_isDc) {
-                          _cat = _prevCat;
-                        }
-                      }
-                    });
-                  },
-                ),
+              // Popup menu untuk opsi Gland Packing Replacement
+              PopupMenuButton(
+                tooltip: 'Opsi Gland Packing',
+                itemBuilder: (BuildContext context) => [
+                  PopupMenuItem(
+                    child: CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Replace Gland Packing'),
+                      value: _replaceGlandPacking,
+                      onChanged: _busy ? null : (v) => _onToggleReplaceGlandPacking(v),
+                    ),
+                  ),
+                ],
+                child: const Chip(
+                    label: Text('Gland Packing'), avatar: Icon(Icons.arrow_drop_down)),
               ),
             ],
           ),

@@ -5,11 +5,12 @@
 /// Crew baku web (Pages.tsx ACT_CREWS).
 const activityCrews = ['Pumping', 'Lighting', 'Mobile', 'Grader', 'PCH'];
 
-/// Kategori baku web (ACT_CATS + "Replace Gland Packing", web 4934628).
+/// Kategori baku web (ACT_CATS, web 4934628).
+/// "Replace Gland Packing" dikelola via popup menu di samping DC Dragflow,
+/// bukan lewat dropdown kategori.
 const activityCats = [
   'Proker', 'FUI', 'USM', 'SCM',
   'Daily Check Dragflow', 'Washing PLTS', 'Daily Check Waterfill',
-  'Replace Gland Packing',
 ];
 
 /// Kategori penanda Daily Check Dragflow (auto crew Pumping + opsi Shift).
