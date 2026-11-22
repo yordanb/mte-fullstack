@@ -98,3 +98,19 @@ List<AppMenuEntry> visibleMenus(AuthState auth) => [
       for (final m in appMenu)
         if (m.adminOnly ? auth.isAdmin : auth.can(m.key, 'view')) m,
     ];
+
+/// Halaman awal setelah login: menu pertama yang diizinkan user
+/// (bukan selalu Dashboard — mis. role tanpa izin dashboard mendarat
+/// di menu ber-izin pertama). '/' bila tidak ada menu sama sekali.
+String homePath(AuthState auth) {
+  final v = visibleMenus(auth);
+  return v.isEmpty ? '/' : v.first.path;
+}
+
+/// Entri menu untuk path rute tertentu (dipakai guard rute per izin).
+AppMenuEntry? menuByPath(String path) {
+  for (final m in appMenu) {
+    if (m.path == path) return m;
+  }
+  return null;
+}

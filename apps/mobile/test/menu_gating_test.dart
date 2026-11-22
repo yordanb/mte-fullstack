@@ -75,4 +75,27 @@ void main() {
       expect(routes, contains(m.path), reason: 'path ${m.path} tak ada di router');
     }
   });
+
+  test('homePath: admin -> dashboard; role lain -> menu ber-izin pertama', () {
+    expect(homePath(_auth(role: 'admin')), '/');
+    // Dashboard tanpa izin -> mendarat di menu ber-izin pertama (dbr).
+    expect(homePath(_auth(role: 'mekanik', perms: {
+      'dbr': const PermActions(view: true),
+      'equipment': const PermActions(view: true),
+    })), '/dbr');
+    // Hanya equipment -> /equipment.
+    expect(homePath(_auth(role: 'viewer', perms: {
+      'equipment': const PermActions(view: true),
+    })), '/equipment');
+    // Tanpa menu sama sekali -> fallback '/'.
+    expect(homePath(_auth(role: 'viewer')), '/');
+  });
+
+  test('menuByPath: path -> entri menu (guard rute per izin)', () {
+    expect(menuByPath('/')?.key, 'dashboard');
+    expect(menuByPath('/prokerponton')?.key, 'prokerponton');
+    expect(menuByPath('/users')?.adminOnly, isTrue);
+    expect(menuByPath('/login'), isNull);
+    expect(menuByPath('/notifications'), isNull);
+  });
 }

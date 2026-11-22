@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../auth/auth_notifier.dart';
+import '../menu/app_menu.dart';
 import 'package:mte_data_center/src/features/activity/presentation/activity_detail_page.dart';
 import 'package:mte_data_center/src/features/activity/presentation/activity_form_page.dart';
 import 'package:mte_data_center/src/features/activity/presentation/activity_page.dart';
@@ -48,8 +49,9 @@ import 'package:mte_data_center/src/features/yazu/presentation/yazu_pumping_page
 import 'package:mte_data_center/src/features/yazu/presentation/yazu_pumping_dc_page.dart';
 
 /// GoRouter Milestone 1: /login, / (dashboard), + route stub milestone
-/// berikutnya. Redirect ke /login bila tanpa token; /users & /audit
-/// khusus admin.
+/// berikutnya. Redirect ke /login bila tanpa token. Setelah login user
+/// mendarat di halaman pertama yang diizinkan role-nya (bukan selalu
+/// dashboard); rute halaman tanpa izin "view" dibalik ke sana.
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authProvider);
 
@@ -61,9 +63,19 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (auth.status == AuthStatus.unknown) return null;
       if (!loggedIn && !onLogin) return '/login';
-      if (loggedIn && onLogin) return '/';
-      if (loggedIn && (state.matchedLocation == '/users' || state.matchedLocation == '/audit')) {
-        if (!auth.isAdmin) return '/';
+      if (loggedIn && onLogin) return homePath(auth);
+      if (loggedIn) {
+        final home = homePath(auth);
+        final loc = state.matchedLocation;
+        // Halaman administrasi khusus admin.
+        if (loc == '/users' || loc == '/audit') {
+          if (!auth.isAdmin && loc != home) return home;
+        } else {
+          final entry = menuByPath(loc);
+          if (entry != null && !auth.can(entry.key, 'view') && loc != home) {
+            return home;
+          }
+        }
       }
       return null;
     },
