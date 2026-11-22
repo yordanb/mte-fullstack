@@ -9,6 +9,9 @@ const _kRole = 'mte_role';
 const _kUsername = 'mte_username';
 const _kPerm = 'mte_perm';
 const _kTheme = 'mte_theme';
+const _kBioEnabled = 'mte_bio_enabled';
+const _kBioUser = 'mte_bio_username';
+const _kBioPass = 'mte_bio_password';
 
 /// Penyimpanan token + sesi di flutter_secure_storage.
 /// Key sesi meniru localStorage web (mte_token/mte_role/mte_perm).
@@ -43,6 +46,22 @@ class TokenStorage {
   }
 
   Future<void> saveTheme(String mode) => _s.write(key: _kTheme, value: mode);
+
+  Future<void> saveBioCreds(String user, String pass) async {
+    await _s.write(key: _kBioEnabled, value: 'true');
+    await _s.write(key: _kBioUser, value: user);
+    await _s.write(key: _kBioPass, value: pass);
+  }
+
+  Future<void> clearBioCreds() async {
+    await _s.delete(key: _kBioEnabled);
+    await _s.delete(key: _kBioUser);
+    await _s.delete(key: _kBioPass);
+  }
+
+  Future<bool> isBioEnabled() async => (await _s.read(key: _kBioEnabled)) == 'true';
+  Future<String?> readBioUser() => _s.read(key: _kBioUser);
+  Future<String?> readBioPass() => _s.read(key: _kBioPass);
 
   Future<void> clearAll() async {
     await _s.delete(key: _kAccess);
