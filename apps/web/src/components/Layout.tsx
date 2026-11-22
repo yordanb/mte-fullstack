@@ -38,6 +38,7 @@ const GROUPS: MenuGroup[] = [
     { key: 'measurement', label: 'Measurement' },
     { key: 'ewacs', label: 'Ewacs Performance' },
     { key: 'tarsupport', label: 'TAR Support' },
+    { key: 'glandpacking', label: 'Gland Packing' },
     { key: 'proker', label: 'Proker GMC Pompa Primer' },
     { key: 'prokerbooster', label: 'Proker Midlife Eng Booster' },
     { key: 'prokerinjector', label: 'Proker Midlife Injector Primer' },
@@ -173,6 +174,10 @@ const ICONS: Record<string, ReactNode> = {
   prokerponton: (
     // Perahu/ponton di atas air
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 13h18l-3 5H6l-3-5Z" /><path d="M7 13V9h10v4" /><path d="M3 20c2 1 4 1 6 0s4-1 6 0 4 1 6 0" /></svg>
+  ),
+  glandpacking: (
+    // Seal / gland packing: silinder dengan cincin segel
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="7" rx="7" ry="3" /><path d="M5 7v10" /><path d="M19 7v10" /><ellipse cx="12" cy="17" rx="7" ry="3" /><path d="M5 11h14" /><path d="M5 13h14" /></svg>
   ),
   prokersummary: (
     // Matriks tabel: grid dengan baris & kolom terisi

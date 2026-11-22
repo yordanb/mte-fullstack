@@ -592,6 +592,11 @@ export async function setGlandPacking(
   return r.data
 }
 
+export async function fetchGlandPackingHistory() {
+  const r = await api.get('/v1/glandpacking/history')
+  return r.data.data as { cn: string; last_date: string; last_hm: number; history: string[] }[]
+}
+
 export async function deleteActivity(id: string) {
   const r = await api.delete(`/v1/activities/${id}`)
   return r.data

@@ -35,6 +35,7 @@ import ProkerGmcPage from './pages/ProkerGmc'
 import ProkerFireSupBoosterPage from './pages/ProkerFireSupBooster'
 import ProkerFireSupPrimerPage from './pages/ProkerFireSupPrimer'
 import ProkerPontonPage from './pages/ProkerPonton'
+import GlandPackingPage from './pages/GlandPacking'
 import ProkerSummaryPage from './pages/ProkerSummary'
 import ManpowerPage from './pages/Manpower'
 import ManpowerGroupPage from './pages/ManpowerGroup'
@@ -105,6 +106,7 @@ export default function App() {
       {page === 'tarsupport' && can('tarsupport', 'view') && <TarSupportPage />}
       {page === 'ss' && can('ss', 'view') && <SsPage />}
       {page === 'ssab' && can('ssab', 'view') && <SsAbPage />}
+      {page === 'glandpacking' && <GlandPackingPage />}
       {page === 'proker' && can('proker', 'view') && <ProkerPage />}
       {page === 'prokerbooster' && can('prokerbooster', 'view') && <ProkerBoosterPage />}
       {page === 'prokerinjector' && can('prokerinjector', 'view') && <ProkerInjectorPage />}
