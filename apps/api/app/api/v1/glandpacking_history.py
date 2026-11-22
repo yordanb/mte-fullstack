@@ -19,4 +19,4 @@ async def history(db: AsyncSession = Depends(get_db), user=Depends(get_current_u
         ORDER BY cn ASC
     """)
     res = await db.execute(q)
-    return {"data": [dict(row) for row in res]}
+    return {"data": [dict(r._mapping) for r in res.all()]}
