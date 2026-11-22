@@ -74,6 +74,10 @@ class Activity {
   final List<ActivityPhoto> photos;
   final int photoCount;
   final String? coverId;
+  final bool replaceGlandPacking;
+  final String? replaceGlandPackingCn;
+  final int? replaceGlandPackingHm;
+  final String? replaceGlandPackingDate;
 
   const Activity({
     required this.id,
@@ -89,6 +93,10 @@ class Activity {
     this.photos = const [],
     this.photoCount = 0,
     this.coverId,
+    this.replaceGlandPacking = false,
+    this.replaceGlandPackingCn,
+    this.replaceGlandPackingHm,
+    this.replaceGlandPackingDate,
   });
 
   factory Activity.fromJson(Map<String, dynamic> j) {
@@ -115,6 +123,28 @@ class Activity {
       photos: photoList,
       photoCount: count,
       coverId: j['cover_id']?.toString(),
+      replaceGlandPacking: j['replace_gland_packing'] as bool? ?? false,
+      replaceGlandPackingCn: j['replace_gland_packing_cn']?.toString(),
+      replaceGlandPackingHm: j['replace_gland_packing_hm'] as int?,
+      replaceGlandPackingDate: j['replace_gland_packing_date']?.toString(),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'date': date,
+        'title': title,
+        'description': description,
+        'category': category,
+        'crew': crew,
+        'cn': cn,
+        'hm': hm,
+        'shift': shift,
+        'created_by': createdBy,
+        // photos & photoCount & coverId tidak perlu dikirim ke API
+        'replace_gland_packing': replaceGlandPacking,
+        'replace_gland_packing_cn': replaceGlandPackingCn,
+        'replace_gland_packing_hm': replaceGlandPackingHm,
+        'replace_gland_packing_date': replaceGlandPackingDate,
+      };
 }

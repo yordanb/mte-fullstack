@@ -73,6 +73,12 @@ class _FormBodyState extends ConsumerState<_FormBody> {
   int _pct = 0;
   String? _msg;
 
+  // Gland packing replacement fields
+  late bool _replaceGlandPacking;
+  late final TextEditingController _replaceGlandPackingCn;
+  late final TextEditingController _replaceGlandPackingHm;
+  late String? _replaceGlandPackingDate;
+
   bool get _isEdit => widget.initial != null;
   bool get _isDc => _cat == dcDragflowCategory;
 
@@ -88,6 +94,13 @@ class _FormBodyState extends ConsumerState<_FormBody> {
     _hm = TextEditingController(text: a?.hm != null ? '${a!.hm}' : '');
     _desc = TextEditingController(text: a?.description ?? '');
     _shift = a?.shift;
+
+    _replaceGlandPacking = a?.replaceGlandPacking ?? false;
+    _replaceGlandPackingCn =
+        TextEditingController(text: a?.replaceGlandPackingCn ?? '');
+    _replaceGlandPackingHm = TextEditingController(
+        text: a?.replaceGlandPackingHm != null ? '${a!.replaceGlandPackingHm}' : '');
+    _replaceGlandPackingDate = a?.replaceGlandPackingDate ?? _date;
   }
 
   @override
@@ -96,6 +109,8 @@ class _FormBodyState extends ConsumerState<_FormBody> {
     _cn.dispose();
     _hm.dispose();
     _desc.dispose();
+    _replaceGlandPackingCn.dispose();
+    _replaceGlandPackingHm.dispose();
     super.dispose();
   }
 
@@ -130,6 +145,17 @@ class _FormBodyState extends ConsumerState<_FormBody> {
     if (d != null) setState(() => _date = toApiDate(d)); // lokal, bukan UTC
   }
 
+  Future<void> _pickReplaceDate() async {
+    final cur = DateTime.tryParse(_replaceGlandPackingDate ?? '') ?? DateTime.now();
+    final d = await showDatePicker(
+      context: context,
+      initialDate: cur,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (d != null) setState(() => _replaceGlandPackingDate = toApiDate(d));
+  }
+
   Future<void> _save() async {
     if (_busy) return; // cegah double-submit
     if (_title.text.trim().isEmpty) {
@@ -155,6 +181,17 @@ class _FormBodyState extends ConsumerState<_FormBody> {
         return;
       }
     }
+    // Validasi Gland Packing replacement
+    if (_replaceGlandPacking) {
+      if (_replaceGlandPackingCn.text.trim().isEmpty && _cn.text.trim().isEmpty) {
+        setState(() => _msg = 'Unit / CN wajib diisi.');
+        return;
+      }
+      if (_replaceGlandPackingHm.text.trim().isEmpty && _hm.text.trim().isEmpty) {
+        setState(() => _msg = 'Hourmeter wajib diisi.');
+        return;
+      }
+    }
     setState(() {
       _busy = true;
       _pct = 0;
@@ -168,14 +205,16 @@ class _FormBodyState extends ConsumerState<_FormBody> {
 
     try {
       final api = ref.read(activityApiProvider);
+      final cn = _cn.text.trim().isEmpty ? null : _cn.text.trim().toUpperCase();
+      final hmStr = _hm.text.trim().isEmpty ? null : _hm.text.trim();
       if (_isEdit) {
         await api.patch(widget.initial!.id, {
           'date': _date,
           'title': _title.text.trim(),
           'category': _cat.isEmpty ? null : _cat,
           'crew': _crew.trim(),
-          'cn': _cn.text.trim().isEmpty ? null : _cn.text.trim().toUpperCase(),
-          'hm': _hm.text.trim().isEmpty ? null : _hm.text.trim(),
+          'cn': cn,
+          'hm': hmStr,
           'shift': _shift != null ? '$_shift' : null,
           'description': _desc.text.isEmpty ? null : _desc.text,
         });
@@ -190,13 +229,22 @@ class _FormBodyState extends ConsumerState<_FormBody> {
           title: _title.text.trim(),
           crew: _crew.trim(),
           category: _cat.isEmpty ? null : _cat,
-          cn: _cn.text.trim().isEmpty ? null : _cn.text.trim(),
-          hm: _hm.text.trim().isEmpty ? null : _hm.text.trim(),
+          cn: cn,
+          hm: hmStr,
           shift: _shift,
           description: _desc.text.isEmpty ? null : _desc.text,
           filePaths: _picked.map((e) => e.path).toList(),
           onProgress: prog,
         );
+      }
+      // Simpan data Replace Gland Packing jika checkbox aktif
+      if (_replaceGlandPacking) {
+        final rCn = _replaceGlandPackingCn.text.trim().isEmpty ? cn : _replaceGlandPackingCn.text.trim().toUpperCase();
+        final rHm = int.tryParse(_replaceGlandPackingHm.text.trim()) ?? int.tryParse(hmStr ?? '');
+        final rDate = _replaceGlandPackingDate ?? _date;
+        if (rCn != null && rHm != null) {
+          await api.setGlandPacking(rCn, rHm, rDate);
+        }
       }
       invalidateActivityLists(ref);
       if (mounted) context.pop();
@@ -269,6 +317,28 @@ class _FormBodyState extends ConsumerState<_FormBody> {
                   label: const Text('DC Dragflow'),
                   selected: _isDc,
                   onSelected: _busy ? null : _toggleDc,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Tooltip(
+                message: 'Tandai penggantian Gland Packing: menambahkan catatan Unit/CN, '
+                    'Hourmeter replace, dan Tanggal ke tabel glandpacking_replacement.',
+                child: FilterChip(
+                  label: const Text('Replace Gland Packing'),
+                  selected: _replaceGlandPacking,
+                  onSelected: _busy ? null : (v) {
+                    setState(() {
+                      _replaceGlandPacking = v;
+                      if (v) {
+                        _cat = 'Replace Gland Packing';
+                      } else {
+                        // Revert to previous category if deselected and not DC Dragflow
+                        if (!_isDc) {
+                          _cat = _prevCat;
+                        }
+                      }
+                    });
+                  },
                 ),
               ),
             ],
@@ -425,6 +495,59 @@ class _FormBodyState extends ConsumerState<_FormBody> {
             ),
           ),
           const SizedBox(height: 12),
+          if (_replaceGlandPacking) ...[
+            const Text('Data Gland Packing Replacement',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _replaceGlandPackingCn,
+                    textCapitalization: TextCapitalization.characters,
+                    onChanged: (v) {
+                      final u = v.toUpperCase();
+                      if (u != v) {
+                        _replaceGlandPackingCn.value = TextEditingValue(
+                          text: u,
+                          selection: TextSelection.collapsed(offset: u.length),
+                        );
+                      }
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Unit / CN',
+                      hintText: 'cth WP855',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _replaceGlandPackingHm,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Hourmeter Replace',
+                      hintText: 'cth 12500',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Text('Tanggal Replace: '),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: _busy ? null : _pickReplaceDate,
+                  child: Text(_replaceGlandPackingDate ?? '-'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
           if (showAddPhotos) ...[
             OutlinedButton.icon(
               onPressed: _busy ? null : _pick,

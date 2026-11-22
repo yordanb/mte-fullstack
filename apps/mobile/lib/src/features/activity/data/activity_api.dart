@@ -119,6 +119,18 @@ class ActivityApi {
     await _dio.patch('/v1/activities/$id', data: body);
   }
 
+  Future<void> setGlandPacking(
+    String cn,
+    int hm,
+    String date,
+  ) async {
+    await _dio.post('/v1/glandpacking', data: {
+      'cn': cn,
+      'hm': hm,
+      'replace_date': date,
+    });
+  }
+
   Future<void> remove(String id) async {
     await _dio.delete('/v1/activities/$id');
   }

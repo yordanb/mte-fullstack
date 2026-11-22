@@ -33,10 +33,10 @@ class YazuApi {
 }
 
 final yazuApiProvider =
-    Provider<YazuApi>((ref) => YazuApi(ref.watch(dioProvider), '/v1/yazu'));
+    Provider<YazuApi>((ref) => YazuApi(ref.watch(dioProvider), '/v1/yazu-lighting'));
 
 final yazuDcApiProvider = Provider<YazuApi>(
-    (ref) => YazuApi(ref.watch(dioProvider), '/v1/yazu-dc'));
+    (ref) => YazuApi(ref.watch(dioProvider), '/v1/yazu-dc-lighting'));
 
 /// Yazu Pumping P2H — satu endpoint, kategori dikirim sebagai parameter.
 final yazuPumpingApiProvider = Provider<YazuApi>(
