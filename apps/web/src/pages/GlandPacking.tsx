@@ -16,10 +16,6 @@ export default function GlandPackingPage() {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <div className="mb-4">
-        <h2 className="text-theme-xl font-semibold">Gland Packing History</h2>
-      </div>
-
       {msg && <p className="mb-4 text-red-600">{msg}</p>}
 
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900">
