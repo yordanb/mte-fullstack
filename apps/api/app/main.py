@@ -39,6 +39,7 @@ from app.api.v1.proker_ponton import router as proker_ponton_router
 from app.api.v1.proker_summary import router as proker_summary_router
 from app.api.v1.manpower import router as manpower_router
 from app.api.v1.glandpacking import router as glandpacking_router
+from app.api.v1.glandpacking_history import router as glandpacking_history_router
 from app.core.config import settings
 from app.core.security import hash_pw
 from app.core.audit import write_log
@@ -185,6 +186,7 @@ app.include_router(proker_ponton_router)
 app.include_router(proker_summary_router)
 app.include_router(manpower_router)
 app.include_router(glandpacking_router)
+app.include_router(glandpacking_history_router)
 
 # ─── Scheduler: yazu sync 06:00 & 18:00 Asia/Makassar (GMT+8) ───
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
