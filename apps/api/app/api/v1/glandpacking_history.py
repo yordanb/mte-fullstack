@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, require_menu
 from app.db.session import get_db
 
 router = APIRouter(prefix="/v1/glandpacking", tags=["glandpacking"])
 
-@router.get("/history")
+@router.get("/history", dependencies=[Depends(require_menu("glandpacking", "view"))])
 async def history(db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
     q = text("""
         SELECT 
